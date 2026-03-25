@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, Send, Calendar, Mic, Mail, Twitter, Linkedin, Github } from 'lucide-react';
+import { MessageCircle, Send, Calendar, Mic } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -16,17 +16,17 @@ const Footer = () => {
             <p className="text-slate-400 text-sm leading-relaxed">
               O assistente pessoal inteligente que organiza sua vida inteira.
             </p>
-            {/* Social links */}
+            {/* Social links - placeholder */}
             <div className="flex gap-3">
-              <a href="#" className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors">
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors">
-                <Linkedin className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors">
-                <Github className="w-4 h-4" />
-              </a>
+              <div className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">
+                <MessageCircle className="w-4 h-4" />
+              </div>
+              <div className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">
+                <Send className="w-4 h-4" />
+              </div>
+              <div className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-colors cursor-pointer">
+                <Calendar className="w-4 h-4" />
+              </div>
             </div>
           </div>
 
