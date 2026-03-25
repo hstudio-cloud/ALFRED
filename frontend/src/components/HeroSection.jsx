@@ -1,11 +1,13 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { mockData } from '../data/mock';
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, Sparkles, LogIn } from 'lucide-react';
 
 const HeroSection = () => {
   const { hero } = mockData;
+  const navigate = useNavigate();
 
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-20 overflow-hidden">
@@ -16,6 +18,18 @@ const HeroSection = () => {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
       <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8">
+        {/* Login button - top right corner */}
+        <div className="absolute -top-10 right-0">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/login')}
+            className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+          >
+            <LogIn className="w-4 h-4 mr-2" />
+            Entrar
+          </Button>
+        </div>
+        
         {/* Badge */}
         <Badge 
           variant="outline" 
