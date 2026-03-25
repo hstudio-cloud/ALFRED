@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card } from '../components/ui/card';
@@ -19,7 +20,9 @@ import {
   Sparkles,
   Target,
   Activity,
-  DollarSign
+  DollarSign,
+  Users,
+  Building2
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -27,6 +30,7 @@ const API = `${BACKEND_URL}/api`;
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const { currentWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -130,8 +134,22 @@ const Dashboard = () => {
             <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/20 text-cyan-400">
               Dashboard
             </Badge>
+            {currentWorkspace && (
+              <Badge variant="outline" className="bg-blue-500/10 border-blue-500/20 text-blue-400">
+                <Building2 className="w-3 h-3 mr-1" />
+                {currentWorkspace.name}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/clients')}
+              className="text-slate-400 hover:text-cyan-400"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Clientes
+            </Button>
             <div className="text-right">
               <p className="text-sm text-white font-medium">{user?.name}</p>
               <p className="text-xs text-slate-400">{user?.email}</p>

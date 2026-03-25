@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 
 # Import routes
-from routes import auth_routes, task_routes, chat_routes, dashboard_routes, habit_routes, finance_routes
+from routes import auth_routes, task_routes, chat_routes, dashboard_routes, habit_routes, finance_routes, workspace_routes, client_routes
 from database import users_collection
 from auth import get_password_hash
 from models import User
@@ -74,6 +74,8 @@ app.include_router(api_router)
 
 # Include all feature routers
 app.include_router(auth_routes.router)
+app.include_router(workspace_routes.router)
+app.include_router(client_routes.router)
 app.include_router(task_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(dashboard_routes.router)
@@ -90,7 +92,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database with admin user"""
+    """Initialize database with admin user and default workspace"""
     logger.info("Starting Alfred API...")
     
     # Create admin user if not exists
@@ -106,6 +108,18 @@ async def startup_event():
         )
         await users_collection.insert_one(admin_user.dict())
         logger.info(f"✅ Admin user created: {admin_email} / Admin@123456")
+        
+        # Create default workspace for admin
+        from models_extended import Workspace
+        default_workspace = Workspace(
+            name="Minha Empresa",
+            subdomain="default",
+            description="Workspace padr\u00e3o",
+            owner_id=admin_user.id,
+            members=[admin_user.id]
+        )
+        await db.workspaces.insert_one(default_workspace.dict())
+        logger.info(f"✅ Default workspace created for admin")
     else:
         logger.info("ℹ️  Admin user already exists")
 

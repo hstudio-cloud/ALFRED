@@ -177,7 +177,7 @@ frontend:
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -186,10 +186,51 @@ test_plan:
     - "Tasks API"
     - "Chat API"
     - "Dashboard API"
+    - "Workspaces API"
+    - "Clients/CRM API"
+    - "Multiempresa Isolation"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
 
+  - task: "Workspaces API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/workspace_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ GET /api/workspaces working correctly - lists user workspaces. ✅ POST /api/workspaces working correctly - creates new workspace with name='Test Company'. ✅ GET /api/workspaces/{id} working correctly - retrieves specific workspace. All workspace endpoints functional with proper authentication and access control."
+
+  - task: "Clients/CRM API"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/client_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ GET /api/clients?workspace_id={workspace_id} working correctly - lists clients for workspace. ✅ POST /api/clients?workspace_id={workspace_id} working correctly - creates client with name='João Silva', email='joao@example.com', phone='(11) 99999-9999', document='123.456.789-00'. ✅ GET /api/clients/{client_id}?workspace_id={workspace_id} working correctly - retrieves specific client. ✅ PUT /api/clients/{client_id}?workspace_id={workspace_id} working correctly - updates client data. ✅ GET /api/clients/{client_id}/history?workspace_id={workspace_id} working correctly - retrieves activity history with 2 records (created, updated)."
+
+  - task: "Multiempresa Isolation"
+    implemented: true
+    working: true
+    file: "/app/backend/routes/client_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "✅ Workspace isolation working correctly - invalid workspace IDs properly rejected with 404 status. ✅ Client isolation working correctly - cross-workspace client access properly prevented with 403/404 status. Multiempresa security model functioning as expected."
+
 agent_communication:
     - agent: "testing"
       message: "Completed comprehensive testing of Alfred backend API. All endpoints now working correctly. Fixed critical issue with AI service API key loading that was causing chat functionality to fail. All authentication, tasks, chat, and dashboard endpoints are functional with 100% test success rate."
+    - agent: "testing"
+      message: "Completed comprehensive testing of Alfred Multiempresa features. All new workspace and client/CRM endpoints are working correctly. Successfully tested workspace creation, client management, and multiempresa isolation. Created 'Test Company' workspace and 'João Silva' client with full CRUD operations. Activity history tracking functional. Security isolation between workspaces verified. 100% test success rate for all 11 multiempresa tests."
