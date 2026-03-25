@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 
 # Import routes
-from routes import auth_routes, task_routes, chat_routes, dashboard_routes, habit_routes, finance_routes, workspace_routes, client_routes
+from routes import auth_routes, task_routes, chat_routes, dashboard_routes, habit_routes, finance_routes, workspace_routes, client_routes, tasks_enhanced_routes
 from database import users_collection
 from auth import get_password_hash
 from models import User
@@ -77,6 +77,7 @@ app.include_router(auth_routes.router)
 app.include_router(workspace_routes.router)
 app.include_router(client_routes.router)
 app.include_router(task_routes.router)
+app.include_router(tasks_enhanced_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(habit_routes.router)

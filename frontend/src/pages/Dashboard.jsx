@@ -22,7 +22,8 @@ import {
   Activity,
   DollarSign,
   Users,
-  Building2
+  Building2,
+  CheckSquare
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -142,6 +143,14 @@ const Dashboard = () => {
             )}
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/tasks')}
+              className="text-slate-400 hover:text-cyan-400"
+            >
+              <CheckSquare className="w-4 h-4 mr-2" />
+              Tarefas
+            </Button>
             <Button
               variant="ghost"
               onClick={() => navigate('/clients')}

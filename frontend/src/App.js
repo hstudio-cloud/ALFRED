@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
+import TasksKanban from './pages/TasksKanban';
 
 function App() {
   return (
@@ -36,6 +37,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Clients />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/tasks" 
+                element={
+                  <ProtectedRoute>
+                    <TasksKanban />
                   </ProtectedRoute>
                 } 
               />
