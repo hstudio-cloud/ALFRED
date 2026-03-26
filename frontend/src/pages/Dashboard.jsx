@@ -223,6 +223,25 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Analytics CTA */}
+        <div className="mb-8">
+          <Card className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2">Análises Avançadas</h3>
+                <p className="text-slate-400 text-sm">Visualize gráficos detalhados e relatórios completos</p>
+              </div>
+              <Button
+                onClick={() => navigate('/analytics')}
+                className="bg-cyan-500 hover:bg-cyan-600 text-white"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Ver Analytics
+              </Button>
+            </div>
+          </Card>
+        </div>
+
         {/* Insights */}
         {insights.length > 0 && (
           <div className="mb-8">

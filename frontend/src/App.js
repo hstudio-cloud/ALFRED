@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import TasksKanban from './pages/TasksKanban';
+import DashboardEnhanced from './pages/DashboardEnhanced';
 
 function App() {
   return (
@@ -29,6 +30,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/analytics" 
+                element={
+                  <ProtectedRoute>
+                    <DashboardEnhanced />
                   </ProtectedRoute>
                 } 
               />
