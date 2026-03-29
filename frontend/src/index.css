@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+    cursor: none !important;
+}
+
+a, button, [role="button"], input[type="submit"], .cursor-pointer {
+  cursor: none !important;
+}
+
 body {
     margin: 0;
     font-family:
