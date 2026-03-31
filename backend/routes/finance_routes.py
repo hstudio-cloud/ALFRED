@@ -46,17 +46,47 @@ async def get_summary(current_user: dict = Depends(get_current_user)):
         
         # Category breakdown
         categories = {}
+        payment_methods = {}
+        account_scopes = {
+            "personal": {"income": 0, "expense": 0, "balance": 0},
+            "business": {"income": 0, "expense": 0, "balance": 0}
+        }
         for t in transactions:
             cat = t["category"]
+            payment_method = t.get("payment_method", "other")
+            account_scope = t.get("account_scope", "personal")
             if cat not in categories:
                 categories[cat] = {"income": 0, "expense": 0}
             categories[cat][t["type"]] += t["amount"]
-        
+            if payment_method not in payment_methods:
+                payment_methods[payment_method] = {"income": 0, "expense": 0}
+            payment_methods[payment_method][t["type"]] += t["amount"]
+            if account_scope not in account_scopes:
+                account_scopes[account_scope] = {"income": 0, "expense": 0, "balance": 0}
+            account_scopes[account_scope][t["type"]] += t["amount"]
+
+        for scope in account_scopes.values():
+            scope["balance"] = scope["income"] - scope["expense"]
+
+        top_expense_categories = sorted(
+            [
+                {"category": category, "amount": totals["expense"]}
+                for category, totals in categories.items()
+                if totals["expense"] > 0
+            ],
+            key=lambda item: item["amount"],
+            reverse=True
+        )[:5]
+
         return {
             "income": income,
             "expenses": expenses,
             "balance": balance,
-            "categories": categories
+            "categories": categories,
+            "payment_methods": payment_methods,
+            "account_scopes": account_scopes,
+            "top_expense_categories": top_expense_categories,
+            "transactions_count": len(transactions)
         }
     except Exception as e:
         logger.error(f"Error getting financial summary: {e}")

@@ -1,180 +1,166 @@
-// Mock data for Alfred - Personal AI Assistant
-
 export const mockData = {
-  // Hero section
   hero: {
-    badge: "+2.000 pessoas no controle da própria vida",
-    title: "Bruce Wayne tem o Alfred.",
-    titleHighlight: "Você também tem.",
-    subtitle: "O assistente pessoal inteligente que organiza sua vida inteira — só conversando.",
-    ctaPrimary: "Começar agora",
-    ctaSecondary: "Ver demo",
+    badge: 'Operação financeira inteligente para rotina pessoal e empresarial',
+    title: 'Pagamentos, contas e controle financeiro',
+    titleHighlight: 'com um Alfred do seu lado.',
+    subtitle: 'Centralize Pix, cartão, contas a pagar, receitas, lembretes e classificação automática de gastos em um painel que conversa com você.',
+    ctaPrimary: 'Entrar no painel',
+    ctaSecondary: 'Explorar plataforma',
     features: [
-      "14 dias grátis",
-      "Multiplataforma",
-      "Cancele quando quiser"
+      'Categorias personalizadas',
+      'Separação pessoal e empresa',
+      'IA para lembretes e organização'
     ]
   },
 
-  // Scenarios section
   scenarios: [
-    "Na fila do café",
-    "Acordando na segunda",
-    "Final do mês",
-    "Dia caótico",
-    "Sexta à noite",
-    "No meio da reunião"
+    'Fechando o caixa do dia',
+    'Separando gastos pessoais e da empresa',
+    'Cobrando clientes sem planilha',
+    'Conferindo Pix e cartão',
+    'Lembrando vencimentos importantes',
+    'Organizando o financeiro do mês'
   ],
 
-  // Platforms
   platforms: [
-    { name: "Desktop", icon: "Monitor" },
-    { name: "iOS & Android", icon: "Smartphone" },
-    { name: "WhatsApp", icon: "MessageCircle" },
-    { name: "Telegram", icon: "Send" },
-    { name: "Google Calendar", icon: "Calendar" },
-    { name: "Alexa", icon: "Mic" }
+    { name: 'Dashboard Web', icon: 'Monitor' },
+    { name: 'Mobile', icon: 'Smartphone' },
+    { name: 'WhatsApp', icon: 'MessageCircle' },
+    { name: 'Pix e Cobranças', icon: 'Send' },
+    { name: 'Calendário', icon: 'Calendar' },
+    { name: 'Alertas', icon: 'Mic' }
   ],
 
-  // Daily timeline
   timeline: [
     {
-      time: "07:30",
-      title: "No trânsito",
-      description: "Manda um áudio e ele organiza tudo."
+      time: '08:10',
+      title: 'Começo do dia',
+      description: 'Veja o saldo, vencimentos e prioridades financeiras em segundos.'
     },
     {
-      time: "09:00",
-      title: "No escritório",
-      description: "Abre o app e planeja a semana."
+      time: '13:40',
+      title: 'Durante a operação',
+      description: 'Registre pagamentos e despesas em linguagem natural, sem formulário longo.'
     },
     {
-      time: "14:00",
-      title: "Reunião marcada?",
-      description: "Ele já sincronizou e te preparou."
+      time: '18:00',
+      title: 'Fechamento',
+      description: 'Entenda para onde o dinheiro foi e o que precisa de atenção amanhã.'
     }
   ],
 
-  // Product tour tabs
   productTabs: [
-    "Chat IA",
-    "Visão Alfred",
-    "Tarefas",
-    "Hábitos",
-    "Projetos",
-    "Lembretes",
-    "Finanças",
-    "Conhecimento"
+    'Chat IA',
+    'Visão financeira',
+    'Pagamentos',
+    'Receitas',
+    'Despesas',
+    'Categorias',
+    'Lembretes',
+    'Relatórios'
   ],
 
-  // Chat IA features
   chatFeatures: [
-    "Comandos por voz",
-    "Linguagem natural",
-    "Ações automáticas",
-    "WhatsApp integrado"
+    'Linguagem natural',
+    'Classificação automática',
+    'Separação PF e PJ',
+    'Lembretes financeiros'
   ],
 
-  // How it works steps
   howItWorks: [
     {
-      number: "01",
-      title: "Você conversa naturalmente",
-      description: "Manda áudio, texto, mistura tudo. Sem formulários.",
-      example: "Preciso terminar o relatório até sexta, começar a academia, gastar no máximo R$ 800 no mercado e não esquecer da consulta quinta às 14h"
+      number: '01',
+      title: 'Você descreve o que aconteceu',
+      description: 'Fale como fala no dia a dia. O sistema entende gasto, recebimento, vencimento e contexto.',
+      example: 'Paguei R$ 320 no cartão para anúncio da empresa, recebi R$ 1.500 por Pix de um cliente e me lembre do aluguel no dia 5.'
     },
     {
-      number: "02",
-      title: "Alfred processa e entende",
-      description: "IA identifica cada item e categoriza automaticamente.",
+      number: '02',
+      title: 'O Alfred classifica automaticamente',
+      description: 'A IA identifica tipo de movimentação, categoria, método de pagamento e se é pessoal ou empresa.',
       items: [
-        { label: "Tarefa detectada", value: "Relatório → Sexta" },
-        { label: "Hábito criado", value: "Academia → Diário" },
-        { label: "Limite financeiro", value: "Mercado → R$ 800" },
-        { label: "Evento agendado", value: "Consulta → Qui 14h" }
+        { label: 'Despesa detectada', value: 'Anúncio -> Marketing' },
+        { label: 'Método', value: 'Cartão e Pix' },
+        { label: 'Conta', value: 'Empresa e pessoal' },
+        { label: 'Lembrete', value: 'Aluguel -> Dia 5' }
       ]
     },
     {
-      number: "03",
-      title: "Tudo no lugar certo",
-      description: "Cada item priorizado e pronto pra ação no dashboard.",
+      number: '03',
+      title: 'Tudo cai no painel certo',
+      description: 'Saldo, categorias, cobranças e alertas ficam organizados para você agir rápido.',
       cards: [
-        { title: "Relatório", badge: "Alta prioridade" },
-        { title: "Academia", badge: "0/30 dias" },
-        { title: "R$ 800", badge: "Limite ativo" },
-        { title: "Consulta", badge: "Qui 14:00" }
+        { title: 'Marketing', badge: 'Cartão empresa' },
+        { title: 'Cliente pago', badge: 'Pix recebido' },
+        { title: 'Aluguel', badge: 'Lembrete ativo' },
+        { title: 'Fluxo de caixa', badge: 'Atualizado' }
       ]
     }
   ],
 
-  // Intelligence features
   intelligenceFeatures: [
-    "Planejamento",
-    "Finanças",
-    "Análise de Vida",
-    "Análise Alfred"
+    'Contas a pagar',
+    'Recebimentos',
+    'Classificação financeira',
+    'Alertas inteligentes'
   ],
 
-  // Competitors
   competitors: [
-    { name: "Notion", logo: "notion" },
-    { name: "ClickUp", logo: "clickup" },
-    { name: "Trello", logo: "trello" },
-    { name: "Monday", logo: "monday" },
-    { name: "Todoist", logo: "todoist" },
-    { name: "Evernote", logo: "evernote" }
+    { name: 'Asaas', logo: 'asaas' },
+    { name: 'Conta Azul', logo: 'contaazul' },
+    { name: 'Omie', logo: 'omie' },
+    { name: 'Nibo', logo: 'nibo' },
+    { name: 'QuickBooks', logo: 'quickbooks' },
+    { name: 'Ramp', logo: 'ramp' }
   ],
 
-  // Comparison
   comparison: {
     competitor: {
-      name: "Notion",
-      title: "A armadilha da configuração infinita",
+      name: 'Planilhas e apps soltos',
+      title: 'O financeiro fica espalhado e reativo',
       problems: [
-        "Mais tempo configurando do que produzindo",
-        "2h configurando pra usar 10min",
-        "Templates que ninguém usa de verdade",
-        "Complexidade que paralisa a ação",
-        "Curva de aprendizado de 1 semana"
+        'Pix em um lugar, cartão em outro e lembretes em outro',
+        'Falta visão clara entre pessoal e empresa',
+        'Categorias viram bagunça com o tempo',
+        'Cobranças e vencimentos escapam da rotina',
+        'Muito retrabalho para manter controle'
       ]
     },
     alfred: {
-      name: "Alfred",
-      title: "Apenas use e usufrua",
+      name: 'Alfred',
+      title: 'Um painel que organiza a operação',
       benefits: [
-        "Zero configuração necessária",
-        "Funciona desde o primeiro clique",
-        "IA organiza tudo automaticamente",
-        "Produtividade imediata"
+        'Classificação automática por contexto',
+        'Separação entre contas pessoais e empresa',
+        'Registro rápido por conversa',
+        'Lembretes e visão consolidada'
       ]
     }
   },
 
-  // Pricing
   pricing: {
     monthly: 49.90,
     yearly: 33.00,
-    title: "Alfred Personal",
-    guarantee: "14 dias de garantia",
+    title: 'Alfred Finance',
+    guarantee: '14 dias de garantia',
     features: [
-      "IA conversacional ilimitada",
-      "Tarefas e projetos sem limite",
-      "Controle financeiro completo",
-      "Hábitos com streaks e análise",
-      "Lembretes inteligentes",
-      "Gestão de projetos",
-      "Base de conhecimento pessoal",
-      "Análises e insights avançados"
+      'Painel financeiro com IA',
+      'Controle de receitas e despesas',
+      'Categorias personalizadas',
+      'Separação pessoal e empresa',
+      'Lembretes de vencimento',
+      'Histórico de movimentações',
+      'Insights e análises',
+      'Chat operacional'
     ]
   },
 
-  // Categories
   categories: [
-    "IA Organizacional",
-    "Produtividade",
-    "Finanças Pessoais",
-    "Desenvolvimento Pessoal",
-    "Organização",
-    "Gestão de Projetos"
+    'Pagamentos',
+    'Recebimentos',
+    'Fluxo de Caixa',
+    'Finanças Pessoais',
+    'Operação Empresarial',
+    'Automação Financeira'
   ]
 };
