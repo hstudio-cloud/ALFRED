@@ -145,3 +145,146 @@ class Automation(BaseModel):
     last_run: Optional[datetime] = None
     run_count: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class FinancialCategoryCreate(BaseModel):
+    name: str
+    kind: str = "expense"  # income, expense, both
+    color: str = "#06b6d4"
+    icon: Optional[str] = None
+    account_scope: str = "both"  # personal, business, both
+
+
+class FinancialCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    kind: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    account_scope: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class FinancialCategory(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    name: str
+    kind: str = "expense"
+    color: str = "#06b6d4"
+    icon: Optional[str] = None
+    account_scope: str = "both"
+    active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BillCreate(BaseModel):
+    title: str
+    amount: float
+    type: str  # payable, receivable
+    due_date: datetime
+    category: str
+    payment_method: str = "other"
+    account_scope: str = "business"
+    description: Optional[str] = None
+    client_name: Optional[str] = None
+    recurring: bool = False
+    recurrence_rule: Optional[str] = None
+
+
+class BillUpdate(BaseModel):
+    title: Optional[str] = None
+    amount: Optional[float] = None
+    type: Optional[str] = None
+    due_date: Optional[datetime] = None
+    category: Optional[str] = None
+    payment_method: Optional[str] = None
+    account_scope: Optional[str] = None
+    description: Optional[str] = None
+    client_name: Optional[str] = None
+    status: Optional[str] = None
+    recurring: Optional[bool] = None
+    recurrence_rule: Optional[str] = None
+
+
+class Bill(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    title: str
+    amount: float
+    type: str  # payable, receivable
+    due_date: datetime
+    category: str
+    payment_method: str = "other"
+    account_scope: str = "business"
+    description: Optional[str] = None
+    client_name: Optional[str] = None
+    status: str = "pending"  # pending, paid, received, overdue, cancelled
+    recurring: bool = False
+    recurrence_rule: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ReminderFinancialCreate(BaseModel):
+    title: str
+    remind_at: datetime
+    description: Optional[str] = None
+    linked_type: Optional[str] = None  # bill, transaction, report
+    linked_id: Optional[str] = None
+
+
+class ReminderFinancialUpdate(BaseModel):
+    title: Optional[str] = None
+    remind_at: Optional[datetime] = None
+    description: Optional[str] = None
+    linked_type: Optional[str] = None
+    linked_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ReminderFinancial(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    title: str
+    remind_at: datetime
+    description: Optional[str] = None
+    linked_type: Optional[str] = None
+    linked_id: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class SaasSubscriptionUpdate(BaseModel):
+    plan_name: Optional[str] = None
+    status: Optional[str] = None
+    billing_cycle: Optional[str] = None  # monthly, yearly
+    price: Optional[float] = None
+    trial_ends_at: Optional[datetime] = None
+    features: Optional[List[str]] = None
+
+
+class SaasSubscription(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    plan_name: str = "Starter"
+    status: str = "trial"
+    billing_cycle: str = "monthly"
+    price: float = 0.0
+    trial_ends_at: Optional[datetime] = None
+    features: List[str] = Field(default_factory=lambda: [
+        "Dashboard financeiro",
+        "Receitas e despesas",
+        "Contas e lembretes",
+        "Relatórios"
+    ])
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AutomationInsight(BaseModel):
+    label: str
+    message: str
+    severity: str = "info"  # info, warning, success

@@ -18,3 +18,7 @@ projects_collection = db.projects
 reminders_collection = db.reminders
 transactions_collection = db.transactions
 chat_messages_collection = db.chat_messages
+categories_collection = db.financial_categories
+bills_collection = db.financial_bills
+subscriptions_collection = db.saas_subscriptions
+automation_logs_collection = db.automation_logs
