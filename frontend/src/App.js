@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import TasksKanban from './pages/TasksKanban';
 import DashboardEnhanced from './pages/DashboardEnhanced';
+import CustomCursor from './components/CustomCursor';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <AuthProvider>
         <WorkspaceProvider>
           <BrowserRouter>
+            <CustomCursor />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />

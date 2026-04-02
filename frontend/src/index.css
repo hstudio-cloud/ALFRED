@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  cursor: none !important;
+}
+
+a, button, [role="button"], input[type="submit"], .cursor-pointer {
+  cursor: none !important;
+}
+
 body {
     margin: 0;
     font-family:
@@ -10,6 +18,10 @@ body {
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+body hover {
+    cursor: none !important;
 }
 
 code {
