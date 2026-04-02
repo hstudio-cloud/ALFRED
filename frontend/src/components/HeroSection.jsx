@@ -58,6 +58,7 @@ const HeroSection = () => {
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4">
           <Button 
             size="lg" 
+            onClick={() => navigate('/login')}
             className="bg-white text-slate-900 hover:bg-slate-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all group"
           >
             {hero.ctaPrimary}
@@ -66,6 +67,7 @@ const HeroSection = () => {
           <Button 
             size="lg" 
             variant="ghost" 
+            onClick={() => document.getElementById('product-tour')?.scrollIntoView({ behavior: 'smooth' })}
             className="text-white hover:bg-white/10 px-8 py-6 text-lg font-semibold rounded-full transition-all"
           >
             {hero.ctaSecondary}
@@ -94,11 +96,44 @@ const HeroSection = () => {
                   <span className="ml-4 text-xs text-slate-500">app.meu-alfred.com</span>
                 </div>
                 <div className="space-y-3">
-                  <div className="h-32 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg border border-cyan-500/30" />
+                  <div className="rounded-lg border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/10 p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.25em] text-cyan-200">Resumo financeiro</p>
+                        <h3 className="mt-2 text-3xl font-semibold text-white">R$ 24.680,00</h3>
+                      </div>
+                      <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/20">
+                        Operação saudável
+                      </Badge>
+                    </div>
+                    <div className="mt-5 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
+                        <p className="text-xs text-slate-400">Pix recebido</p>
+                        <p className="mt-2 text-lg font-semibold text-white">R$ 8.400</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
+                        <p className="text-xs text-slate-400">Cartão empresa</p>
+                        <p className="mt-2 text-lg font-semibold text-white">R$ 3.280</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
+                        <p className="text-xs text-slate-400">Contas a vencer</p>
+                        <p className="mt-2 text-lg font-semibold text-white">4 alertas</p>
+                      </div>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="h-20 bg-slate-800/50 rounded-lg border border-slate-700/50" />
-                    <div className="h-20 bg-slate-800/50 rounded-lg border border-slate-700/50" />
-                    <div className="h-20 bg-slate-800/50 rounded-lg border border-slate-700/50" />
+                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
+                      <p className="text-xs text-slate-500">Pessoal</p>
+                      <p className="mt-2 text-base font-semibold text-white">R$ 4.320</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
+                      <p className="text-xs text-slate-500">Empresa</p>
+                      <p className="mt-2 text-base font-semibold text-white">R$ 20.360</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
+                      <p className="text-xs text-slate-500">IA</p>
+                      <p className="mt-2 text-base font-semibold text-white">12 sugestões</p>
+                    </div>
                   </div>
                 </div>
               </div>

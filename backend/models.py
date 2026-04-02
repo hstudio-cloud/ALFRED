@@ -128,6 +128,8 @@ class TransactionCreate(BaseModel):
     category: str
     amount: float
     description: Optional[str] = None
+    payment_method: str = "other"  # pix, card, boleto, cash, transfer, other
+    account_scope: str = "personal"  # personal, business
     date: Optional[datetime] = None
 
 class TransactionUpdate(BaseModel):
@@ -135,6 +137,8 @@ class TransactionUpdate(BaseModel):
     category: Optional[str] = None
     amount: Optional[float] = None
     description: Optional[str] = None
+    payment_method: Optional[str] = None
+    account_scope: Optional[str] = None
     date: Optional[datetime] = None
 
 class Transaction(BaseModel):
@@ -144,6 +148,8 @@ class Transaction(BaseModel):
     category: str
     amount: float
     description: Optional[str] = None
+    payment_method: str = "other"
+    account_scope: str = "personal"
     date: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
