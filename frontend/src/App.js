@@ -12,6 +12,7 @@ import Clients from './pages/Clients';
 import TasksKanban from './pages/TasksKanban';
 import DashboardEnhanced from './pages/DashboardEnhanced';
 import CustomCursor from './components/CustomCursor';
+import AIVoiceVisualizer from './components/AIVoiceVisualizer';
 
 function App() {
   return (

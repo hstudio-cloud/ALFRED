@@ -1,5 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# User
+
 # IDE and editors
 .idea/
 .vscode/
@@ -85,3 +87,4 @@ frontend/node_modules/.cache/default-development/7.pack
 *.env
 *.env.*
 frontend/node_modules/.cache/default-development/4.pack
+.aider*
