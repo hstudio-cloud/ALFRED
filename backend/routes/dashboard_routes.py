@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
     workspace_id: str = Query(...),
+    account_scope: str = Query("general"),
     current_user: dict = Depends(get_current_user),
 ):
     try:
@@ -44,7 +45,12 @@ async def get_dashboard_stats(
             "status": "active"
         })
 
-        transactions = await transactions_collection.find({"workspace_id": workspace_id}).to_list(1000)
+        normalized_scope = account_scope.lower().strip()
+        transaction_query = {"workspace_id": workspace_id}
+        if normalized_scope in {"personal", "business"}:
+            transaction_query["account_scope"] = normalized_scope
+
+        transactions = await transactions_collection.find(transaction_query).to_list(1000)
         income = sum(t["amount"] for t in transactions if t["type"] == "income")
         expenses = sum(t["amount"] for t in transactions if t["type"] == "expense")
         finances_balance = income - expenses
@@ -71,10 +77,15 @@ async def get_dashboard_stats(
 @router.get("/insights")
 async def get_insights(
     workspace_id: str = Query(...),
+    account_scope: str = Query("general"),
     current_user: dict = Depends(get_current_user),
 ):
     try:
-        stats = await get_dashboard_stats(workspace_id=workspace_id, current_user=current_user)
+        stats = await get_dashboard_stats(
+            workspace_id=workspace_id,
+            account_scope=account_scope,
+            current_user=current_user,
+        )
         insights = []
 
         if stats.tasks_pending > 10:
@@ -89,11 +100,15 @@ async def get_insights(
                 "message": f"O saldo consolidado está negativo em R$ {abs(stats.finances_balance):.2f}."
             })
 
-        upcoming_bills = await bills_collection.count_documents({
+        bill_query = {
             "workspace_id": workspace_id,
             "status": "pending",
             "due_date": {"$lte": datetime.utcnow() + timedelta(days=7)}
-        })
+        }
+        normalized_scope = account_scope.lower().strip()
+        if normalized_scope in {"personal", "business"}:
+            bill_query["account_scope"] = normalized_scope
+        upcoming_bills = await bills_collection.count_documents(bill_query)
         if upcoming_bills:
             insights.append({
                 "type": "info",

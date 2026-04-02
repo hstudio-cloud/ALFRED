@@ -22,3 +22,5 @@ categories_collection = db.financial_categories
 bills_collection = db.financial_bills
 subscriptions_collection = db.saas_subscriptions
 automation_logs_collection = db.automation_logs
+user_memories_collection = db.user_memories
+statement_imports_collection = db.statement_imports

@@ -1,74 +1,200 @@
 import logging
+import os
 import re
 import unicodedata
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-except ImportError:
-    LlmChat = None
-    UserMessage = None
+import httpx
+from openai import AsyncOpenAI
 
 
 logger = logging.getLogger(__name__)
 
 
 class AlfredAI:
-    """Alfred AI Assistant - interpreta comandos financeiros em linguagem natural."""
+    """Alfred AI Assistant - interpreta comandos financeiros e conversa com contexto."""
 
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.system_message = """Voce e Alfred, um assistente inteligente para pagamentos, gestao financeira e rotina operacional.
+    def __init__(self, api_key: Optional[str]):
+        self.api_key = api_key or ""
+        self.client = AsyncOpenAI(api_key=self.api_key) if self.api_key else None
+        self.text_model = os.getenv("OPENAI_TEXT_MODEL", "gpt-4o-mini")
+        self.voice_model = os.getenv("OPENAI_VOICE_MODEL", "gpt-4o-mini-tts")
+        self.voice_name = os.getenv("OPENAI_VOICE_NAME", "alloy")
+        self.system_message = """Voce e Alfred, um assistente financeiro sofisticado, prestativo e objetivo.
 
-Sua funcao e ajudar o usuario a controlar o dia a dia financeiro com conversas naturais.
+Seu papel:
+- conversar de forma natural em portugues do Brasil
+- entender pedidos financeiros, operacionais e de rotina
+- confirmar rapidamente o que foi entendido
+- responder com clareza, calma e tom executivo
+- ser direto, sem floreios longos
 
-Voce pode:
-- Registrar receitas e despesas
-- Criar contas a pagar e a receber
-- Criar lembretes e acompanhamentos
-- Identificar categoria, metodo de pagamento e escopo pessoal ou empresa
-- Analisar gastos e sugerir economia
+Capacidades do Alfred:
+- registrar receitas e despesas
+- criar contas a pagar e a receber
+- criar lembretes e acompanhamentos
+- identificar categoria, metodo de pagamento e escopo pessoal ou empresa
+- analisar gastos e sugerir economia
 
-Quando o usuario pedir para criar algo:
-1. Confirme rapidamente o que entendeu
-2. Destaque as classificacoes principais
-3. Responda de forma objetiva e util
+Regras de resposta:
+- responda em pt-BR
+- mantenha respostas curtas, naturais e confiantes
+- quando houver acao executada, reconheca o pedido e destaque o resultado
+- quando faltar dado importante, diga exatamente o que falta
+- se houver memoria do usuario, use isso para personalizar sem inventar fatos"""
 
-Se faltar um detalhe importante, faca uma suposicao razoavel e deixe isso explicito."""
-
-    async def process_message(self, user_id: str, message: str) -> dict:
+    async def process_message(
+        self,
+        user_id: str,
+        message: str,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        memory_profile: Optional[Dict[str, Any]] = None,
+    ) -> dict:
         """Processa a mensagem do usuario e retorna resposta + acoes detectadas."""
         actions = self._detect_actions(message)
+        response = await self._generate_response(
+            user_id=user_id,
+            message=message,
+            actions=actions,
+            conversation_history=conversation_history or [],
+            memory_profile=memory_profile or {},
+        )
+        return {
+            "response": response,
+            "actions": actions,
+        }
+
+    async def synthesize_speech(self, text: str) -> Optional[bytes]:
+        """Gera audio TTS com voz da OpenAI quando ha chave configurada."""
+        cleaned = (text or "").strip()
+        if not cleaned or not self.api_key:
+            return None
+
+        payload = {
+            "model": self.voice_model,
+            "voice": self.voice_name,
+            "input": cleaned[:4000],
+            "format": "mp3",
+        }
 
         try:
-            if LlmChat is None or UserMessage is None:
-                return {
-                    "response": "Interpretei sua mensagem e preparei as acoes financeiras correspondentes.",
-                    "actions": actions,
-                }
-
-            chat = LlmChat(
-                api_key=self.api_key,
-                session_id=f"user_{user_id}",
-                system_message=self.system_message,
-            ).with_model("openai", "gpt-5.1")
-
-            response = await chat.send_message(UserMessage(text=message))
-            if response is None:
-                response = "Interpretei sua mensagem e preparei as acoes financeiras correspondentes."
-            elif not isinstance(response, str):
-                response = str(response)
-
-            return {
-                "response": response,
-                "actions": actions,
-            }
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/audio/speech",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.content
         except Exception as exc:
-            logger.error(f"Error in AI processing: {exc}")
-            return {
-                "response": "Interpretei sua mensagem localmente e preparei as acoes correspondentes.",
-                "actions": actions,
-            }
+            logger.error("Error synthesizing speech: %s", exc)
+            return None
+
+    async def _generate_response(
+        self,
+        user_id: str,
+        message: str,
+        actions: List[Dict[str, Any]],
+        conversation_history: List[Dict[str, str]],
+        memory_profile: Dict[str, Any],
+    ) -> str:
+        fallback_response = self._build_fallback_response(actions)
+        if self.client is None:
+            return fallback_response
+
+        action_summary = self._summarize_actions(actions)
+        memory_summary = self._summarize_memory(memory_profile)
+        history_summary = self._summarize_history(conversation_history)
+
+        prompt = f"""Mensagem atual do usuario:
+{message}
+
+Acoes detectadas localmente:
+{action_summary}
+
+Memoria conhecida do usuario:
+{memory_summary}
+
+Historico recente:
+{history_summary}
+
+Responda como Alfred em ate 4 frases curtas. Se houver acao detectada, confirme o que entendeu e prepare o usuario para a execucao."""
+
+        try:
+            response = await self.client.responses.create(
+                model=self.text_model,
+                input=[
+                    {"role": "system", "content": self.system_message},
+                    {"role": "user", "content": prompt},
+                ],
+                user=user_id,
+            )
+            output_text = getattr(response, "output_text", "") or ""
+            cleaned = output_text.strip()
+            return cleaned or fallback_response
+        except Exception as exc:
+            logger.error("Error in OpenAI response generation: %s", exc)
+            return fallback_response
+
+    def _build_fallback_response(self, actions: List[Dict[str, Any]]) -> str:
+        if not actions:
+            return "Entendi. Posso te ajudar a registrar gastos, criar contas, lembretes ou analisar seus numeros."
+
+        main_action = actions[0]["type"]
+        fallback_map = {
+            "create_transaction": "Entendi. Vou registrar essa movimentacao financeira para voce.",
+            "create_bill": "Entendi. Vou criar essa conta e organizar o vencimento.",
+            "create_reminder": "Entendi. Vou criar esse lembrete para voce.",
+            "analyze_spending": "Entendi. Vou analisar seus gastos e montar um resumo objetivo.",
+            "create_task": "Entendi. Vou transformar isso em uma tarefa.",
+            "create_habit": "Entendi. Vou registrar isso como habito.",
+        }
+        return fallback_map.get(main_action, "Entendi. Vou cuidar disso agora.")
+
+    def _summarize_actions(self, actions: List[Dict[str, Any]]) -> str:
+        if not actions:
+            return "Nenhuma acao estruturada detectada."
+        lines = []
+        for action in actions:
+            lines.append(f"- {action.get('type')}: {action.get('data', {})}")
+        return "\n".join(lines)
+
+    def _summarize_history(self, conversation_history: List[Dict[str, str]]) -> str:
+        if not conversation_history:
+            return "Sem historico recente."
+        lines = []
+        for item in conversation_history[-6:]:
+            role = item.get("role", "user")
+            content = (item.get("content") or "").strip().replace("\n", " ")
+            if len(content) > 220:
+                content = f"{content[:217]}..."
+            lines.append(f"{role}: {content}")
+        return "\n".join(lines)
+
+    def _summarize_memory(self, memory_profile: Dict[str, Any]) -> str:
+        if not memory_profile:
+            return "Nenhuma preferencia persistida."
+
+        preferences = memory_profile.get("preferences", {})
+        recents = memory_profile.get("recent_patterns", [])
+        facts = []
+
+        if preferences.get("payment_method"):
+            facts.append(f"metodo favorito: {preferences['payment_method']}")
+        if preferences.get("account_scope"):
+            facts.append(f"escopo mais comum: {preferences['account_scope']}")
+        if preferences.get("category"):
+            facts.append(f"categoria frequente: {preferences['category']}")
+        if preferences.get("voice_greeting_style"):
+            facts.append(f"estilo de voz: {preferences['voice_greeting_style']}")
+        if recents:
+            facts.append(f"padroes recentes: {', '.join(recents[-4:])}")
+
+        return "; ".join(facts) if facts else "Nenhuma preferencia persistida."
 
     def _normalize_text(self, text: str) -> str:
         normalized = unicodedata.normalize("NFKD", text)
@@ -305,12 +431,20 @@ Se faltar um detalhe importante, faca uma suposicao razoavel e deixe isso explic
             due_date = self._extract_datetime(cleaned_message)
             bill_type = self._extract_bill_type(message_lower)
             category = self._detect_category(message_lower)
+            payment_method = self._detect_payment_method(message_lower)
+            account_scope = self._detect_account_scope(message_lower)
             assumptions = []
             missing_fields = []
 
             if due_date is None:
                 due_date = (datetime.utcnow() + timedelta(days=7)).replace(hour=9, minute=0, second=0, microsecond=0)
                 assumptions.append("Vencimento assumido para daqui a 7 dias.")
+            if category == "Geral":
+                assumptions.append("Categoria assumida como Geral por falta de contexto suficiente.")
+            if payment_method == "other":
+                assumptions.append("Metodo de pagamento mantido como outro por falta de detalhe.")
+            if account_scope == "personal" and not any(word in message_lower for word in ["pessoal", "empresa", "pj", "pf", "negocio", "casa", "familia"]):
+                assumptions.append("Escopo assumido como pessoal por nao haver indicacao explicita.")
 
             if amount is None:
                 missing_fields.append("amount")
@@ -323,8 +457,8 @@ Se faltar um detalhe importante, faca uma suposicao razoavel e deixe isso explic
                     "type": bill_type,
                     "due_date": due_date.isoformat(),
                     "category": category,
-                    "payment_method": self._detect_payment_method(message_lower),
-                    "account_scope": self._detect_account_scope(message_lower),
+                    "payment_method": payment_method,
+                    "account_scope": account_scope,
                     "description": cleaned_message,
                     "recurring": any(word in message_lower for word in ["todo mes", "mensal", "recorrente", "todo mes"]),
                     "missing_fields": missing_fields,
@@ -341,11 +475,20 @@ Se faltar um detalhe importante, faca uma suposicao razoavel e deixe isso explic
             transaction_type = self._extract_transaction_type(message_lower)
             amount = self._extract_amount(message_lower)
             category = self._detect_category(message_lower)
+            payment_method = self._detect_payment_method(message_lower)
+            account_scope = self._detect_account_scope(message_lower)
             missing_fields = []
+            assumptions = []
             if transaction_type is None:
                 missing_fields.append("type")
             if amount is None:
                 missing_fields.append("amount")
+            if category == "Geral":
+                assumptions.append("Categoria assumida como Geral por falta de contexto suficiente.")
+            if payment_method == "other":
+                assumptions.append("Metodo de pagamento mantido como outro por falta de detalhe.")
+            if account_scope == "personal" and not any(word in message_lower for word in ["pessoal", "empresa", "pj", "pf", "negocio", "casa", "familia"]):
+                assumptions.append("Escopo assumido como pessoal por nao haver indicacao explicita.")
 
             if transaction_type is not None:
                 actions.append({
@@ -356,11 +499,11 @@ Se faltar um detalhe importante, faca uma suposicao razoavel e deixe isso explic
                         "category": category,
                         "amount": amount,
                         "description": cleaned_message,
-                        "payment_method": self._detect_payment_method(message_lower),
-                        "account_scope": self._detect_account_scope(message_lower),
+                        "payment_method": payment_method,
+                        "account_scope": account_scope,
                         "date": datetime.utcnow().isoformat(),
                         "missing_fields": missing_fields,
-                        "assumptions": [],
+                        "assumptions": assumptions,
                         "detected": True,
                     },
                 })

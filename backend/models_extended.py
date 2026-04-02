@@ -288,3 +288,17 @@ class AutomationInsight(BaseModel):
     label: str
     message: str
     severity: str = "info"  # info, warning, success
+
+
+class StatementImport(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    file_name: str
+    file_type: str
+    status: str = "parsed"  # parsed, pending_manual_review, failed
+    account_scope: str = "general"
+    row_count: int = 0
+    preview_rows: List[dict] = Field(default_factory=list)
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
