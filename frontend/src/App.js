@@ -12,7 +12,6 @@ import Clients from './pages/Clients';
 import TasksKanban from './pages/TasksKanban';
 import DashboardEnhanced from './pages/DashboardEnhanced';
 import CustomCursor from './components/CustomCursor';
-import AIVoiceVisualizer from './components/AIVoiceVisualizer';
 
 function App() {
   return (
@@ -22,46 +21,43 @@ function App() {
           <BrowserRouter>
             <CustomCursor />
             <Routes>
-              {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              {/* Protected routes */}
-              <Route 
-                path="/dashboard" 
-                element={
+
+              <Route
+                path="/dashboard"
+                element={(
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
-                } 
+                )}
               />
-              <Route 
-                path="/analytics" 
-                element={
+              <Route
+                path="/analytics"
+                element={(
                   <ProtectedRoute>
                     <DashboardEnhanced />
                   </ProtectedRoute>
-                } 
+                )}
               />
-              <Route 
-                path="/clients" 
-                element={
+              <Route
+                path="/clients"
+                element={(
                   <ProtectedRoute>
                     <Clients />
                   </ProtectedRoute>
-                } 
+                )}
               />
-              <Route 
-                path="/tasks" 
-                element={
+              <Route
+                path="/tasks"
+                element={(
                   <ProtectedRoute>
                     <TasksKanban />
                   </ProtectedRoute>
-                } 
+                )}
               />
-              
-              {/* Fallback */}
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
