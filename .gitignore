@@ -5,6 +5,12 @@
 # IDE and editors
 .idea/
 .vscode/
+openclaude.sh
+start_claude.sh
+start_claude.ps1
+.openclaude-profile*
+
+
 
 # Dependencies
 node_modules/
