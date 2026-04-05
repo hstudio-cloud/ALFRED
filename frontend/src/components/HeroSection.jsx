@@ -93,7 +93,7 @@ const HeroSection = () => {
                   <div className="w-3 h-3 rounded-full bg-red-500" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="ml-4 text-xs text-slate-500">app.meu-alfred.com</span>
+                  <span className="ml-4 text-xs text-slate-500">app.meu-nano.com</span>
                 </div>
                 <div className="space-y-3">
                   <div className="rounded-lg border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/10 p-5">

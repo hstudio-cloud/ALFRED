@@ -11,10 +11,10 @@ const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Alfred
+              Nano Assistente
             </div>
             <p className="text-slate-400 text-sm leading-relaxed">
-              O assistente pessoal inteligente que organiza sua vida inteira.
+              O assistente financeiro inteligente que organiza sua rotina pessoal e empresarial.
             </p>
             {/* Social links - placeholder */}
             <div className="flex gap-3">
@@ -93,7 +93,7 @@ const Footer = () => {
         <div className="border-t border-slate-800 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-400">
             <div>
-              &copy; {currentYear} Alfred. Todos os direitos reservados.
+              &copy; {currentYear} Nano Assistente. Todos os direitos reservados.
             </div>
             <div className="flex gap-6">
               <a href="#" className="hover:text-cyan-400 transition-colors">Termos de Uso</a>

@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database with admin user and default workspace on startup, and close DB on shutdown."""
-    logger.info("Starting Alfred API...")
+    logger.info("Starting Nano API...")
 
     # Create admin user if not exists
     admin_email = "admin@alfred.com"
@@ -82,11 +82,11 @@ async def lifespan(app: FastAPI):
 
     # --- LÓGICA DE SHUTDOWN (Após o yield) ---
     client.close()
-    logger.info("Alfred API shutdown")
+    logger.info("Nano API shutdown")
 
 
 # Create the main app sem prefixo, injetando o lifespan
-app = FastAPI(title="Alfred API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Nano API", version="1.0.0", lifespan=lifespan)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -107,7 +107,7 @@ class StatusCheckCreate(BaseModel):
 # Add your routes to the router
 @api_router.get("/")
 async def root():
-    return {"message": "Alfred API is running"}
+    return {"message": "Nano API is running"}
 
 
 @api_router.post("/status", response_model=StatusCheck)

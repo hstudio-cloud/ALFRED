@@ -27,7 +27,7 @@ const Login = () => {
     if (result.success) {
       toast({
         title: 'Login realizado',
-        description: 'Bem-vindo ao Alfred Finance.'
+        description: 'Bem-vindo ao Nano Assistente.'
       });
       navigate('/dashboard');
     } else {
@@ -53,7 +53,7 @@ const Login = () => {
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-8">
           <div className="space-y-4">
-            <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Alfred Finance OS</p>
+            <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Nano Assistente</p>
             <h1 className="max-w-2xl text-4xl font-semibold leading-tight text-white md:text-6xl">
               Entre para controlar pagamentos, receitas e rotina financeira em um só lugar.
             </h1>
@@ -88,7 +88,7 @@ const Login = () => {
               Acesso ao painel
             </div>
             <h2 className="text-3xl font-semibold text-white">Entrar na sua conta</h2>
-            <p className="mt-2 text-slate-400">Continue de onde parou no Alfred.</p>
+            <p className="mt-2 text-slate-400">Continue de onde parou no Nano.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

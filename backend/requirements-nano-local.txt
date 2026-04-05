@@ -1,0 +1,14 @@
+# Instale estas dependencias em uma venv separada com Python 3.11.
+# O backend principal pode continuar em Python 3.13.
+# stack funcional e leve para Windows:
+fastapi==0.135.3
+uvicorn==0.43.0
+openai==2.30.0
+python-multipart==0.0.22
+requests==2.33.1
+faster-whisper==1.1.1
+soundfile==0.12.1
+pyttsx3==2.99
+
+# opcional para voz mais avancada, exige Visual C++ Build Tools:
+# TTS==0.22.0

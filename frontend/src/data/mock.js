@@ -2,7 +2,7 @@ export const mockData = {
   hero: {
     badge: 'Operação financeira inteligente para rotina pessoal e empresarial',
     title: 'Pagamentos, contas e controle financeiro',
-    titleHighlight: 'com um Alfred do seu lado.',
+    titleHighlight: 'com o Nano Assistente ao seu lado.',
     subtitle: 'Centralize Pix, cartão, contas a pagar, receitas, lembretes e classificação automática de gastos em um painel que conversa com você.',
     ctaPrimary: 'Entrar no painel',
     ctaSecondary: 'Explorar plataforma',
@@ -76,7 +76,7 @@ export const mockData = {
     },
     {
       number: '02',
-      title: 'O Alfred classifica automaticamente',
+      title: 'O Nano classifica automaticamente',
       description: 'A IA identifica tipo de movimentação, categoria, método de pagamento e se é pessoal ou empresa.',
       items: [
         { label: 'Despesa detectada', value: 'Anúncio -> Marketing' },
@@ -127,7 +127,7 @@ export const mockData = {
       ]
     },
     alfred: {
-      name: 'Alfred',
+      name: 'Nano Assistente',
       title: 'Um painel que organiza a operação',
       benefits: [
         'Classificação automática por contexto',
@@ -141,7 +141,7 @@ export const mockData = {
   pricing: {
     monthly: 49.90,
     yearly: 33.00,
-    title: 'Alfred Finance',
+    title: 'Nano Assistente',
     guarantee: '14 dias de garantia',
     features: [
       'Painel financeiro com IA',

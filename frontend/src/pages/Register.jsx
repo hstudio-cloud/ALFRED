@@ -39,7 +39,7 @@ const Register = () => {
     if (result.success) {
       toast({
         title: 'Conta criada',
-        description: 'Seu ambiente no Alfred Finance já está pronto.'
+        description: 'Seu ambiente no Nano Assistente já está pronto.'
       });
       navigate('/dashboard');
     } else {
@@ -169,7 +169,7 @@ const Register = () => {
               Abra sua base para controlar contas, gastos e recebimentos com clareza.
             </h2>
             <p className="max-w-xl text-lg leading-8 text-slate-300">
-              O Alfred já nasce com foco em fluxo de caixa, categorias, lembretes e separação entre operação pessoal e empresarial.
+              O Nano já nasce com foco em fluxo de caixa, categorias, lembretes e separação entre operação pessoal e empresarial.
             </p>
           </div>
 

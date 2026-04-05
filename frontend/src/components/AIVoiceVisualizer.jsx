@@ -6,13 +6,13 @@ const MODE_META = {
   idle: {
     icon: Sparkles,
     borderColor: 'rgba(255,255,255,0.08)',
-    glow: 'rgba(34,211,238,0.12)',
+    glow: 'rgba(239,68,68,0.10)',
     peak: 0.08
   },
   listening: {
     icon: Mic,
-    borderColor: 'rgba(125,211,252,0.30)',
-    glow: 'rgba(56,189,248,0.22)',
+    borderColor: 'rgba(248,113,113,0.30)',
+    glow: 'rgba(239,68,68,0.18)',
     peak: 0.44
   },
   processing: {
@@ -23,8 +23,8 @@ const MODE_META = {
   },
   speaking: {
     icon: Volume2,
-    borderColor: 'rgba(34,211,238,0.34)',
-    glow: 'rgba(34,211,238,0.28)',
+    borderColor: 'rgba(251,113,133,0.34)',
+    glow: 'rgba(244,63,94,0.22)',
     peak: 0.72
   }
 };
@@ -128,7 +128,7 @@ const AIVoiceVisualizer = ({ mode = 'idle', amplitude = 0.12 }) => {
     const cols = 16;
     const rows = 16;
     const spacing = 50;
-    const colors = ['#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e', '#fb923c', '#facc15'];
+    const colors = ['#fca5a5', '#fb7185', '#ef4444', '#f97316', '#fde68a'];
 
     for (let i = 0; i < cols; i += 1) {
       for (let j = 0; j < rows; j += 1) {
@@ -155,13 +155,13 @@ const AIVoiceVisualizer = ({ mode = 'idle', amplitude = 0.12 }) => {
   }, []);
 
   return (
-    <div className="relative flex w-full items-center justify-center overflow-hidden rounded-[44px] border border-white/10 bg-slate-950/85 p-4">
+    <div className="relative flex w-full items-center justify-center overflow-hidden rounded-[44px] border border-white/8 bg-slate-950/45 p-4">
       <motion.div
         ref={containerRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         animate={{ borderColor: currentMode.borderColor }}
-        className="relative flex aspect-square w-full max-w-[620px] items-center justify-center overflow-hidden rounded-full border-2 bg-slate-900 shadow-[0_0_60px_-15px_rgba(0,0,0,0.7)] transition-colors duration-1000"
+        className="relative flex aspect-square w-full max-w-[620px] items-center justify-center overflow-hidden rounded-full border-2 bg-[radial-gradient(circle_at_center,rgba(17,24,39,0.95),rgba(2,6,23,0.98))] shadow-[0_0_60px_-15px_rgba(0,0,0,0.7)] transition-colors duration-1000"
       >
         <motion.div
           animate={{
@@ -197,18 +197,12 @@ const AIVoiceVisualizer = ({ mode = 'idle', amplitude = 0.12 }) => {
             scale: { duration: mode === 'speaking' ? 1.1 : 2, repeat: Infinity, ease: 'easeInOut' },
             rotate: { duration: 8, repeat: Infinity, ease: 'linear' }
           }}
-          className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md shadow-[0_0_50px_rgba(59,130,246,0.15)]"
+          className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md shadow-[0_0_50px_rgba(239,68,68,0.12)]"
         >
           <Icon className="h-11 w-11" />
         </motion.div>
       </motion.div>
 
-      <div className="pointer-events-none absolute bottom-6 right-8 opacity-10">
-        <p className="text-[11px] uppercase tracking-[0.38em] text-cyan-200">Voice Interface</p>
-        <p className="mt-2 text-2xl font-light text-white">
-          AI <span className="font-semibold">VOICE</span>
-        </p>
-      </div>
     </div>
   );
 };
