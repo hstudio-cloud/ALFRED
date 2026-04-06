@@ -9,6 +9,7 @@ openclaude.sh
 start_claude.sh
 start_claude.ps1
 .openclaude-profile*
+rg*
 
 
 
