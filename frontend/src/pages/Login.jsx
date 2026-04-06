@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useToast } from '../hooks/use-toast';
 import { Building2, CreditCard, Loader2, Sparkles, Wallet } from 'lucide-react';
+import NanoMark from '../components/NanoMark';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
 
   const handleSubmit = async (e) => {
@@ -27,14 +28,14 @@ const Login = () => {
     if (result.success) {
       toast({
         title: 'Login realizado',
-        description: 'Bem-vindo ao Alfred Finance.'
+        description: 'Bem-vindo ao Nano IA.',
       });
       navigate('/dashboard');
     } else {
       toast({
         title: 'Erro no login',
         description: result.error,
-        variant: 'destructive'
+        variant: 'destructive',
       });
     }
 
@@ -42,58 +43,73 @@ const Login = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(6,182,212,0.18),_transparent_35%),linear-gradient(180deg,_#020617_0%,_#0f172a_55%,_#020617_100%)] px-6 py-10">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(127,29,29,0.24),_transparent_35%),linear-gradient(180deg,_#090203_0%,_#160405_55%,_#090203_100%)] px-6 py-10">
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-8">
           <div className="space-y-4">
-            <p className="text-sm uppercase tracking-[0.35em] text-cyan-300/80">Alfred Finance OS</p>
+            <div className="flex items-center gap-4">
+              <NanoMark className="h-14 w-14" />
+              <div>
+                <p className="text-sm uppercase tracking-[0.35em] text-red-300/80">Nano IA</p>
+                <p className="mt-1 text-sm text-slate-400">Sistema financeiro inteligente</p>
+              </div>
+            </div>
+
             <h1 className="max-w-2xl text-4xl font-semibold leading-tight text-white md:text-6xl">
-              Entre para controlar pagamentos, receitas e rotina financeira em um só lugar.
+              Entre para controlar pagamentos, receitas e rotina financeira em um so lugar.
             </h1>
             <p className="max-w-xl text-lg leading-8 text-slate-300">
-              O painel foi pensado para acompanhar operação pessoal e empresarial com organização, lembretes e IA no mesmo fluxo.
+              O painel foi pensado para acompanhar operacao pessoal e empresarial com organizacao,
+              lembretes e IA no mesmo fluxo.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-slate-700/60 bg-slate-900/65 p-5">
-              <Wallet className="mb-4 h-6 w-6 text-cyan-300" />
+            <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
+              <Wallet className="mb-4 h-6 w-6 text-red-300" />
               <h2 className="text-base font-semibold text-white">Saldo consolidado</h2>
-              <p className="mt-2 text-sm text-slate-400">Veja entradas, saídas e caixa em tempo real.</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Veja entradas, saidas e caixa em tempo real.
+              </p>
             </Card>
-            <Card className="border-slate-700/60 bg-slate-900/65 p-5">
-              <Building2 className="mb-4 h-6 w-6 text-emerald-300" />
+
+            <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
+              <Building2 className="mb-4 h-6 w-6 text-red-200" />
               <h2 className="text-base font-semibold text-white">Pessoal e empresa</h2>
-              <p className="mt-2 text-sm text-slate-400">Separe os contextos sem perder a visão geral.</p>
+              <p className="mt-2 text-sm text-slate-400">
+                Separe os contextos sem perder a visao geral.
+              </p>
             </Card>
-            <Card className="border-slate-700/60 bg-slate-900/65 p-5">
+
+            <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
               <CreditCard className="mb-4 h-6 w-6 text-amber-300" />
-              <h2 className="text-base font-semibold text-white">Pix, cartão e mais</h2>
-              <p className="mt-2 text-sm text-slate-400">Registre e classifique pagamentos com linguagem natural.</p>
+              <h2 className="text-base font-semibold text-white">Pix, cartao e mais</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Registre e classifique pagamentos com linguagem natural.
+              </p>
             </Card>
           </div>
         </div>
 
-        <Card className="w-full border-slate-700/60 bg-slate-900/75 p-8 backdrop-blur">
+        <Card className="w-full border-red-500/15 bg-slate-950/75 p-8 shadow-2xl shadow-red-950/30 backdrop-blur">
           <div className="mb-8 text-center">
-            <div className="mb-4 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-200">
+            <div className="mb-4 inline-flex rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200">
               <Sparkles className="mr-2 h-4 w-4" />
               Acesso ao painel
             </div>
             <h2 className="text-3xl font-semibold text-white">Entrar na sua conta</h2>
-            <p className="mt-2 text-slate-400">Continue de onde parou no Alfred.</p>
+            <p className="mt-2 text-slate-400">Continue de onde parou no Nano.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300">Email</Label>
+              <Label htmlFor="email" className="text-slate-300">
+                Email
+              </Label>
               <Input
                 id="email"
                 name="email"
@@ -101,13 +117,15 @@ const Login = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="border-slate-700 bg-slate-950/70 text-white"
+                className="border-slate-700 bg-slate-950/70 text-white placeholder:text-slate-500"
                 placeholder="seu@email.com"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-300">Senha</Label>
+              <Label htmlFor="password" className="text-slate-300">
+                Senha
+              </Label>
               <Input
                 id="password"
                 name="password"
@@ -115,16 +133,12 @@ const Login = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="border-slate-700 bg-slate-950/70 text-white"
+                className="border-slate-700 bg-slate-950/70 text-white placeholder:text-slate-500"
                 placeholder="Digite sua senha"
               />
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-cyan-500 py-6 text-white hover:bg-cyan-600"
-            >
+            <Button type="submit" disabled={loading} className="w-full bg-red-500 py-6 text-white hover:bg-red-600">
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -137,8 +151,8 @@ const Login = () => {
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-400">
-            Não tem uma conta?{' '}
-            <Link to="/register" className="text-cyan-400 hover:text-cyan-300">
+            Nao tem uma conta?{' '}
+            <Link to="/register" className="text-red-300 hover:text-red-200">
               Crie agora
             </Link>
           </div>
@@ -149,8 +163,8 @@ const Login = () => {
             </Link>
           </div>
 
-          <div className="mt-8 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-300">Conta demo</p>
+          <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-300">Conta demo</p>
             <p className="mt-2 text-sm text-slate-300">Email: admin@alfred.com</p>
             <p className="text-sm text-slate-300">Senha: Admin@123456</p>
           </div>

@@ -13,12 +13,17 @@ from contextlib import asynccontextmanager  # Adicionado para gerenciar o Lifesp
 
 # Import routes
 from routes import (
+    accounts_routes,
+    assistant_routes,
     auth_routes,
     task_routes,
     chat_routes,
     dashboard_routes,
+    finance_hub_routes,
     habit_routes,
     finance_routes,
+    reports_routes,
+    transactions_routes,
     workspace_routes,
     client_routes,
     tasks_enhanced_routes,
@@ -46,7 +51,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database with admin user and default workspace on startup, and close DB on shutdown."""
-    logger.info("Starting Alfred API...")
+    logger.info("Starting Nano API...")
 
     # Create admin user if not exists
     admin_email = "admin@alfred.com"
@@ -82,11 +87,11 @@ async def lifespan(app: FastAPI):
 
     # --- LÓGICA DE SHUTDOWN (Após o yield) ---
     client.close()
-    logger.info("Alfred API shutdown")
+    logger.info("Nano API shutdown")
 
 
 # Create the main app sem prefixo, injetando o lifespan
-app = FastAPI(title="Alfred API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Nano API", version="1.0.0", lifespan=lifespan)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -107,7 +112,12 @@ class StatusCheckCreate(BaseModel):
 # Add your routes to the router
 @api_router.get("/")
 async def root():
-    return {"message": "Alfred API is running"}
+    return {"message": "Nano API is running"}
+
+
+@api_router.get("/health")
+async def health():
+    return {"status": "ok", "service": "nano-api"}
 
 
 @api_router.post("/status", response_model=StatusCheck)
@@ -139,9 +149,14 @@ app.include_router(client_routes.router)
 app.include_router(task_routes.router)
 app.include_router(tasks_enhanced_routes.router)
 app.include_router(chat_routes.router)
+app.include_router(assistant_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(habit_routes.router)
 app.include_router(finance_routes.router)
+app.include_router(finance_hub_routes.router)
+app.include_router(accounts_routes.router)
+app.include_router(transactions_routes.router)
+app.include_router(reports_routes.router)
 
 app.add_middleware(
     CORSMiddleware,

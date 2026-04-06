@@ -15,7 +15,7 @@ import Footer from '../components/Footer';
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.22),_transparent_26%),linear-gradient(180deg,#090203_0%,#140304_52%,#090203_100%)]">
       <HeroSection />
       <ScenariosSection />
       <PlatformsSection />

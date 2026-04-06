@@ -109,7 +109,7 @@ const DashboardEnhanced = () => {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Alfred
+              Nano IA
             </h1>
             <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/20 text-cyan-400">
               Analytics

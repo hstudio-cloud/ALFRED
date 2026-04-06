@@ -1,31 +1,46 @@
-import React, { useMemo } from 'react';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import AlfredVoiceOrb from './AlfredVoiceOrb';
+import React from 'react';
 import AlfredChatPanel from './AlfredChatPanel';
 import { useVoiceAssistant } from '../hooks/useVoiceAssistant';
-import { alfredQuickPrompts, alfredSuggestedCommands, alfredTheme } from '../lib/alfredTheme';
-import { Building2, BriefcaseBusiness, Sparkles, Wallet } from 'lucide-react';
+import {
+  Bell,
+  BrainCircuit,
+  CalendarRange,
+  CircleDollarSign,
+  Eye,
+  FileText,
+  Sparkles
+} from 'lucide-react';
 
 const scopeMeta = {
   general: {
-    label: 'Visão geral',
-    icon: Building2,
-    description: 'Consolide despesas pessoais e empresariais em uma única leitura.'
+    label: 'Visao geral',
+    subtitle: 'Leitura consolidada entre pessoal e empresa.'
   },
   personal: {
     label: 'Conta pessoal',
-    icon: Wallet,
-    description: 'O Alfred considera gastos e lembretes do seu contexto individual.'
+    subtitle: 'Respostas orientadas ao seu financeiro individual.'
   },
   business: {
     label: 'Conta empresa',
-    icon: BriefcaseBusiness,
-    description: 'O Alfred responde considerando fluxo de caixa, contas e pagamentos da empresa.'
+    subtitle: 'Respostas focadas em caixa, contas e rotina da empresa.'
   }
 };
 
-const AlfredAssistantPage = ({ financialView = 'general', onAfterMessage }) => {
+const railItems = [
+  { id: 'chat', icon: BrainCircuit, active: true },
+  { id: 'visao', icon: Eye },
+  { id: 'tarefas', icon: CalendarRange },
+  { id: 'contas', icon: FileText },
+  { id: 'alertas', icon: Bell },
+  { id: 'financeiro', icon: CircleDollarSign },
+  { id: 'spark', icon: Sparkles }
+];
+
+const AlfredAssistantPage = ({
+  financialView = 'general',
+  onAfterMessage,
+  userName = 'Heitor'
+}) => {
   const {
     chatHistory,
     message,
@@ -39,8 +54,12 @@ const AlfredAssistantPage = ({ financialView = 'general', onAfterMessage }) => {
     voiceState,
     voiceStatus,
     voiceProviderType,
+    assistantRuntime,
     voiceSupported,
     isWakeArmed,
+    isAwaitingVoiceCommand,
+    lastVoiceCommand,
+    lastAssistantReply,
     error,
     startListening,
     stopListening,
@@ -49,129 +68,76 @@ const AlfredAssistantPage = ({ financialView = 'general', onAfterMessage }) => {
   } = useVoiceAssistant({ onAfterMessage });
 
   const activeScope = scopeMeta[financialView] || scopeMeta.general;
-  const ScopeIcon = activeScope.icon;
-
-  const quickCards = useMemo(
-    () => [
-      {
-        title: 'Registro assistido',
-        description: 'Despesas, receitas, categorias e contas entram na rotina sem formulário pesado.'
-      },
-      {
-        title: 'Separação inteligente',
-        description: 'O Alfred pode sugerir quando um gasto deve ficar no pessoal ou na empresa.'
-      },
-      {
-        title: 'Ação contínua por voz',
-        description: 'Ative a voz uma vez e siga conversando sem recarregar a interface.'
-      }
-    ],
-    []
-  );
-
-  const handlePromptClick = async (prompt) => {
-    const outgoing = alfredQuickPrompts[prompt] || prompt;
-    setMessage(outgoing);
-    await sendMessage(outgoing);
-  };
+  const firstName = (userName || 'Heitor').split(' ')[0];
 
   return (
-    <div className={alfredTheme.shell}>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,1fr)]">
-        <div className="space-y-6">
-          <div className={`rounded-[32px] px-6 py-5 ${alfredTheme.glass}`}>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-3">
-                <Badge variant="outline" className={`${alfredTheme.subtleChip} rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.24em]`}>
-                  assistente financeiro premium
-                </Badge>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Badge variant="outline" className={`${alfredTheme.accentChip} rounded-full px-3 py-1 text-[11px]`}>
-                    <ScopeIcon className="mr-2 h-3.5 w-3.5" />
-                    {activeScope.label}
-                  </Badge>
-                  <span className="text-sm text-slate-400">{activeScope.description}</span>
-                </div>
+    <div className="overflow-hidden rounded-[34px] border border-white/6 bg-[radial-gradient(circle_at_top,rgba(127,29,29,0.14),transparent_18%),linear-gradient(180deg,rgba(5,8,20,0.98),rgba(5,8,20,0.96))] shadow-[0_34px_110px_rgba(2,8,23,0.46)]">
+      <div className="relative min-h-[780px] overflow-hidden px-6 py-8 lg:px-12 lg:py-10">
+        <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,0.15)_0.8px,transparent_0.8px)] [background-size:28px_28px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(239,68,68,0.06),transparent_18%),radial-gradient(circle_at_78%_74%,rgba(239,68,68,0.05),transparent_14%)]" />
+
+        <div className="pointer-events-none absolute left-6 top-1/2 hidden -translate-y-1/2 flex-col gap-4 lg:flex">
+          {railItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.id}
+                className={`flex h-10 w-10 items-center justify-center rounded-[16px] border transition ${
+                  item.active
+                    ? 'border-red-400/16 bg-red-500/18 text-red-100 shadow-[0_0_24px_rgba(239,68,68,0.14)]'
+                    : 'border-white/6 bg-white/[0.02] text-zinc-500'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
               </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={`${alfredTheme.subtleChip} rounded-full px-3 py-1 text-[11px]`}>
-                  {voiceSupported ? 'microfone disponível' : 'voz limitada'}
-                </Badge>
-                <Badge variant="outline" className={`${alfredTheme.subtleChip} rounded-full px-3 py-1 text-[11px]`}>
-                  wake word: Alfred
-                </Badge>
-              </div>
-            </div>
-          </div>
-
-          <AlfredVoiceOrb
-            voiceState={voiceState}
-            voiceStatus={voiceStatus}
-            currentLevel={currentLevel}
-            voiceProviderType={voiceProviderType}
-            isWakeArmed={isWakeArmed}
-            isSpeaking={isSpeaking}
-            onStartVoice={startListening}
-            onStopVoice={stopListening}
-            onInterrupt={interruptSpeaking}
-          />
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            {quickCards.map((item) => (
-              <div key={item.title} className={`rounded-[26px] px-5 py-5 ${alfredTheme.softPanel}`}>
-                <div className="flex items-center gap-2 text-cyan-200">
-                  <Sparkles className="h-4 w-4" />
-                  <p className="text-sm font-medium text-white">{item.title}</p>
-                </div>
-                <p className="mt-3 text-sm leading-7 text-slate-400">{item.description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className={`rounded-[28px] px-5 py-5 ${alfredTheme.softPanel}`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Sugestões de comandos</p>
-                <p className="mt-2 text-sm text-slate-300">
-                  Alfred pode separar seus gastos pessoais e empresariais automaticamente.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              {alfredSuggestedCommands.map((prompt) => (
-                <Button
-                  key={prompt}
-                  type="button"
-                  variant="outline"
-                  onClick={() => handlePromptClick(prompt)}
-                  className="rounded-full border-white/10 bg-white/[0.03] px-4 text-slate-200 hover:bg-white/[0.07] hover:text-white"
-                >
-                  {prompt}
-                </Button>
-              ))}
-            </div>
-          </div>
+            );
+          })}
         </div>
 
-        <AlfredChatPanel
-          chatHistory={chatHistory}
-          message={message}
-          setMessage={setMessage}
-          onSend={() => sendMessage()}
-          isListening={isListening}
-          isProcessing={isProcessing}
-          isSpeaking={isSpeaking}
-          partialTranscript={partialTranscript}
-          finalTranscript={finalTranscript}
-          voiceSupported={voiceSupported}
-          isWakeArmed={isWakeArmed}
-          error={error}
-          onStartVoice={startListening}
-          onStopVoice={stopListening}
-          onInterrupt={interruptSpeaking}
-        />
+        <div className="relative z-10 mx-auto flex max-w-[1180px] flex-col items-center">
+          <div className="text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] border border-red-400/16 bg-red-500/[0.08] shadow-[0_0_30px_rgba(239,68,68,0.1)]">
+              <span className="text-3xl font-semibold text-red-100">N</span>
+            </div>
+            <h2 className="mt-6 text-4xl font-semibold tracking-tight text-white lg:text-5xl">
+              Ola {firstName}
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-400">
+              O Nano organiza sua rotina financeira com respostas mais claras e operacionais.
+            </p>
+            <div className="mt-5 inline-flex rounded-full border border-red-500/12 bg-red-500/[0.08] px-4 py-2 text-xs font-medium text-red-100">
+              {activeScope.label}  |  {activeScope.subtitle}
+            </div>
+          </div>
+
+          <div className="mt-12 w-full">
+            <AlfredChatPanel
+              chatHistory={chatHistory}
+              message={message}
+              setMessage={setMessage}
+              onSend={() => sendMessage()}
+              isListening={isListening}
+              isProcessing={isProcessing}
+              isSpeaking={isSpeaking}
+              partialTranscript={partialTranscript}
+              finalTranscript={finalTranscript}
+              currentLevel={currentLevel}
+              voiceState={voiceState}
+              voiceStatus={voiceStatus}
+              voiceProviderType={voiceProviderType}
+              assistantRuntime={assistantRuntime}
+              voiceSupported={voiceSupported}
+              isWakeArmed={isWakeArmed}
+              isAwaitingVoiceCommand={isAwaitingVoiceCommand}
+              lastVoiceCommand={lastVoiceCommand}
+              lastAssistantReply={lastAssistantReply}
+              error={error}
+              onStartVoice={startListening}
+              onStopVoice={stopListening}
+              onInterrupt={interruptSpeaking}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

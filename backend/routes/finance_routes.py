@@ -213,6 +213,11 @@ async def create_transaction(
         description=payload.description,
         payment_method=payload.payment_method,
         account_scope=payload.account_scope,
+        account_id=payload.account_id,
+        card_id=payload.card_id,
+        installment_number=payload.installment_number,
+        installment_total=payload.installment_total,
+        competency_date=payload.competency_date,
         date=payload.date or datetime.utcnow(),
     )
     document = transaction.dict()
@@ -240,6 +245,19 @@ async def update_transaction(
         raise HTTPException(status_code=404, detail="Transacao nao encontrada")
     updated = await transactions_collection.find_one({"id": transaction_id, "workspace_id": workspace_id})
     return _serialize_document(updated)
+
+
+@router.delete("/transactions/{transaction_id}")
+async def delete_transaction(
+    transaction_id: str,
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    result = await transactions_collection.delete_one({"id": transaction_id, "workspace_id": workspace_id})
+    if not result.deleted_count:
+        raise HTTPException(status_code=404, detail="Transacao nao encontrada")
+    return {"deleted": True}
 
 
 @router.get("/categories")
@@ -295,6 +313,28 @@ async def update_category(
         raise HTTPException(status_code=404, detail="Categoria nao encontrada")
     item = await categories_collection.find_one({"id": category_id, "workspace_id": workspace_id})
     return _serialize_document(item)
+
+
+@router.delete("/categories/{category_id}")
+async def delete_category(
+    category_id: str,
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    category = await categories_collection.find_one({"id": category_id, "workspace_id": workspace_id})
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoria nao encontrada")
+    linked_transactions = await transactions_collection.count_documents(
+        {"workspace_id": workspace_id, "category": category.get("name")}
+    )
+    if linked_transactions:
+        raise HTTPException(
+            status_code=409,
+            detail="Categoria possui movimentacoes vinculadas e nao pode ser removida agora.",
+        )
+    result = await categories_collection.delete_one({"id": category_id, "workspace_id": workspace_id})
+    return {"deleted": True}
 
 
 @router.get("/bills")
@@ -356,6 +396,19 @@ async def update_bill(
         raise HTTPException(status_code=404, detail="Conta nao encontrada")
     item = await bills_collection.find_one({"id": bill_id, "workspace_id": workspace_id})
     return _bill_status_for_read(item)
+
+
+@router.delete("/bills/{bill_id}")
+async def delete_bill(
+    bill_id: str,
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    result = await bills_collection.delete_one({"id": bill_id, "workspace_id": workspace_id})
+    if not result.deleted_count:
+        raise HTTPException(status_code=404, detail="Conta nao encontrada")
+    return {"deleted": True}
 
 
 @router.post("/bills/generate-recurring")
@@ -456,6 +509,19 @@ async def update_reminder(
         raise HTTPException(status_code=404, detail="Lembrete nao encontrado")
     item = await reminders_collection.find_one({"id": reminder_id, "workspace_id": workspace_id})
     return _serialize_document(item)
+
+
+@router.delete("/reminders/{reminder_id}")
+async def delete_reminder(
+    reminder_id: str,
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    result = await reminders_collection.delete_one({"id": reminder_id, "workspace_id": workspace_id})
+    if not result.deleted_count:
+        raise HTTPException(status_code=404, detail="Lembrete nao encontrado")
+    return {"deleted": True}
 
 
 @router.get("/summary")

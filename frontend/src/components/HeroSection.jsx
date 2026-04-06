@@ -1,169 +1,117 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { mockData } from "../data/mock";
-import { ArrowRight, Check, Sparkles, LogIn } from "lucide-react";
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight, Check, LogIn, Sparkles } from 'lucide-react';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import NanoMark from './NanoMark';
+import { mockData } from '../data/mock';
 
 const HeroSection = () => {
   const { hero } = mockData;
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-20 overflow-hidden">
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--background))]/20 via-slate-900 to-[hsl(var(--primary))]/20 animate-gradient" />
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-20">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.24),_transparent_24%),linear-gradient(180deg,#090203_0%,#180405_52%,#090203_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(248,113,113,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(248,113,113,0.04)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
-
-      <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8">
-        {/* Login button - top right corner */}
+      <div className="relative z-10 mx-auto max-w-6xl text-center">
         <div className="absolute -top-10 right-0">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/login")}
-            className="text-[hsl(var(--primary))] hover:text-[hsl(var(--primary))]/80 hover:bg-[hsl(var(--primary))]/10"
-          >
-            <LogIn className="w-4 h-4 mr-2" />
+          <Button variant="ghost" onClick={() => navigate('/login')} className="text-red-300 hover:bg-red-500/10 hover:text-red-200">
+            <LogIn className="mr-2 h-4 w-4" />
             Entrar
           </Button>
         </div>
 
-        {/* Badge */}
-        <Badge
-          variant="outline"
-          className="bg-cyan-500/10 border-cyan-500/20 text-cyan-400 px-4 py-2 text-sm backdrop-blur-sm hover:bg-cyan-500/20 transition-colors"
-        >
-          <Sparkles className="w-4 h-4 mr-2" />
+        <div className="mb-8 flex items-center justify-center gap-4">
+          <NanoMark className="h-16 w-16 md:h-20 md:w-20" />
+          <div className="text-left">
+            <p className="text-xs uppercase tracking-[0.42em] text-red-300/70">Nano IA</p>
+            <p className="mt-1 text-sm text-slate-400">Sistema financeiro inteligente</p>
+          </div>
+        </div>
+
+        <Badge variant="outline" className="border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-300 backdrop-blur-sm hover:bg-red-500/20">
+          <Sparkles className="mr-2 h-4 w-4" />
           {hero.badge}
         </Badge>
 
-        {/* Main heading */}
-        <div className="space-y-4">
-          <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
-            {hero.title}
-          </h1>
-          <h2 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-[hsl(var(--chart-1))] via-[hsl(var(--chart-3))] to-[hsl(var(--chart-5))] bg-clip-text text-transparent">
+        <div className="mt-8 space-y-4">
+          <h1 className="text-5xl font-bold leading-tight text-white md:text-7xl">{hero.title}</h1>
+          <h2 className="bg-gradient-to-r from-red-300 via-red-500 to-amber-300 bg-clip-text text-5xl font-bold text-transparent md:text-7xl">
             {hero.titleHighlight}
           </h2>
         </div>
 
-        {/* Subtitle */}
-        <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-          {hero.subtitle}
-        </p>
+        <p className="mx-auto mt-6 max-w-3xl text-xl leading-relaxed text-slate-300">{hero.subtitle}</p>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4">
-          <Button
-            size="lg"
-            onClick={() => navigate("/login")}
-            className="bg-white text-slate-900 hover:bg-slate-100 px-8 py-6 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all group"
-          >
+        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <Button size="lg" onClick={() => navigate('/login')} className="rounded-full bg-white px-8 py-6 text-lg font-semibold text-slate-900 shadow-lg transition-all hover:bg-slate-100 hover:shadow-xl">
             {hero.ctaPrimary}
-            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
-          <Button
-            size="lg"
-            variant="ghost"
-            onClick={() =>
-              document
-                .getElementById("product-tour")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="text-white hover:bg-white/10 px-8 py-6 text-lg font-semibold rounded-full transition-all"
-          >
+          <Button size="lg" variant="ghost" onClick={() => document.getElementById('product-tour')?.scrollIntoView({ behavior: 'smooth' })} className="rounded-full px-8 py-6 text-lg font-semibold text-white transition-all hover:bg-white/10">
             {hero.ctaSecondary}
           </Button>
         </div>
 
-        {/* Features list */}
-        <div className="flex flex-wrap gap-6 items-center justify-center pt-8 text-sm text-slate-400">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
           {hero.features.map((feature, index) => (
             <div key={index} className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-[hsl(var(--primary))]" />
+              <Check className="h-4 w-4 text-red-300" />
               <span>{feature}</span>
             </div>
           ))}
         </div>
 
-        {/* Product mockup placeholder */}
         <div className="pt-12">
           <div className="relative mx-auto max-w-4xl">
-            <div className="relative bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-4 shadow-2xl">
-              <div className="bg-slate-900/90 rounded-lg p-8 border border-slate-700/30">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="ml-4 text-xs text-slate-500">
-                    app.meu-alfred.com
-                  </span>
+            <div className="rounded-2xl border border-red-500/10 bg-slate-950/55 p-4 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-lg border border-slate-700/40 bg-slate-950/90 p-8">
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <div className="h-3 w-3 rounded-full bg-amber-400" />
+                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
+                  <span className="ml-4 text-xs text-slate-500">app.nanoia.com.br</span>
                 </div>
                 <div className="space-y-3">
-                  <div className="rounded-lg border border-[hsl(var(--chart-1))]/30 bg-gradient-to-br from-[hsl(var(--chart-1))]/20 to-[hsl(var(--chart-5))]/10 p-5">
+                  <div className="rounded-lg border border-red-500/20 bg-gradient-to-br from-red-500/15 to-red-950/10 p-5">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.25em] text-cyan-200">
-                          Resumo financeiro
-                        </p>
-                        <h3 className="mt-2 text-3xl font-semibold text-white">
-                          R$ 24.680,00
-                        </h3>
+                      <div className="text-left">
+                        <p className="text-xs uppercase tracking-[0.25em] text-red-200">Resumo financeiro</p>
+                        <h3 className="mt-2 text-3xl font-semibold text-white">R$ 24.680,00</h3>
                       </div>
-                      <Badge className="bg-emerald-500/15 text-emerald-300 border-emerald-500/20">
-                        Operação saudável
-                      </Badge>
+                      <Badge className="border-red-500/20 bg-red-500/15 text-red-200">Operacao saudavel</Badge>
                     </div>
                     <div className="mt-5 grid gap-3 md:grid-cols-3">
-                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
-                        <p className="text-xs text-slate-400">Pix recebido</p>
-                        <p className="mt-2 text-lg font-semibold text-white">
-                          R$ 8.400
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
-                        <p className="text-xs text-slate-400">Cartão empresa</p>
-                        <p className="mt-2 text-lg font-semibold text-white">
-                          R$ 3.280
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
-                        <p className="text-xs text-slate-400">
-                          Contas a vencer
-                        </p>
-                        <p className="mt-2 text-lg font-semibold text-white">
-                          4 alertas
-                        </p>
-                      </div>
+                      {[
+                        ['Pix recebido', 'R$ 8.400'],
+                        ['Cartao empresa', 'R$ 3.280'],
+                        ['Contas a vencer', '4 alertas'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-xl border border-slate-700/50 bg-slate-950/40 p-3 text-left">
+                          <p className="text-xs text-slate-400">{label}</p>
+                          <p className="mt-2 text-lg font-semibold text-white">{value}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
-                      <p className="text-xs text-slate-500">Pessoal</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        R$ 4.320
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
-                      <p className="text-xs text-slate-500">Empresa</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        R$ 20.360
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
-                      <p className="text-xs text-slate-500">IA</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        12 sugestões
-                      </p>
-                    </div>
+                    {[
+                      ['Pessoal', 'R$ 4.320'],
+                      ['Empresa', 'R$ 20.360'],
+                      ['IA', '12 sugestoes'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 text-left">
+                        <p className="text-xs text-slate-500">{label}</p>
+                        <p className="mt-2 text-base font-semibold text-white">{value}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--primary))]/20 to-transparent blur-3xl -z-10" />
+            <div className="absolute inset-0 -z-10 bg-gradient-to-t from-red-500/20 to-transparent blur-3xl" />
           </div>
         </div>
       </div>

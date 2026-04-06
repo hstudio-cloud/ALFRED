@@ -178,6 +178,85 @@ class FinancialCategory(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class FinancialAccountCreate(BaseModel):
+    name: str
+    institution: Optional[str] = None
+    account_type: str = "checking"  # checking, savings, cash, wallet, investment
+    account_scope: str = "personal"  # personal, business
+    initial_balance: float = 0.0
+    color: str = "#b91c1c"
+    active: bool = True
+
+
+class FinancialAccountUpdate(BaseModel):
+    name: Optional[str] = None
+    institution: Optional[str] = None
+    account_type: Optional[str] = None
+    account_scope: Optional[str] = None
+    initial_balance: Optional[float] = None
+    color: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class FinancialAccount(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    name: str
+    institution: Optional[str] = None
+    account_type: str = "checking"
+    account_scope: str = "personal"
+    initial_balance: float = 0.0
+    color: str = "#b91c1c"
+    active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CreditCardCreate(BaseModel):
+    name: str
+    institution: Optional[str] = None
+    brand: Optional[str] = None
+    account_scope: str = "personal"
+    limit_amount: float = 0.0
+    closing_day: int = 1
+    due_day: int = 10
+    color: str = "#ef4444"
+    linked_account_id: Optional[str] = None
+    active: bool = True
+
+
+class CreditCardUpdate(BaseModel):
+    name: Optional[str] = None
+    institution: Optional[str] = None
+    brand: Optional[str] = None
+    account_scope: Optional[str] = None
+    limit_amount: Optional[float] = None
+    closing_day: Optional[int] = None
+    due_day: Optional[int] = None
+    color: Optional[str] = None
+    linked_account_id: Optional[str] = None
+    active: Optional[bool] = None
+
+
+class CreditCard(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    name: str
+    institution: Optional[str] = None
+    brand: Optional[str] = None
+    account_scope: str = "personal"
+    limit_amount: float = 0.0
+    closing_day: int = 1
+    due_day: int = 10
+    color: str = "#ef4444"
+    linked_account_id: Optional[str] = None
+    active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class BillCreate(BaseModel):
     title: str
     amount: float

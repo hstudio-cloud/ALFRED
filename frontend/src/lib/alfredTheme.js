@@ -43,13 +43,13 @@ export const alfredVoiceStateCopy = {
 
 export const alfredTheme = {
   shell:
-    'min-h-screen bg-[radial-gradient(circle_at_top,_rgba(8,145,178,0.18),_transparent_26%),linear-gradient(180deg,_#04111d_0%,_#081521_48%,_#020817_100%)] text-white',
+    'min-h-screen bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.26),_transparent_28%),linear-gradient(180deg,_#050101_0%,_#0b0204_42%,_#120406_100%)] text-white',
   glass:
-    'border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_24px_80px_rgba(2,8,23,0.45)]',
+    'border border-red-500/14 bg-white/[0.035] backdrop-blur-xl shadow-[0_24px_80px_rgba(20,2,6,0.52)]',
   softPanel:
-    'border border-white/8 bg-slate-950/45 backdrop-blur-lg shadow-[0_20px_60px_rgba(2,8,23,0.32)]',
+    'border border-red-500/10 bg-black/28 backdrop-blur-lg shadow-[0_20px_60px_rgba(20,2,6,0.4)]',
   accentChip:
-    'border-cyan-400/25 bg-cyan-400/10 text-cyan-100',
+    'border-red-400/25 bg-red-500/10 text-red-100',
   subtleChip:
-    'border-white/10 bg-white/[0.04] text-slate-300'
+    'border-white/10 bg-white/[0.04] text-zinc-300'
 };
