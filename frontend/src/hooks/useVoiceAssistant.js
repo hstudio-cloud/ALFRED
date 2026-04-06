@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import axios from 'axios';
 import { createVoiceProvider } from '../services/voiceProvider';
+import assistantService from '../services/assistantService';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -108,9 +108,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) =>
 
     const fetchHistory = async () => {
       try {
-        const response = await axios.get(`${API}/chat/history`);
+        const response = await assistantService.getHistory();
         if (mounted) {
-          setChatHistory(response.data || []);
+          setChatHistory(response || []);
         }
       } catch (fetchError) {
         if (mounted) {
@@ -322,8 +322,8 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) =>
     }
 
     try {
-      const response = await axios.post(`${API}/chat/message`, { content: trimmed });
-      const assistantMessage = response.data.message;
+      const response = await assistantService.sendMessage(trimmed);
+      const assistantMessage = response.message;
 
       setChatHistory((prev) => [...prev, assistantMessage]);
       setLastAssistantReply(assistantMessage?.content || '');

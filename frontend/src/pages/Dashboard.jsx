@@ -6,6 +6,13 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { useToast } from "../hooks/use-toast";
 import Sidebar from "../components/Sidebar";
 import NanoAssistantPage from "../components/NanoAssistantPage";
+import {
+  BanksSection,
+  CardsSection,
+  ReportsSection,
+} from "../components/DashboardFinanceSections";
+import financeService from "../services/financeService";
+import reportService from "../services/reportService";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -132,7 +139,30 @@ const initialTransaction = {
   description: "",
   payment_method: "pix",
   account_scope: "business",
+  account_id: "",
+  card_id: "",
   date: "",
+};
+
+const initialAccount = {
+  name: "",
+  institution: "",
+  account_type: "checking",
+  account_scope: "business",
+  initial_balance: "",
+  color: "#b91c1c",
+};
+
+const initialCard = {
+  name: "",
+  institution: "",
+  brand: "",
+  account_scope: "business",
+  limit_amount: "",
+  closing_day: 1,
+  due_day: 10,
+  linked_account_id: "",
+  color: "#ef4444",
 };
 
 const initialBill = {
@@ -214,6 +244,13 @@ const Dashboard = () => {
   const [summary, setSummary] = useState(null);
   const [report, setReport] = useState(null);
   const [forecast, setForecast] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [cards, setCards] = useState([]);
+  const [reportOverview, setReportOverview] = useState(null);
+  const [monthlyReport, setMonthlyReport] = useState([]);
+  const [categoryReport, setCategoryReport] = useState([]);
+  const [accountReport, setAccountReport] = useState([]);
+  const [cashflowReport, setCashflowReport] = useState(null);
   const [insights, setInsights] = useState([]);
   const [automationInsights, setAutomationInsights] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -231,6 +268,8 @@ const Dashboard = () => {
   const [billForm, setBillForm] = useState(initialBill);
   const [categoryForm, setCategoryForm] = useState(initialCategory);
   const [reminderForm, setReminderForm] = useState(initialReminder);
+  const [accountForm, setAccountForm] = useState(initialAccount);
+  const [cardForm, setCardForm] = useState(initialCard);
   const [companyForm, setCompanyForm] = useState(initialCompanyForm);
   const [profileForm, setProfileForm] = useState(initialProfileForm);
   const [settingsForm, setSettingsForm] = useState(initialSettingsForm);
@@ -249,46 +288,90 @@ const Dashboard = () => {
 
       setLoading(true);
       try {
-        const query = `workspace_id=${workspaceId}&account_scope=${financialView}`;
         const [
           statsRes,
-          summaryRes,
+          financeOverview,
           transactionRes,
           billRes,
           categoryRes,
           reminderRes,
-          reportRes,
-          forecastRes,
+          accountRes,
+          cardRes,
+          reportOverviewRes,
+          monthlyReportRes,
+          categoryReportRes,
+          accountReportRes,
+          cashflowRes,
           statementImportsRes,
           dashboardInsightsRes,
-          automationRes,
         ] = await Promise.all([
-          axios.get(`${API}/dashboard/stats?${query}`),
-          axios.get(`${API}/finances/summary?${query}`),
-          axios.get(`${API}/finances/transactions?${query}`),
-          axios.get(`${API}/finances/bills?${query}`),
-          axios.get(`${API}/finances/categories?${query}`),
-          axios.get(`${API}/finances/reminders?${query}`),
           axios.get(
-            `${API}/finances/reports/summary?${query}&period=${reportPeriod}`,
+            `${API}/dashboard/stats?workspace_id=${workspaceId}&account_scope=${financialView}`,
           ),
-          axios.get(`${API}/finances/forecast?${query}`),
+          financeService.getOverview(workspaceId, {
+            account_scope: financialView,
+            period: reportPeriod,
+          }),
+          financeService.getTransactions(workspaceId, {
+            account_scope: financialView,
+            period: reportPeriod,
+          }),
+          financeService.getBills(workspaceId, {
+            account_scope: financialView,
+          }),
+          financeService.getCategories(workspaceId, {
+            account_scope: financialView,
+          }),
+          financeService.getReminders(workspaceId),
+          financeService.getAccounts(workspaceId, {
+            account_scope: financialView,
+          }),
+          financeService.getCards(workspaceId, {
+            account_scope: financialView,
+          }),
+          reportService.getOverview(workspaceId, {
+            account_scope: financialView,
+            period: reportPeriod,
+          }),
+          reportService.getMonthly(workspaceId, {
+            account_scope: financialView,
+            months: 6,
+          }),
+          reportService.getByCategory(workspaceId, {
+            account_scope: financialView,
+            period: reportPeriod,
+          }),
+          reportService.getByAccount(workspaceId, {
+            account_scope: financialView,
+            period: reportPeriod,
+          }),
+          reportService.getCashflow(workspaceId, {
+            account_scope: financialView,
+          }),
           axios.get(`${API}/finances/imports?workspace_id=${workspaceId}`),
-          axios.get(`${API}/dashboard/insights?${query}`),
-          axios.get(`${API}/finances/automation/insights?${query}`),
+          axios.get(
+            `${API}/dashboard/insights?workspace_id=${workspaceId}&account_scope=${financialView}`,
+          ),
         ]);
 
         setStats(statsRes.data);
-        setSummary(summaryRes.data);
-        setTransactions(transactionRes.data || []);
-        setBills(billRes.data || []);
-        setCategories(categoryRes.data || []);
-        setReminders(reminderRes.data || []);
-        setReport(reportRes.data);
-        setForecast(forecastRes.data);
+        setSummary(financeOverview.summary || null);
+        setReport(financeOverview.report || null);
+        setForecast(financeOverview.forecast || null);
+        setAutomationInsights(financeOverview.alerts?.insights || []);
+        setTransactions(transactionRes || []);
+        setBills(billRes || []);
+        setCategories(categoryRes || []);
+        setReminders(reminderRes || []);
+        setAccounts(accountRes || []);
+        setCards(cardRes || []);
+        setReportOverview(reportOverviewRes || null);
+        setMonthlyReport(monthlyReportRes?.months || []);
+        setCategoryReport(categoryReportRes?.categories || []);
+        setAccountReport(accountReportRes?.accounts || []);
+        setCashflowReport(cashflowRes || null);
         setStatementImports(statementImportsRes.data || []);
         setInsights(dashboardInsightsRes.data.insights || []);
-        setAutomationInsights(automationRes.data.insights || []);
       } catch (error) {
         console.error(error);
         toast({
@@ -370,14 +453,13 @@ const Dashboard = () => {
   const submitTransaction = async (event) => {
     event.preventDefault();
     try {
-      await axios.post(
-        `${API}/finances/transactions?workspace_id=${currentWorkspace.id}`,
-        {
-          ...transactionForm,
-          amount: Number(transactionForm.amount),
-          date: transactionForm.date || new Date().toISOString(),
-        },
-      );
+      await financeService.createTransaction(currentWorkspace.id, {
+        ...transactionForm,
+        account_id: transactionForm.account_id || null,
+        card_id: transactionForm.card_id || null,
+        amount: Number(transactionForm.amount),
+        date: transactionForm.date || new Date().toISOString(),
+      });
       setTransactionForm(initialTransaction);
       loadAll(currentWorkspace.id);
       toast({
@@ -396,14 +478,11 @@ const Dashboard = () => {
   const submitBill = async (event) => {
     event.preventDefault();
     try {
-      await axios.post(
-        `${API}/finances/bills?workspace_id=${currentWorkspace.id}`,
-        {
-          ...billForm,
-          amount: Number(billForm.amount),
-          due_date: billForm.due_date,
-        },
-      );
+      await financeService.createBill(currentWorkspace.id, {
+        ...billForm,
+        amount: Number(billForm.amount),
+        due_date: billForm.due_date,
+      });
       setBillForm(initialBill);
       loadAll(currentWorkspace.id);
       toast({
@@ -422,10 +501,7 @@ const Dashboard = () => {
   const submitCategory = async (event) => {
     event.preventDefault();
     try {
-      await axios.post(
-        `${API}/finances/categories?workspace_id=${currentWorkspace.id}`,
-        categoryForm,
-      );
+      await financeService.createCategory(currentWorkspace.id, categoryForm);
       setCategoryForm(initialCategory);
       loadAll(currentWorkspace.id);
       toast({
@@ -444,10 +520,7 @@ const Dashboard = () => {
   const submitReminder = async (event) => {
     event.preventDefault();
     try {
-      await axios.post(
-        `${API}/finances/reminders?workspace_id=${currentWorkspace.id}`,
-        reminderForm,
-      );
+      await financeService.createReminder(currentWorkspace.id, reminderForm);
       setReminderForm(initialReminder);
       loadAll(currentWorkspace.id);
       toast({
@@ -487,10 +560,7 @@ const Dashboard = () => {
 
   const changeBillStatus = async (billId, status) => {
     try {
-      await axios.put(
-        `${API}/finances/bills/${billId}?workspace_id=${currentWorkspace.id}`,
-        { status },
-      );
+      await financeService.updateBill(currentWorkspace.id, billId, { status });
       loadAll(currentWorkspace.id);
     } catch (error) {
       toast({
@@ -503,12 +573,9 @@ const Dashboard = () => {
 
   const toggleReminder = async (reminder) => {
     try {
-      await axios.put(
-        `${API}/finances/reminders/${reminder.id}?workspace_id=${currentWorkspace.id}`,
-        {
-          is_active: !reminder.is_active,
-        },
-      );
+      await financeService.updateReminder(currentWorkspace.id, reminder.id, {
+        is_active: !reminder.is_active,
+      });
       loadAll(currentWorkspace.id);
     } catch (error) {
       toast({
@@ -522,10 +589,31 @@ const Dashboard = () => {
   const refreshReport = async (period) => {
     setReportPeriod(period);
     try {
-      const response = await axios.get(
-        `${API}/finances/reports/summary?workspace_id=${currentWorkspace.id}&account_scope=${financialView}&period=${period}`,
-      );
-      setReport(response.data);
+      const [nextFinanceOverview, nextReportOverview, nextCategoryReport, nextAccountReport] = await Promise.all([
+        financeService.getOverview(currentWorkspace.id, {
+          account_scope: financialView,
+          period,
+        }),
+        reportService.getOverview(currentWorkspace.id, {
+          account_scope: financialView,
+          period,
+        }),
+        reportService.getByCategory(currentWorkspace.id, {
+          account_scope: financialView,
+          period,
+        }),
+        reportService.getByAccount(currentWorkspace.id, {
+          account_scope: financialView,
+          period,
+        }),
+      ]);
+      setReport(nextFinanceOverview.report || null);
+      setSummary(nextFinanceOverview.summary || summary);
+      setForecast(nextFinanceOverview.forecast || forecast);
+      setAutomationInsights(nextFinanceOverview.alerts?.insights || []);
+      setReportOverview(nextReportOverview || null);
+      setCategoryReport(nextCategoryReport?.categories || []);
+      setAccountReport(nextAccountReport?.accounts || []);
     } catch (error) {
       toast({
         title: "Erro ao atualizar relatorio",
@@ -537,9 +625,7 @@ const Dashboard = () => {
 
   const generateRecurringBills = async () => {
     try {
-      await axios.post(
-        `${API}/finances/bills/generate-recurring?workspace_id=${currentWorkspace.id}`,
-      );
+      await financeService.generateRecurringBills(currentWorkspace.id);
       toast({
         title: "Recorrencias geradas",
         description:
@@ -590,6 +676,53 @@ const Dashboard = () => {
       });
     } finally {
       setUploadingStatement(false);
+    }
+  };
+
+  const submitAccount = async (event) => {
+    event.preventDefault();
+    try {
+      await financeService.createAccount(currentWorkspace.id, {
+        ...accountForm,
+        initial_balance: Number(accountForm.initial_balance || 0),
+      });
+      setAccountForm(initialAccount);
+      loadAll(currentWorkspace.id);
+      toast({
+        title: "Conta criada",
+        description: "A conta ja entrou no resumo financeiro do Nano.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao criar conta",
+        description: "Nao consegui salvar essa conta agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitCard = async (event) => {
+    event.preventDefault();
+    try {
+      await financeService.createCard(currentWorkspace.id, {
+        ...cardForm,
+        limit_amount: Number(cardForm.limit_amount || 0),
+        closing_day: Number(cardForm.closing_day || 1),
+        due_day: Number(cardForm.due_day || 10),
+        linked_account_id: cardForm.linked_account_id || null,
+      });
+      setCardForm(initialCard);
+      loadAll(currentWorkspace.id);
+      toast({
+        title: "Cartao criado",
+        description: "O cartao ja entra na leitura de faturas e limite.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao criar cartao",
+        description: "Nao consegui salvar esse cartao agora.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -678,6 +811,8 @@ const Dashboard = () => {
   const totalBalance = summary?.balance || 0;
   const monthlyResult = totalIncome - totalExpenses;
   const forecastCards = forecast?.forecasts || [];
+  const activeAccounts = accounts.filter((item) => item.active !== false);
+  const activeCards = cards.filter((item) => item.active !== false);
   const topExpenses = report?.top_expenses || [];
   const receivablesOpen = report?.receivables_open || 0;
   const payablesOpen = report?.payables_open || 0;
@@ -686,6 +821,31 @@ const Dashboard = () => {
   );
   const bankTransactions = transactions.filter((item) =>
     ["pix", "transfer", "boleto", "cash"].includes(item.payment_method),
+  );
+  const totalAccountBalance = activeAccounts.reduce(
+    (total, item) => total + Number(item.balance || 0),
+    0,
+  );
+  const totalCardInvoice = activeCards.reduce(
+    (total, item) => total + Number(item.invoice_amount || 0),
+    0,
+  );
+  const totalCardLimit = activeCards.reduce(
+    (total, item) => total + Number(item.limit_amount || 0),
+    0,
+  );
+  const reportKpis = reportOverview?.kpis || {};
+  const accountLookup = useMemo(
+    () =>
+      Object.fromEntries(
+        activeAccounts.map((account) => [account.id, account]),
+      ),
+    [activeAccounts],
+  );
+  const cardLookup = useMemo(
+    () =>
+      Object.fromEntries(activeCards.map((card) => [card.id, card])),
+    [activeCards],
   );
 
   const openBills = [...bills]
@@ -716,15 +876,15 @@ const Dashboard = () => {
     ? Math.round((completedSteps / onboardingSteps.length) * 100)
     : 0;
 
-  const recentTransactions = useMemo(
+  const sortedTransactions = useMemo(
     () =>
       [...transactions]
         .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 12),
+        .slice(0, 200),
     [transactions],
   );
 
-  const filteredTransactions = recentTransactions.filter((transaction) => {
+  const filteredTransactions = sortedTransactions.filter((transaction) => {
     const text = `${transaction.description || ""} ${transaction.category || ""}`.toLowerCase();
     const searchMatch = text.includes(transactionSearch.toLowerCase());
     const typeMatch =
@@ -828,6 +988,29 @@ const Dashboard = () => {
       direction: "neutral",
     },
   ];
+  const reportTrendData = useMemo(
+    () =>
+      monthlyReport.length
+        ? monthlyReport.map((item) => {
+            const [year, month] = item.month.split("-");
+            const labelDate = new Date(Number(year), Number(month) - 1, 1);
+            return {
+              key: item.month,
+              label: labelDate.toLocaleDateString("pt-BR", {
+                month: "short",
+                year: "2-digit",
+              }),
+              income: item.income,
+              expense: item.expenses,
+            };
+          })
+        : monthlyTrend,
+    [monthlyReport, monthlyTrend],
+  );
+  const cashflowItems = cashflowReport?.forecasts || forecastCards;
+  const reportMessage =
+    report?.savings_suggestion?.message ||
+    "O Nano cruza receitas, despesas, contas e recorrencias para sugerir ajustes de rota no financeiro.";
 
   const renderOverview = () => (
     <SectionLayout
@@ -1093,6 +1276,55 @@ const Dashboard = () => {
                 }
                 className={pageFieldClass}
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                className={pageFieldClass}
+                value={transactionForm.account_id}
+                onChange={(event) =>
+                  setTransactionForm({
+                    ...transactionForm,
+                    account_id: event.target.value,
+                  })
+                }
+              >
+                <option value="">Selecionar conta</option>
+                {activeAccounts
+                  .filter(
+                    (account) =>
+                      financialView === "general" ||
+                      account.account_scope === financialView,
+                  )
+                  .map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+              </select>
+              <select
+                className={pageFieldClass}
+                value={transactionForm.card_id}
+                onChange={(event) =>
+                  setTransactionForm({
+                    ...transactionForm,
+                    card_id: event.target.value,
+                  })
+                }
+              >
+                <option value="">Sem cartao</option>
+                {activeCards
+                  .filter(
+                    (card) =>
+                      financialView === "general" ||
+                      card.account_scope === financialView,
+                  )
+                  .map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -2177,6 +2409,9 @@ const Dashboard = () => {
         financialView={financialView}
         onAfterMessage={refreshAfterAssistantMessage}
         userName={user?.name}
+        transactions={transactions}
+        reminders={reminders}
+        bills={bills}
       />
     </div>
   );
@@ -2184,10 +2419,55 @@ const Dashboard = () => {
   const sectionContent = {
     overview: renderOverview(),
     transactions: renderTransactions(),
-    banks: renderBanks(),
-    cards: renderCards(),
+    banks: (
+      <BanksSection
+        currencyFormatter={currencyFormatter}
+        scopeLabel={scopeLabel}
+        activeAccounts={activeAccounts}
+        statementImports={statementImports}
+        totalAccountBalance={totalAccountBalance}
+        accountForm={accountForm}
+        setAccountForm={setAccountForm}
+        submitAccount={submitAccount}
+      />
+    ),
+    cards: (
+      <CardsSection
+        currencyFormatter={currencyFormatter}
+        scopeLabel={scopeLabel}
+        activeAccounts={activeAccounts}
+        activeCards={activeCards}
+        totalCardLimit={totalCardLimit}
+        totalCardInvoice={totalCardInvoice}
+        cardTransactions={cardTransactions}
+        cardLookup={cardLookup}
+        cardForm={cardForm}
+        setCardForm={setCardForm}
+        submitCard={submitCard}
+      />
+    ),
     contacts: renderContacts(),
-    reports: renderReports(),
+    reports: (
+      <ReportsSection
+        currencyFormatter={currencyFormatter}
+        scopeLabel={scopeLabel}
+        reportPeriod={reportPeriod}
+        refreshReport={refreshReport}
+        statementFile={statementFile}
+        setStatementFile={setStatementFile}
+        uploadStatement={uploadStatement}
+        uploadingStatement={uploadingStatement}
+        reportKpis={reportKpis}
+        trendData={reportTrendData}
+        cashflowItems={cashflowItems}
+        categoryReport={categoryReport}
+        accountReport={accountReport}
+        statementImportResult={statementImportResult}
+        statementImports={statementImports}
+        reportMessage={reportMessage}
+        openBills={openBills}
+      />
+    ),
     company: renderCompany(),
     profile: renderProfile(),
     settings: renderSettings(),
@@ -2259,7 +2539,7 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.22),_transparent_30%),linear-gradient(180deg,_#050101_0%,_#0b0204_42%,_#120406_100%)] text-zinc-100 ${
+      className={`bg-[radial-gradient(circle_at_16%_18%,_rgba(127,29,29,0.20),_transparent_24%),radial-gradient(circle_at_72%_78%,_rgba(69,10,10,0.18),_transparent_28%),linear-gradient(180deg,_#070102_0%,_#0b0204_42%,_#140406_100%)] text-zinc-100 ${
         activeSection === "assistant" ? "h-screen overflow-hidden" : "min-h-screen"
       }`}
     >
@@ -2280,7 +2560,9 @@ const Dashboard = () => {
       <main className={`lg:pl-[108px] ${activeSection === "assistant" ? "h-full overflow-hidden" : ""}`}>
         <div
           className={`mx-auto max-w-[1720px] px-4 py-4 sm:px-6 lg:px-8 ${
-            activeSection === "assistant" ? "h-full overflow-hidden" : ""
+            activeSection === "assistant"
+              ? "h-full max-w-none overflow-hidden"
+              : ""
           }`}
         >
           {activeSection !== "assistant" && (
@@ -2312,7 +2594,7 @@ const Dashboard = () => {
               Carregando o novo cockpit financeiro do Nano...
             </div>
           ) : activeSection === "assistant" ? (
-            <div className="h-[calc(100vh-2rem)] overflow-hidden">
+            <div className="h-[calc(100vh-2rem)] overflow-hidden rounded-[28px]">
               {sectionContent[activeSection]}
             </div>
           ) : (

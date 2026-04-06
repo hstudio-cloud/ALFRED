@@ -133,9 +133,9 @@ const DesktopSidebar = ({
 
   return (
     <TooltipProvider delayDuration={80}>
-      <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] overflow-hidden rounded-[28px] border-r border-white/8 bg-[#08090f]/96 shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-xl transition-[width] duration-300 hover:w-[236px] lg:flex">
-        <div className="flex h-full w-full flex-col px-3 py-4">
-          <div className="flex items-center gap-3 px-2 pb-4">
+      <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
+        <div className="flex h-full w-full flex-col gap-3 px-0 py-2 bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.12),_transparent_22%),linear-gradient(180deg,rgba(14,3,5,0.76)_0%,rgba(8,2,3,0.44)_100%)]">
+          <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-600/14 text-sm font-semibold text-red-100">
               N
             </div>
@@ -145,8 +145,8 @@ const DesktopSidebar = ({
             </div>
           </div>
 
-          <div className="border-t border-white/6 pt-4">
-            <div className="rounded-2xl bg-white/[0.025] p-2">
+          <div className="px-1">
+            <div className="rounded-2xl bg-red-500/[0.03] p-2 backdrop-blur-md">
               <div className="flex items-center justify-center group-hover/sidebar:justify-between px-2">
                 <Building2 className="h-4 w-4 shrink-0 text-zinc-500" />
                 <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -173,20 +173,22 @@ const DesktopSidebar = ({
             </div>
           </div>
 
-          <div className="mt-5 flex-1 space-y-5 overflow-y-auto pr-1">
-            {Object.entries(groupedItems).map(([title, sectionItems]) => (
-              <SidebarSection
-                key={title}
-                title={title}
-                items={sectionItems}
-                activeItem={activeItem}
-                expanded={false}
-                onSelectItem={onSelectItem}
-              />
-            ))}
+          <div className="min-h-0 flex-1 px-2 py-3">
+            <div className="nano-sidebar-scroll h-full space-y-5 overflow-y-auto pr-1">
+              {Object.entries(groupedItems).map(([title, sectionItems]) => (
+                <SidebarSection
+                  key={title}
+                  title={title}
+                  items={sectionItems}
+                  activeItem={activeItem}
+                  expanded={false}
+                  onSelectItem={onSelectItem}
+                />
+              ))}
+            </div>
           </div>
 
-          <div className="border-t border-white/6 pt-4">
+          <div className="p-2">
             <div className="space-y-1">
               {secondaryItems.map((item) => (
                 <SidebarItem
@@ -199,7 +201,7 @@ const DesktopSidebar = ({
               ))}
             </div>
 
-            <div className="mt-4 rounded-2xl bg-white/[0.025] p-2">
+            <div className="mt-4 rounded-2xl bg-red-500/[0.03] p-2 backdrop-blur-md">
               <div className="flex items-center justify-center gap-3 group-hover/sidebar:justify-start">
                 <Avatar className="h-10 w-10 shrink-0 border border-red-400/18 bg-red-600/90">
                   <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
@@ -334,6 +336,25 @@ const MobileSidebar = (props) => {
 
 const Sidebar = (props) => (
   <>
+    <style>{`
+      .nano-sidebar-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.1) transparent;
+      }
+      .nano-sidebar-scroll::-webkit-scrollbar {
+        width: 4px;
+      }
+      .nano-sidebar-scroll::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .nano-sidebar-scroll::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.1);
+        border-radius: 999px;
+      }
+      .nano-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.16);
+      }
+    `}</style>
     <DesktopSidebar {...props} />
     <MobileSidebar {...props} />
   </>

@@ -95,12 +95,21 @@ class NanoActionRunner:
         await transactions_collection.insert_one(payload)
 
         label = "receita" if transaction.type == "income" else "despesa"
+        scope_label = "empresa" if transaction.account_scope == "business" else "pessoal"
+        payment_label = {
+            "pix": "via Pix",
+            "card": "no cartao",
+            "boleto": "por boleto",
+            "transfer": "por transferencia",
+            "cash": "em dinheiro",
+            "other": "sem metodo informado",
+        }.get(transaction.payment_method, "sem metodo informado")
         return {
             "type": "create_transaction",
             "status": "executed",
             "message": (
-                f"{label.title()} criada: {self._format_brl(transaction.amount)} em {transaction.category}, "
-                f"via {transaction.payment_method} no escopo {transaction.account_scope}."
+                f"Registrei uma {label} de {self._format_brl(transaction.amount)} em "
+                f"{transaction.category}, {payment_label}, no financeiro {scope_label}."
             ),
             "data": transaction.dict(),
             "assumptions": data.get("assumptions", []),
@@ -150,7 +159,7 @@ class NanoActionRunner:
             "type": "create_bill",
             "status": "executed",
             "message": (
-                f"{label} criada: {bill.title} no valor de {self._format_brl(bill.amount)} "
+                f"Criei a {label.lower()} {bill.title} no valor de {self._format_brl(bill.amount)} "
                 f"com vencimento em {self._format_datetime_label(bill.due_date)}."
             ),
             "data": bill.dict(),
@@ -178,7 +187,7 @@ class NanoActionRunner:
         return {
             "type": "create_reminder",
             "status": "executed",
-            "message": f"Lembrete criado: {reminder.title} para {self._format_datetime_label(reminder.remind_at)}.",
+            "message": f"Deixei o lembrete {reminder.title} agendado para {self._format_datetime_label(reminder.remind_at)}.",
             "data": reminder.dict(),
             "assumptions": data.get("assumptions", []),
         }
@@ -232,7 +241,7 @@ class NanoActionRunner:
             "type": "analyze_spending",
             "status": "executed",
             "message": (
-                f"Analise concluida dos ultimos {days} dias: entradas de {self._format_brl(income)}, "
+                f"Analisei os ultimos {days} dias: entradas de {self._format_brl(income)}, "
                 f"saidas de {self._format_brl(expenses)} e saldo de {self._format_brl(balance)}. "
                 + " ".join(highlights)
             ),
@@ -274,32 +283,36 @@ class NanoActionRunner:
         if not executed_actions:
             return fallback_response
 
-        lines = [fallback_response.strip(), "", f"Executei isso no Nano para o workspace {workspace_name}:"]
+        lines = [fallback_response.strip()]
         assumptions: List[str] = []
+        executed_messages: List[str] = []
+        follow_up = None
 
         for item in executed_actions:
             status = item.get("status")
             if status == "executed":
-                lines.append(f"- {item['message']}")
-                data = item.get("data", {})
-                details = []
-                if data.get("category"):
-                    details.append(f"categoria: {data['category']}")
-                if data.get("payment_method"):
-                    details.append(f"metodo: {data['payment_method']}")
-                if data.get("account_scope"):
-                    details.append(f"escopo: {data['account_scope']}")
-                if details:
-                    lines.append(f"  Como classifiquei: {', '.join(details)}.")
+                executed_messages.append(item["message"])
             elif status == "needs_input":
-                lines.append(f"- Nao consegui concluir: {item['message']}")
+                follow_up = f"Para eu concluir, preciso de mais um detalhe: {item['message']}"
 
             for assumption in item.get("assumptions", []):
                 assumptions.append(assumption)
 
+        if executed_messages:
+            lines.append("")
+            lines.extend(f"- {message}" for message in executed_messages)
+
         if assumptions:
-            lines.append("Suposicoes que usei:")
-            for assumption in assumptions:
-                lines.append(f"- {assumption}")
+            unique_assumptions = list(dict.fromkeys(assumptions))
+            lines.append("")
+            lines.append("Assumi o seguinte para agilizar:")
+            lines.extend(f"- {assumption}" for assumption in unique_assumptions)
+
+        if follow_up:
+            lines.append("")
+            lines.append(follow_up)
+        elif executed_messages:
+            lines.append("")
+            lines.append(f"Se quiser, eu posso continuar organizando o financeiro de {workspace_name}.")
 
         return "\n".join(lines)

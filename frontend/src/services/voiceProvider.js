@@ -50,7 +50,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
 
     async getVoiceStatus() {
       try {
-        const response = await axios.get(`${apiBase}/chat/voice-status`);
+        const response = await axios.get(`${apiBase}/assistant/voice-status`);
         return response.data;
       } catch (error) {
         return {
@@ -70,7 +70,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       formData.append('audio', blob, filenameForMimeType(blob?.type || ''));
       formData.append('locale', locale);
 
-      const response = await axios.post(`${apiBase}/chat/transcribe`, formData, {
+      const response = await axios.post(`${apiBase}/assistant/transcribe`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -303,7 +303,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       if (preferPremium) {
         try {
           const response = await axios.post(
-            `${apiBase}/chat/speech`,
+            `${apiBase}/assistant/speech`,
             { text },
             { responseType: 'blob' }
           );

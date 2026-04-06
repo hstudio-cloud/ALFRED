@@ -1,0 +1,49 @@
+services:
+  - type: web
+    runtime: python
+    name: nano-api
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: nano
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_VOICE_MODEL
+        value: gpt-4o-mini-tts
+      - key: OPENAI_VOICE_NAME
+        value: alloy
+      - key: NANO_LLM_PROVIDER
+        value: auto
+      - key: NANO_VOICE_PROVIDER
+        value: browser_fallback
+
+  - type: web
+    runtime: static
+    name: nano-app
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    autoDeploy: true
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        fromService:
+          type: web
+          name: nano-api
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

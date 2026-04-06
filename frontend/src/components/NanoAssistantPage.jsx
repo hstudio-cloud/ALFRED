@@ -7,6 +7,9 @@ const NanoAssistantPage = ({
   financialView = "general",
   onAfterMessage,
   userName = "Heitor",
+  transactions = [],
+  reminders = [],
+  bills = [],
 }) => {
   const {
     chatHistory,
@@ -41,6 +44,10 @@ const NanoAssistantPage = ({
         chatHistory={chatHistory}
         message={message}
         setMessage={setMessage}
+        userName={userName}
+        transactions={transactions}
+        reminders={reminders}
+        bills={bills}
         onSend={() => sendMessage()}
         onQuickPrompt={handleQuickPrompt}
         isListening={isListening}

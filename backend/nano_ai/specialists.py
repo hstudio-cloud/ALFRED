@@ -13,29 +13,42 @@ class SpecialistBase:
         "alfre": "alfred",
         "nanu": "nano",
         "nanno": "nano",
+        "na no": "nano",
+        "nanoo": "nano",
         "piks": "pix",
         "pics": "pix",
         "piques": "pix",
         "pecs": "pix",
+        "pixi": "pix",
         "despeza": "despesa",
         "despezas": "despesas",
+        "dispesa": "despesa",
+        "dispeza": "despesa",
         "boleta": "boleto",
         "boleta": "boleto",
         "cartaum": "cartao",
         "cartao": "cartao",
         "cradito": "credito",
         "debto": "debito",
+        "debitoo": "debito",
         "alimen tacao": "alimentacao",
         "alimentasao": "alimentacao",
+        "alimetacao": "alimentacao",
         "combustiveu": "combustivel",
         "combustive": "combustivel",
         "conbustivel": "combustivel",
+        "combustivelo": "combustivel",
         "empreza": "empresa",
         "fornecedo": "fornecedor",
+        "fornecedora": "fornecedor",
         "lembrenti": "lembrete",
         "lembrate": "lembrete",
+        "lembra te": "lembrete",
         "vensimento": "vencimento",
         "transferensia": "transferencia",
+        "trasferencia": "transferencia",
+        "trasnferencia": "transferencia",
+        "movimentasao": "movimentacao",
     }
 
     def detect(self, message: str) -> List[NanoAction]:
@@ -211,7 +224,7 @@ class SpecialistBase:
     def detect_payment_method(self, message_lower: str) -> str:
         if "pix" in message_lower:
             return "pix"
-        if any(word in message_lower for word in ["cartao", "credito", "debito"]):
+        if any(word in message_lower for word in ["cartao", "credito", "debito", "visa", "master", "elo"]):
             return "card"
         if "boleto" in message_lower:
             return "boleto"
@@ -222,9 +235,9 @@ class SpecialistBase:
         return "other"
 
     def detect_account_scope(self, message_lower: str) -> str:
-        if any(word in message_lower for word in ["empresa", "pj", "cnpj", "negocio", "corporativo", "fornecedor", "cliente", "funcionario", "colaborador"]):
+        if any(word in message_lower for word in ["empresa", "pj", "cnpj", "negocio", "corporativo", "fornecedor", "cliente", "funcionario", "colaborador", "escritorio", "operacao"]):
             return "business"
-        if any(word in message_lower for word in ["pessoal", "pf", "casa", "familia"]):
+        if any(word in message_lower for word in ["pessoal", "pf", "casa", "familia", "particular"]):
             return "personal"
         return "personal"
 
@@ -234,6 +247,7 @@ class SpecialistBase:
             "Combustivel": ["gasolina", "etanol", "diesel", "combustivel", "posto"],
             "Transporte": ["uber", "99", "onibus", "transporte", "passagem", "taxi"],
             "Moradia": ["aluguel", "condominio", "luz", "agua", "internet", "casa"],
+            "Fornecedores": ["fornecedor", "compra de estoque", "insumo", "materia prima"],
             "Equipe": ["folha", "salario", "freelancer", "colaborador", "equipe"],
             "Impostos": ["imposto", "tributo", "das", "simples nacional", "taxa"],
             "Marketing": ["anuncio", "trafego", "meta ads", "google ads", "marketing"],
@@ -244,6 +258,7 @@ class SpecialistBase:
             "Pix": ["pix"],
             "Educacao": ["curso", "faculdade", "escola", "educacao"],
             "Lazer": ["cinema", "viagem", "lazer", "hotel", "show"],
+            "Servicos": ["servico", "manutencao", "consultoria", "agencia"],
         }
         for category, keywords in category_map.items():
             if any(word in message_lower for word in keywords):
@@ -255,8 +270,8 @@ class FinanceOperationsSpecialist(SpecialistBase):
     name = "finance_operations"
 
     def extract_transaction_type(self, message_lower: str) -> Optional[str]:
-        income_keywords = ["recebi", "ganhei", "entrada", "receita", "faturamento", "venda", "recebimento", "caiu", "entrou"]
-        expense_keywords = ["gastei", "paguei", "comprei", "despesa", "gasto", "saida", "custo", "debitei", "foi cobrado"]
+        income_keywords = ["recebi", "ganhei", "entrada", "receita", "faturamento", "venda", "recebimento", "caiu", "entrou", "deposito", "pagamento recebido"]
+        expense_keywords = ["gastei", "paguei", "comprei", "despesa", "gasto", "saida", "custo", "debitei", "foi cobrado", "transferi", "pagar"]
 
         if any(word in message_lower for word in income_keywords):
             return "income"
@@ -341,7 +356,7 @@ class FinanceOperationsSpecialist(SpecialistBase):
                         "payment_method": payment_method,
                         "account_scope": account_scope,
                         "description": cleaned_message,
-                        "recurring": any(word in message_lower for word in ["todo mes", "mensal", "recorrente"]),
+                        "recurring": any(word in message_lower for word in ["todo mes", "mensal", "recorrente", "todo dia", "todo ano"]),
                         "missing_fields": missing_fields,
                         "assumptions": assumptions,
                         "detected": True,
@@ -501,6 +516,7 @@ class InsightSpecialist(SpecialistBase):
             "analisar gastos", "analise meus gastos", "analisar despesas", "como estou gastando",
             "onde estou gastando", "quero analisar", "resuma meus gastos", "analisar financeiro",
             "gastos do mes", "despesas do mes", "fluxo de caixa", "como esta meu financeiro",
+            "mostrar gastos", "resumo financeiro", "resumir financeiro", "meu resultado",
         ]
         if not any(keyword in message_lower for keyword in analysis_keywords):
             return []

@@ -13,12 +13,17 @@ from contextlib import asynccontextmanager  # Adicionado para gerenciar o Lifesp
 
 # Import routes
 from routes import (
+    accounts_routes,
+    assistant_routes,
     auth_routes,
     task_routes,
     chat_routes,
     dashboard_routes,
+    finance_hub_routes,
     habit_routes,
     finance_routes,
+    reports_routes,
+    transactions_routes,
     workspace_routes,
     client_routes,
     tasks_enhanced_routes,
@@ -110,6 +115,11 @@ async def root():
     return {"message": "Nano API is running"}
 
 
+@api_router.get("/health")
+async def health():
+    return {"status": "ok", "service": "nano-api"}
+
+
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
@@ -139,9 +149,14 @@ app.include_router(client_routes.router)
 app.include_router(task_routes.router)
 app.include_router(tasks_enhanced_routes.router)
 app.include_router(chat_routes.router)
+app.include_router(assistant_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(habit_routes.router)
 app.include_router(finance_routes.router)
+app.include_router(finance_hub_routes.router)
+app.include_router(accounts_routes.router)
+app.include_router(transactions_routes.router)
+app.include_router(reports_routes.router)
 
 app.add_middleware(
     CORSMiddleware,

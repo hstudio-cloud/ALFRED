@@ -85,7 +85,10 @@ async def transcribe(
             initial_prompt=(
                 "Transcricao em portugues do Brasil para um assistente financeiro chamado Nano. "
                 "Termos comuns: pix, boleto, cartao, credito, debito, despesa, receita, "
-                "alimentacao, combustivel, fornecedor, empresa, pessoal, lembrete, vencimento, transferencia."
+                "alimentacao, combustivel, fornecedor, empresa, pessoal, lembrete, vencimento, transferencia, "
+                "movimentacao, cartao de credito, cartao de debito, aluguel, internet, impostos, salario, "
+                "conta a pagar, conta a receber, gastos do mes, fluxo de caixa, categoria, fornecedores, "
+                "assinatura, vencimento do cartao, conta pessoal, conta da empresa."
             ),
         )
         text = " ".join(segment.text.strip() for segment in segments).strip()

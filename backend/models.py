@@ -130,6 +130,11 @@ class TransactionCreate(BaseModel):
     description: Optional[str] = None
     payment_method: str = "other"  # pix, card, boleto, cash, transfer, other
     account_scope: str = "personal"  # personal, business
+    account_id: Optional[str] = None
+    card_id: Optional[str] = None
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    competency_date: Optional[datetime] = None
     date: Optional[datetime] = None
 
 class TransactionUpdate(BaseModel):
@@ -139,6 +144,11 @@ class TransactionUpdate(BaseModel):
     description: Optional[str] = None
     payment_method: Optional[str] = None
     account_scope: Optional[str] = None
+    account_id: Optional[str] = None
+    card_id: Optional[str] = None
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    competency_date: Optional[datetime] = None
     date: Optional[datetime] = None
 
 class Transaction(BaseModel):
@@ -150,6 +160,11 @@ class Transaction(BaseModel):
     description: Optional[str] = None
     payment_method: str = "other"
     account_scope: str = "personal"
+    account_id: Optional[str] = None
+    card_id: Optional[str] = None
+    installment_number: Optional[int] = None
+    installment_total: Optional[int] = None
+    competency_date: Optional[datetime] = None
     date: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
