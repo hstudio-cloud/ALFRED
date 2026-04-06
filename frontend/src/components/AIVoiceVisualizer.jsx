@@ -1,208 +1,200 @@
-import React, { useMemo, useRef } from 'react';
-import { LoaderCircle, Mic, Sparkles, Volume2 } from 'lucide-react';
-import { motion, useAnimationFrame, useMotionValue, useSpring } from 'framer-motion';
+import React, { useEffect, useMemo, useRef } from "react";
 
-const MODE_META = {
-  idle: {
-    icon: Sparkles,
-    borderColor: 'rgba(255,255,255,0.08)',
-    glow: 'rgba(239,68,68,0.10)',
-    peak: 0.08
-  },
-  listening: {
-    icon: Mic,
-    borderColor: 'rgba(248,113,113,0.30)',
-    glow: 'rgba(239,68,68,0.18)',
-    peak: 0.44
-  },
-  processing: {
-    icon: LoaderCircle,
-    borderColor: 'rgba(255,255,255,0.14)',
-    glow: 'rgba(255,255,255,0.08)',
-    peak: 0.24
-  },
-  speaking: {
-    icon: Volume2,
-    borderColor: 'rgba(251,113,133,0.34)',
-    glow: 'rgba(244,63,94,0.22)',
-    peak: 0.72
-  }
+const RED_PALETTE = [
+  { r: 255, g: 26, b: 26 },
+  { r: 200, g: 0, b: 0 },
+  { r: 255, g: 80, b: 80 },
+  { r: 150, g: 0, b: 0 },
+  { r: 255, g: 140, b: 140 },
+];
+
+const MODE_TO_STATE = {
+  idle: "idle",
+  listening: "listening",
+  processing: "thinking",
+  speaking: "speaking",
 };
 
-const WaveParticle = ({ dot, smoothX, smoothY, audioAnalyzeRef }) => {
-  const x = useMotionValue(dot.baseX);
-  const y = useMotionValue(dot.baseY);
-  const scale = useMotionValue(1);
-  const opacity = useMotionValue(0.72);
+const randomColor = () => RED_PALETTE[Math.floor(Math.random() * RED_PALETTE.length)];
 
-  useAnimationFrame((time) => {
-    const distFromCenter = Math.sqrt(dot.baseX ** 2 + dot.baseY ** 2);
-    const audioPeak = audioAnalyzeRef.current || 0;
-    const waveSpeed = time / 1200;
+const AIVoiceVisualizer = ({ mode = "idle", amplitude = 0.12 }) => {
+  const canvasRef = useRef(null);
+  const frameRef = useRef(null);
+  const particlesRef = useRef([]);
+  const stateRef = useRef(MODE_TO_STATE[mode] || "idle");
+  const timeRef = useRef(0);
 
-    const baseAmplitude = 35;
-    const audioAmplitudeBonus = audioPeak * 26;
-    const finalAmplitude = baseAmplitude + audioAmplitudeBonus;
+  const size = 320;
+  const center = size / 2;
 
-    const waveX = Math.cos(waveSpeed + distFromCenter / 80) * finalAmplitude;
-    const waveY = Math.sin(waveSpeed + distFromCenter / 80) * finalAmplitude;
+  const normalizedAmplitude = useMemo(() => Math.max(0.05, Math.min(amplitude || 0.12, 1)), [amplitude]);
 
-    const basePulse = 1 + Math.sin(waveSpeed + distFromCenter / 100) * 0.28;
-    const audioScaleBonus = audioPeak * 0.55;
-    scale.set(basePulse + audioScaleBonus);
-    opacity.set(0.62 + audioPeak * 0.28);
+  useEffect(() => {
+    stateRef.current = MODE_TO_STATE[mode] || "idle";
+  }, [mode]);
 
-    const mx = smoothX.get();
-    const my = smoothY.get();
-    const dx = mx - dot.baseX;
-    const dy = my - dot.baseY;
-    const distToMouse = Math.sqrt(dx * dx + dy * dy);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
 
-    let pullX = 0;
-    let pullY = 0;
-    const interactionRadius = 350;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
 
-    if (distToMouse < interactionRadius) {
-      const pullStrength = Math.pow((interactionRadius - distToMouse) / interactionRadius, 2);
-      pullX = dx * pullStrength * 0.3;
-      pullY = dy * pullStrength * 0.3;
-    }
+    canvas.width = size;
+    canvas.height = size;
 
-    x.set(dot.baseX + waveX + pullX);
-    y.set(dot.baseY + waveY + pullY);
-  });
+    class Particle {
+      constructor() {
+        this.reset();
+      }
 
-  return (
-    <motion.div
-      style={{
-        x,
-        y,
-        scale,
-        opacity,
-        rotate: dot.angle,
-        backgroundColor: dot.color
-      }}
-      className="absolute h-1 w-1 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.35)]"
-    />
-  );
-};
+      reset() {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI;
+        const radius = Math.random() * 30;
 
-const AIVoiceVisualizer = ({ mode = 'idle', amplitude = 0.12 }) => {
-  const containerRef = useRef(null);
-  const audioAnalyzeRef = useRef(0);
+        this.x = center + radius * Math.sin(phi) * Math.cos(theta);
+        this.y = center + radius * Math.sin(phi) * Math.sin(theta);
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.life = Math.random();
+        this.lifeDecay = 0.003 + Math.random() * 0.004;
+        this.size = 0.8 + Math.random() * 1.8;
+        this.color = randomColor();
+        this.angle = Math.random() * Math.PI * 2;
+        this.angleVelocity = (Math.random() - 0.5) * 0.012;
+        this.radius = 20 + Math.random() * 100;
+        this.targetRadius = this.radius;
+        this.phase = Math.random() * Math.PI * 2;
+      }
 
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const smoothX = useSpring(mouseX, { damping: 40, stiffness: 180 });
-  const smoothY = useSpring(mouseY, { damping: 40, stiffness: 180 });
+      update(time, amp) {
+        const state = stateRef.current;
 
-  const currentMode = MODE_META[mode] || MODE_META.idle;
-  const Icon = currentMode.icon;
+        if (state === "idle") {
+          this.angle += this.angleVelocity * 0.4;
+          this.targetRadius = 40 + Math.sin(time * 0.5 + this.phase) * 15;
+        } else if (state === "listening") {
+          this.angle += this.angleVelocity * 1.2;
+          this.targetRadius = 50 + Math.sin(time * 1.5 + this.phase) * 25 * amp;
+        } else if (state === "speaking") {
+          this.angle += this.angleVelocity * 2;
+          this.targetRadius = 35 + amp * 80 * (0.5 + 0.5 * Math.sin(time * 3 + this.phase));
+        } else {
+          this.angle += this.angleVelocity * 0.7;
+          this.targetRadius = 30 + Math.sin(time * 0.8 + this.phase) * 40;
+        }
 
-  useAnimationFrame(() => {
-    const time = Date.now();
-    const baseLevel = currentMode.peak;
-    const breath = Math.sin(time / 800) * 0.5 + 0.5;
-    const syllables = Math.abs(Math.sin(time / 200) * Math.cos(time / 300));
-    const reactiveLevel = baseLevel * (0.55 + breath * 0.45) + syllables * baseLevel * 0.45 + amplitude * 0.25;
+        this.radius += (this.targetRadius - this.radius) * 0.04;
 
-    audioAnalyzeRef.current =
-      audioAnalyzeRef.current * 0.85 +
-      reactiveLevel * 0.15;
-  });
+        const nextX = Math.cos(this.angle) * this.radius;
+        const nextY = Math.sin(this.angle) * this.radius * 0.6;
 
-  const handleMouseMove = (event) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    mouseX.set(event.clientX - rect.left - rect.width / 2);
-    mouseY.set(event.clientY - rect.top - rect.height / 2);
-  };
+        this.x += (center + nextX - this.x) * 0.05 + this.vx;
+        this.y += (center + nextY - this.y) * 0.05 + this.vy;
 
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-  };
+        this.vx *= 0.98;
+        this.vy *= 0.98;
 
-  const dots = useMemo(() => {
-    const generatedDots = [];
-    const cols = 16;
-    const rows = 16;
-    const spacing = 50;
-    const colors = ['#fca5a5', '#fb7185', '#ef4444', '#f97316', '#fde68a'];
+        this.life -= this.lifeDecay;
+        if (this.life <= 0) this.reset();
+      }
 
-    for (let i = 0; i < cols; i += 1) {
-      for (let j = 0; j < rows; j += 1) {
-        const baseX = (i - cols / 2) * spacing;
-        const baseY = (j - rows / 2) * spacing;
-
-        if (Math.sqrt(baseX ** 2 + baseY ** 2) > 380) continue;
-
-        const progress = i / cols;
-        const colorIndex = Math.min(Math.floor(progress * colors.length), colors.length - 1);
-        const angle = Math.atan2(baseY, baseX) * (180 / Math.PI);
-
-        generatedDots.push({
-          id: `${i}-${j}`,
-          baseX: baseX + (Math.random() - 0.5) * 5,
-          baseY: baseY + (Math.random() - 0.5) * 5,
-          color: colors[colorIndex],
-          angle
-        });
+      draw(context) {
+        const { r, g, b } = this.color;
+        const alpha = this.life * 0.9;
+        context.beginPath();
+        context.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        context.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        context.fill();
       }
     }
 
-    return generatedDots;
-  }, []);
+    particlesRef.current = Array.from({ length: 200 }, () => new Particle());
+
+    const getAmplitude = (time) => {
+      const state = stateRef.current;
+      const ext = normalizedAmplitude;
+
+      if (state === "speaking") {
+        const base = 0.5;
+        const wave =
+          Math.sin(time * 4.7) * 0.2 +
+          Math.sin(time * 11.3) * 0.15 +
+          Math.sin(time * 2.1) * 0.15;
+        return Math.max(0.18, base + wave + ext * 0.35);
+      }
+
+      if (state === "listening") return 0.3 + Math.sin(time * 2) * 0.2 + ext * 0.2;
+      if (state === "thinking") return 0.2 + Math.sin(time * 0.9) * 0.1 + ext * 0.1;
+      return 0.15 + Math.sin(time * 0.4) * 0.05 + ext * 0.06;
+    };
+
+    const drawCore = (time, amp) => {
+      const r1 = 14 + amp * 12;
+      const r2 = 28 + amp * 30;
+      const r3 = 60 + amp * 50;
+
+      const g3 = ctx.createRadialGradient(center, center, r2, center, center, r3);
+      g3.addColorStop(0, `rgba(200,0,0,${0.08 + amp * 0.05})`);
+      g3.addColorStop(1, "rgba(200,0,0,0)");
+      ctx.beginPath();
+      ctx.arc(center, center, r3, 0, Math.PI * 2);
+      ctx.fillStyle = g3;
+      ctx.fill();
+
+      const g1 = ctx.createRadialGradient(center, center, 0, center, center, r2);
+      g1.addColorStop(0, `rgba(255,120,120,${0.25 + amp * 0.2})`);
+      g1.addColorStop(0.4, `rgba(220,0,0,${0.15 + amp * 0.1})`);
+      g1.addColorStop(1, "rgba(100,0,0,0)");
+      ctx.beginPath();
+      ctx.arc(center, center, r2, 0, Math.PI * 2);
+      ctx.fillStyle = g1;
+      ctx.fill();
+
+      const g2 = ctx.createRadialGradient(center, center, 0, center, center, r1);
+      g2.addColorStop(0, `rgba(255,200,200,${0.6 + amp * 0.3})`);
+      g2.addColorStop(1, "rgba(255,26,26,0)");
+      ctx.beginPath();
+      ctx.arc(center, center, r1, 0, Math.PI * 2);
+      ctx.fillStyle = g2;
+      ctx.fill();
+    };
+
+    const render = () => {
+      timeRef.current += 0.016;
+      const time = timeRef.current;
+      const amp = getAmplitude(time);
+
+      ctx.clearRect(0, 0, size, size);
+
+      ctx.fillStyle = "rgba(5,0,0,0.12)";
+      ctx.fillRect(0, 0, size, size);
+
+      drawCore(time, amp);
+
+      particlesRef.current.forEach((particle) => {
+        particle.update(time, amp);
+        particle.draw(ctx);
+      });
+
+      frameRef.current = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [center, normalizedAmplitude, size]);
 
   return (
-    <div className="relative flex w-full items-center justify-center overflow-hidden rounded-[44px] border border-white/8 bg-slate-950/45 p-4">
-      <motion.div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        animate={{ borderColor: currentMode.borderColor }}
-        className="relative flex aspect-square w-full max-w-[620px] items-center justify-center overflow-hidden rounded-full border-2 bg-[radial-gradient(circle_at_center,rgba(17,24,39,0.95),rgba(2,6,23,0.98))] shadow-[0_0_60px_-15px_rgba(0,0,0,0.7)] transition-colors duration-1000"
-      >
-        <motion.div
-          animate={{
-            scale: mode === 'speaking' ? [1, 1.05, 1] : mode === 'listening' ? [1, 1.03, 1] : [1, 1.015, 1],
-            opacity: mode === 'processing' ? [0.32, 0.5, 0.32] : [0.25, 0.42, 0.25]
-          }}
-          transition={{ duration: mode === 'speaking' ? 1.2 : 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute inset-[10%] rounded-full blur-3xl"
-          style={{ background: `radial-gradient(circle, ${currentMode.glow} 0%, transparent 68%)` }}
-        />
-
-        <div className="relative">
-          {dots.map((dot) => (
-            <WaveParticle
-              key={dot.id}
-              dot={dot}
-              smoothX={smoothX}
-              smoothY={smoothY}
-              audioAnalyzeRef={audioAnalyzeRef}
-            />
-          ))}
-        </div>
-
-        <div className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.04),_transparent_50%)]" />
-
-        <motion.div
-          animate={{
-            scale: mode === 'speaking' ? [1, 1.08, 0.98, 1] : mode === 'listening' ? [1, 1.04, 1] : mode === 'processing' ? [1, 1.02, 1] : [1, 1.015, 1],
-            rotate: mode === 'processing' ? 360 : 0
-          }}
-          transition={{
-            scale: { duration: mode === 'speaking' ? 1.1 : 2, repeat: Infinity, ease: 'easeInOut' },
-            rotate: { duration: 8, repeat: Infinity, ease: 'linear' }
-          }}
-          className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white backdrop-blur-md shadow-[0_0_50px_rgba(239,68,68,0.12)]"
-        >
-          <Icon className="h-11 w-11" />
-        </motion.div>
-      </motion.div>
-
+    <div className="relative flex h-[320px] w-[320px] items-center justify-center">
+      <div className="absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent_56%)]" />
+      <canvas
+        ref={canvasRef}
+        className="h-full w-full opacity-[0.92]"
+      />
     </div>
   );
 };

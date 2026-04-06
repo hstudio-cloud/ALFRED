@@ -23,6 +23,7 @@ import {
   Menu,
   Users2,
 } from "lucide-react";
+import NanoMark from "./NanoMark";
 
 const SidebarItem = ({ item, active, expanded, onClick }) => {
   const Icon = item.icon;
@@ -136,8 +137,8 @@ const DesktopSidebar = ({
       <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
         <div className="flex h-full w-full flex-col gap-3 px-0 py-2 bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.12),_transparent_22%),linear-gradient(180deg,rgba(14,3,5,0.76)_0%,rgba(8,2,3,0.44)_100%)]">
           <div className="flex items-center gap-3 px-3 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-red-600/14 text-sm font-semibold text-red-100">
-              N
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+              <NanoMark className="h-10 w-10" />
             </div>
             <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
               <p className="truncate text-base font-semibold text-white">Nano</p>
@@ -261,9 +262,9 @@ const MobileSidebar = (props) => {
           </SheetHeader>
           <div className="flex h-full flex-col px-4 py-4">
             <div className="flex items-center gap-3 border-b border-white/6 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600/14 text-sm font-semibold text-red-100">
-                N
-              </div>
+            <div className="flex h-10 w-10 items-center justify-center">
+              <NanoMark className="h-10 w-10" />
+            </div>
               <div>
                 <p className="text-base font-semibold text-white">Nano</p>
                 <p className="text-xs text-zinc-500">Gestao financeira</p>

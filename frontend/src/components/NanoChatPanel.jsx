@@ -48,8 +48,6 @@ const NanoChatPanel = ({
   currentLevel,
   voiceState,
   voiceStatus,
-  voiceProviderType,
-  assistantRuntime,
   isWakeArmed,
   voiceSupported,
   error,
@@ -234,24 +232,22 @@ const NanoChatPanel = ({
 
         {shouldShowOverlay && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="w-full max-w-[280px] rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(7,10,18,0.46),rgba(7,10,18,0.28))] px-8 py-6 text-center shadow-[0_24px_80px_rgba(2,6,23,0.2)] backdrop-blur-md">
-              <div className="mx-auto max-w-[150px]">
+            <div className="flex w-full max-w-[420px] flex-col items-center px-6 text-center">
+              <div className="mx-auto max-w-[320px] opacity-90">
                 <AIVoiceVisualizer
                   mode={voiceState === "error" ? "idle" : voiceState}
                   amplitude={currentLevel}
                 />
               </div>
-              <p className="mt-4 text-sm text-zinc-200">
-                {voiceStatus || liveStatus || "Nano ativo"}
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.28em] text-zinc-200/82">
+                {voiceState === "processing"
+                  ? "TRANSCREVENDO..."
+                  : voiceState === "speaking"
+                  ? "RESPONDENDO..."
+                  : voiceState === "listening"
+                  ? "OUVINDO..."
+                  : "NANO ATIVO"}
               </p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] text-zinc-400">
-                <span className="rounded-full bg-white/[0.05] px-2.5 py-1">
-                  {assistantRuntime?.runtimeMode === "self_hosted" ? "stack local" : "stack hibrido"}
-                </span>
-                <span className="rounded-full bg-white/[0.05] px-2.5 py-1">
-                  {assistantRuntime?.llmModel || voiceProviderType}
-                </span>
-              </div>
             </div>
           </div>
         )}
