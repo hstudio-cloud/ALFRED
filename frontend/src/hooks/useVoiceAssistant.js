@@ -5,7 +5,7 @@ import assistantService from '../services/assistantService';
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) => {
+export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssistantAction } = {}) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [partialTranscript, setPartialTranscript] = useState('');
@@ -334,7 +334,13 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) =>
         onAfterMessage();
       }
 
-      if (options.source === 'voice' || isWakeArmed) {
+      const executedActions = response.executed_actions || assistantMessage?.metadata?.executed_actions || [];
+      executedActions.forEach((action) => {
+        onAssistantAction?.(action);
+      });
+
+      const shouldSpeak = options.speak !== false;
+      if (shouldSpeak) {
         updateVoiceState('speaking', 'Nano esta respondendo por voz.');
         pauseRecognitionForAssistant();
         await providerRef.current?.speak?.(assistantMessage.content, {
@@ -349,9 +355,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) =>
             resumeRecognitionAfterAssistant();
             updateVoiceState(
               isWakeArmed ? 'listening' : 'idle',
-              type === 'openai'
-                ? `Concluido. Diga ${wakeWord} quando quiser o proximo comando.`
-                : `Concluido em voz local. Diga ${wakeWord} quando quiser continuar.`
+              type === 'openai' || type === 'backend'
+                ? `Concluido. Pode me passar o proximo pedido.`
+                : `Concluido em voz local. Pode continuar pelo texto ou dizer ${wakeWord}.`
             );
           },
           onError: () => {
@@ -384,7 +390,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage } = {}) =>
     } finally {
       setIsProcessing(false);
     }
-  }, [isWakeArmed, onAfterMessage, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
+  }, [isWakeArmed, onAfterMessage, onAssistantAction, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
 
   const processVoiceTranscript = useCallback(async (transcript) => {
     const cleanedTranscript = (transcript || '').trim();

@@ -5,6 +5,7 @@ from database import (
     bills_collection,
     categories_collection,
     reminders_collection,
+    tasks_collection,
     transactions_collection,
 )
 from models import Transaction
@@ -32,6 +33,17 @@ class NanoActionRunner:
         if not value:
             return "-"
         return value.strftime("%d/%m/%Y %H:%M")
+
+    @staticmethod
+    def _day_bounds(period: str = "today") -> tuple[datetime, datetime, str]:
+        now = datetime.utcnow()
+        if period == "upcoming":
+            start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=7)
+            return start, end, "proximos 7 dias"
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        return start, end, "hoje"
 
     async def _ensure_category_exists(
         self,
@@ -255,6 +267,115 @@ class NanoActionRunner:
             },
         }
 
+    async def _execute_navigation_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
+        data = action.get("data", {})
+        section = data.get("section")
+        label = data.get("label") or section or "area solicitada"
+        if not section:
+            return {
+                "type": "navigate",
+                "status": "needs_input",
+                "message": "Nao identifiquei qual area do Nano voce quer abrir.",
+                "data": data,
+            }
+
+        return {
+            "type": "navigate",
+            "status": "executed",
+            "message": f"Abri a area {label} para voce.",
+            "data": {"section": section, "label": label},
+            "assumptions": data.get("assumptions", []),
+        }
+
+    async def _execute_agenda_action(
+        self,
+        workspace_id: str,
+        current_user: Dict[str, Any],
+        action: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        data = action.get("data", {})
+        start, end, period_label = self._day_bounds(data.get("period", "today"))
+
+        reminders = await reminders_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "user_id": current_user["id"],
+                "is_active": True,
+                "remind_at": {"$gte": start, "$lt": end},
+            }
+        ).sort("remind_at", 1).to_list(20)
+
+        bills = await bills_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "status": {"$in": ["pending", "overdue"]},
+                "due_date": {"$gte": start, "$lt": end},
+            }
+        ).sort("due_date", 1).to_list(20)
+
+        tasks = await tasks_collection.find(
+            {
+                "$or": [
+                    {"workspace_id": workspace_id},
+                    {"user_id": current_user["id"]},
+                ],
+                "status": {"$nin": ["completed", "cancelled"]},
+                "due_date": {"$gte": start, "$lt": end},
+            }
+        ).sort("due_date", 1).to_list(20)
+
+        lines: List[str] = []
+        if reminders:
+            lines.append(
+                "Lembretes: "
+                + "; ".join(
+                    f"{item.get('title', 'Lembrete')} as {self._format_datetime_label(item.get('remind_at'))[-5:]}"
+                    for item in reminders[:3]
+                )
+                + "."
+            )
+        if bills:
+            lines.append(
+                "Contas: "
+                + "; ".join(
+                    f"{item.get('title', 'Conta')} ({self._format_brl(float(item.get('amount', 0)))})"
+                    for item in bills[:3]
+                )
+                + "."
+            )
+        if tasks:
+            lines.append(
+                "Tarefas: "
+                + "; ".join(item.get("title", "Tarefa") for item in tasks[:3])
+                + "."
+            )
+
+        total_items = len(reminders) + len(bills) + len(tasks)
+        if not total_items:
+            message = (
+                f"Por enquanto, nao encontrei compromissos, contas ou lembretes para {period_label}. "
+                "Se quiser, posso criar um lembrete ou revisar suas proximas contas."
+            )
+        else:
+            message = (
+                f"Encontrei {total_items} item(ns) na sua agenda para {period_label}. "
+                + " ".join(lines)
+            )
+
+        return {
+            "type": "check_agenda",
+            "status": "executed",
+            "message": message,
+            "data": {
+                "period": data.get("period", "today"),
+                "period_label": period_label,
+                "reminders": reminders,
+                "bills": bills,
+                "tasks": tasks,
+                "total_items": total_items,
+            },
+        }
+
     async def execute_actions(
         self,
         workspace_id: str,
@@ -272,6 +393,10 @@ class NanoActionRunner:
                 results.append(await self._execute_reminder_action(workspace_id, current_user, action))
             elif action_type == "analyze_spending":
                 results.append(await self._execute_analysis_action(workspace_id, action))
+            elif action_type == "navigate":
+                results.append(await self._execute_navigation_action(action))
+            elif action_type == "check_agenda":
+                results.append(await self._execute_agenda_action(workspace_id, current_user, action))
         return results
 
     def compose_assistant_reply(
@@ -313,6 +438,6 @@ class NanoActionRunner:
             lines.append(follow_up)
         elif executed_messages:
             lines.append("")
-            lines.append(f"Se quiser, eu posso continuar organizando o financeiro de {workspace_name}.")
+            lines.append(f"Se quiser, eu continuo organizando o financeiro de {workspace_name} por voz ou texto.")
 
         return "\n".join(lines)

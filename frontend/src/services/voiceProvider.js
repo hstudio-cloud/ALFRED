@@ -1,4 +1,5 @@
 import axios from 'axios';
+import voiceService from './voiceService';
 
 const getRecognitionConstructor = () => {
   if (typeof window === 'undefined') return null;
@@ -27,6 +28,47 @@ const filenameForMimeType = (mimeType) => {
   if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'nano-recording.m4a';
   if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'nano-recording.mp3';
   return 'nano-recording.webm';
+};
+
+const sanitizeSpeechText = (text = '') => {
+  let cleaned = String(text || '').trim();
+  if (!cleaned) return '';
+
+  cleaned = cleaned.replace(/R\$\s*([0-9]+(?:[.,][0-9]{1,2})?)/g, '$1 reais');
+  cleaned = cleaned.replace(/^\s*[-*]\s*/gm, '');
+  cleaned = cleaned.replace(/[*_`#>[\]]/g, '');
+
+  const replacements = [
+    [/\bNano IA\b/g, 'Nano I A'],
+    [/\bIA\b/g, 'I A'],
+    [/\bCPF\b/g, 'C P F'],
+    [/\bCNPJ\b/g, 'C N P J'],
+    [/\bPJ\b/g, 'P J'],
+    [/\bPF\b/g, 'P F'],
+    [/\bDRE\b/g, 'D R E'],
+    [/\bPix\b/gi, 'piks'],
+    [/\bworkspace\b/gi, 'espaco de trabalho'],
+    [/\btransaction\b/gi, 'transacao'],
+  ];
+
+  replacements.forEach(([pattern, value]) => {
+    cleaned = cleaned.replace(pattern, value);
+  });
+
+  cleaned = cleaned
+    .replace(/\r/g, '\n')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, '. ')
+    .replace(/\s+/g, ' ')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .trim();
+
+  if (cleaned.length > 1000) {
+    cleaned = `${cleaned.slice(0, 1000).replace(/\s+\S*$/, '')}.`;
+  }
+
+  return cleaned || 'Tudo certo.';
 };
 
 const buildBrowserVoiceProvider = ({ apiBase }) => {
@@ -298,13 +340,28 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
 
     async speak(text, callbacks = {}) {
       const { preferPremium = true, onStart, onEnd, onError } = callbacks;
+      const speechText = sanitizeSpeechText(text);
       onStart?.();
 
       if (preferPremium) {
+        if (voiceService.isMiniMaxConfigured()) {
+          try {
+            await voiceService.speakWithMiniMax(speechText, {
+              voiceId: callbacks.voiceId,
+              onEnd,
+              onError
+            });
+            return 'minimax';
+          } catch (error) {
+            // MiniMax e uma camada opcional. Se falhar, preservamos o chat e seguimos no TTS atual.
+            void error;
+          }
+        }
+
         try {
           const response = await axios.post(
             `${apiBase}/assistant/speech`,
-            { text },
+            { text: speechText },
             { responseType: 'blob' }
           );
 
@@ -314,37 +371,38 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
           currentAudio.onended = () => {
             URL.revokeObjectURL(blobUrl);
             currentAudio = null;
-            onEnd?.('openai');
+            onEnd?.('backend');
           };
 
           currentAudio.onerror = () => {
             URL.revokeObjectURL(blobUrl);
             currentAudio = null;
-            this.speakWithBrowser(text, { onEnd, onError });
+            this.speakWithBrowser(speechText, { onEnd, onError });
           };
 
           await currentAudio.play();
-          return 'openai';
+          return 'backend';
         } catch (error) {
-          return this.speakWithBrowser(text, { onEnd, onError });
+          return this.speakWithBrowser(speechText, { onEnd, onError });
         }
       }
 
-      return this.speakWithBrowser(text, { onEnd, onError });
+      return this.speakWithBrowser(speechText, { onEnd, onError });
     },
 
     speakWithBrowser(text, callbacks = {}) {
       const { onEnd, onError } = callbacks;
+      const speechText = sanitizeSpeechText(text);
 
       if (typeof window === 'undefined' || !window.speechSynthesis) {
         onError?.(new Error('speech_synthesis_unavailable'));
         return 'browser-unavailable';
       }
 
-      currentUtterance = new SpeechSynthesisUtterance(text);
+      currentUtterance = new SpeechSynthesisUtterance(speechText);
       const voices = window.speechSynthesis.getVoices?.() || [];
       const preferredVoice =
-        voices.find((voice) => /pt-BR/i.test(voice.lang) && /(google|microsoft|luciana|francisca)/i.test(voice.name))
+        voices.find((voice) => /pt-BR/i.test(voice.lang) && /(maria|francisca|luciana|google|microsoft)/i.test(voice.name))
         || voices.find((voice) => /pt-BR/i.test(voice.lang))
         || null;
 
@@ -353,8 +411,8 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       }
 
       currentUtterance.lang = preferredVoice?.lang || 'pt-BR';
-      currentUtterance.rate = 0.96;
-      currentUtterance.pitch = 1;
+      currentUtterance.rate = 0.9;
+      currentUtterance.pitch = 0.98;
       currentUtterance.onend = () => {
         currentUtterance = null;
         onEnd?.('browser');
@@ -370,6 +428,8 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
     },
 
     stopSpeaking() {
+      voiceService.stopMiniMaxSpeech();
+
       if (currentAudio) {
         currentAudio.pause();
         currentAudio.currentTime = 0;

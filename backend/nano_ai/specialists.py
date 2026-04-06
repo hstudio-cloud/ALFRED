@@ -317,6 +317,40 @@ class FinanceOperationsSpecialist(SpecialistBase):
         message_lower = self.normalize_text(cleaned_message)
         actions: List[NanoAction] = []
 
+        analysis_question_hints = [
+            "quanto gastei",
+            "quanto eu gastei",
+            "quanto saiu",
+            "quanto entrou",
+            "me mostre",
+            "mostrar gastos",
+            "gastos do mes",
+            "despesas do mes",
+            "resumo financeiro",
+            "fluxo de caixa",
+            "como esta meu financeiro",
+            "analisar gastos",
+            "analise meus gastos",
+        ]
+        explicit_write_hints = [
+            "criar",
+            "crie",
+            "cria",
+            "registrar",
+            "registre",
+            "lancar",
+            "lance",
+            "adicionar",
+            "adicione",
+            "paguei",
+            "comprei",
+            "recebi",
+        ]
+        if any(hint in message_lower for hint in analysis_question_hints) and not any(
+            hint in message_lower for hint in explicit_write_hints
+        ):
+            return []
+
         bill_keywords = [
             "criar conta", "crie uma conta", "conta a pagar", "conta a receber",
             "registrar conta", "registrar boleto", "adicionar conta", "nova conta",
@@ -414,6 +448,81 @@ class FinanceOperationsSpecialist(SpecialistBase):
                 )
 
         return actions
+
+
+class NavigationSpecialist(SpecialistBase):
+    name = "navigation"
+
+    section_map = {
+        "assistant": ["nano ia", "assistente", "chat", "ia", "conversa", "nano"],
+        "overview": ["dashboard", "painel", "visao geral", "inicio", "home do painel", "resumo"],
+        "transactions": ["movimentacoes", "movimentacao", "transacoes", "transacao", "lancamentos", "entradas", "saidas"],
+        "banks": ["bancos", "banco", "contas bancarias", "conta bancaria", "instituicoes"],
+        "cards": ["cartoes", "cartao", "fatura", "faturas", "limite"],
+        "contacts": ["contatos", "clientes", "fornecedores", "pagadores"],
+        "reports": ["relatorios", "relatorio", "analises", "dre", "fluxo de caixa"],
+        "company": ["empresa", "configuracoes da empresa", "workspace", "dados da empresa"],
+        "profile": ["perfil", "usuario", "minha conta"],
+        "settings": ["configuracoes", "ajustes", "categorias", "preferencias"],
+    }
+
+    def detect(self, message: str) -> List[NanoAction]:
+        message_lower = self.normalize_text(self.clean_command_prefix(message))
+        if not any(word in message_lower for word in ["abrir", "abre", "ir para", "vai para", "mostra", "mostrar", "acesse", "acessar", "entrar em", "navegar"]):
+            return []
+
+        for section_id, aliases in self.section_map.items():
+            if any(alias in message_lower for alias in aliases):
+                return [
+                    NanoAction(
+                        type="navigate",
+                        data={
+                            "section": section_id,
+                            "label": aliases[0].title(),
+                            "detected": True,
+                        },
+                        confidence=0.82,
+                    )
+                ]
+        return []
+
+
+class AgendaSpecialist(SpecialistBase):
+    name = "agenda"
+
+    def detect(self, message: str) -> List[NanoAction]:
+        message_lower = self.normalize_text(self.clean_command_prefix(message))
+        agenda_keywords = [
+            "agenda",
+            "compromisso",
+            "compromissos",
+            "calendario",
+            "programacao",
+            "tenho algo",
+            "tem algo",
+            "o que tenho",
+            "o que eu tenho",
+            "meus lembretes",
+            "lembretes de hoje",
+            "contas de hoje",
+            "tarefas de hoje",
+        ]
+        date_keywords = ["hoje", "dia de hoje", "para hoje", "agora"]
+
+        if not any(keyword in message_lower for keyword in agenda_keywords):
+            return []
+
+        period = "today" if any(keyword in message_lower for keyword in date_keywords) else "upcoming"
+        return [
+            NanoAction(
+                type="check_agenda",
+                data={
+                    "period": period,
+                    "detected": True,
+                },
+                confidence=0.86,
+            )
+        ]
 
 
 class ReminderSpecialist(SpecialistBase):
@@ -517,6 +626,7 @@ class InsightSpecialist(SpecialistBase):
             "onde estou gastando", "quero analisar", "resuma meus gastos", "analisar financeiro",
             "gastos do mes", "despesas do mes", "fluxo de caixa", "como esta meu financeiro",
             "mostrar gastos", "resumo financeiro", "resumir financeiro", "meu resultado",
+            "quanto gastei", "quanto eu gastei", "quanto saiu", "quanto entrou",
         ]
         if not any(keyword in message_lower for keyword in analysis_keywords):
             return []

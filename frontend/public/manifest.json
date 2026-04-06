@@ -1,0 +1,20 @@
+{
+  "short_name": "Nano IA",
+  "name": "Nano IA - Sistema Financeiro Inteligente",
+  "description": "Gestao financeira com assistente inteligente por voz e chat.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#120204",
+  "background_color": "#080000",
+  "categories": ["finance", "productivity", "business"],
+  "icons": [
+    {
+      "src": "nano-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

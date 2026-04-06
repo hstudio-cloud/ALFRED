@@ -10,6 +10,7 @@ const NanoAssistantPage = ({
   transactions = [],
   reminders = [],
   bills = [],
+  onNavigateSection,
 }) => {
   const {
     chatHistory,
@@ -32,7 +33,14 @@ const NanoAssistantPage = ({
     stopListening,
     interruptSpeaking,
     sendMessage,
-  } = useVoiceAssistant({ onAfterMessage });
+  } = useVoiceAssistant({
+    onAfterMessage,
+    onAssistantAction: (action) => {
+      if (action?.type === "navigate" && action?.data?.section) {
+        onNavigateSection?.(action.data.section);
+      }
+    },
+  });
 
   const handleQuickPrompt = (prompt) => {
     setMessage(nanoQuickPromptMap[prompt] || prompt);
