@@ -168,7 +168,10 @@ async def assistant_voice_status(current_user: dict = Depends(get_current_user))
 
 @router.get("/history", response_model=List[ChatMessage])
 async def assistant_history(current_user: dict = Depends(get_current_user)):
-    messages = await chat_messages_collection.find({"user_id": current_user["id"]}).sort("created_at", -1).limit(50).to_list(50)
+    messages = await chat_messages_collection.find(
+        {"user_id": current_user["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(50).to_list(50)
     messages.reverse()
     return [ChatMessage(**msg) for msg in messages]
 
