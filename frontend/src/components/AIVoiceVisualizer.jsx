@@ -17,14 +17,13 @@ const MODE_TO_STATE = {
 
 const randomColor = () => RED_PALETTE[Math.floor(Math.random() * RED_PALETTE.length)];
 
-const AIVoiceVisualizer = ({ mode = "idle", amplitude = 0.12 }) => {
+const AIVoiceVisualizer = ({ mode = "idle", amplitude = 0.12, size = 320, transparent = false }) => {
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
   const particlesRef = useRef([]);
   const stateRef = useRef(MODE_TO_STATE[mode] || "idle");
   const timeRef = useRef(0);
 
-  const size = 320;
   const center = size / 2;
 
   const normalizedAmplitude = useMemo(() => Math.max(0.05, Math.min(amplitude || 0.12, 1)), [amplitude]);
@@ -168,8 +167,12 @@ const AIVoiceVisualizer = ({ mode = "idle", amplitude = 0.12 }) => {
 
       ctx.clearRect(0, 0, size, size);
 
-      ctx.fillStyle = "rgba(5,0,0,0.12)";
-      ctx.fillRect(0, 0, size, size);
+      if (!transparent) {
+        ctx.fillStyle = "rgba(5,0,0,0.12)";
+        ctx.fillRect(0, 0, size, size);
+      } else {
+        ctx.clearRect(0, 0, size, size);
+      }
 
       drawCore(time, amp);
 
@@ -186,11 +189,16 @@ const AIVoiceVisualizer = ({ mode = "idle", amplitude = 0.12 }) => {
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [center, normalizedAmplitude, size]);
+  }, [center, normalizedAmplitude, size, transparent]);
 
   return (
-    <div className="relative flex h-[320px] w-[320px] items-center justify-center">
-      <div className="absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent_56%)]" />
+    <div
+      className="relative flex items-center justify-center"
+      style={{ height: `${size}px`, width: `${size}px` }}
+    >
+      {!transparent && (
+        <div className="absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03),transparent_56%)]" />
+      )}
       <canvas
         ref={canvasRef}
         className="h-full w-full opacity-[0.92]"

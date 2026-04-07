@@ -375,6 +375,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
       const shouldSpeak = options.speak !== false;
       if (shouldSpeak) {
+        // Garantia de UX: renderiza a mensagem no chat antes de iniciar a fala.
+        await new Promise((resolve) => {
+          requestAnimationFrame(() => setTimeout(resolve, 120));
+        });
+
         updateVoiceState('speaking', 'Nano esta respondendo por voz.');
         pauseRecognitionForAssistant();
         await providerRef.current?.speak?.(assistantMessage.content, {

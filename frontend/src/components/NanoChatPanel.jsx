@@ -3,6 +3,7 @@ import { AlertCircle, Mic, MicOff, Send, Square } from "lucide-react";
 
 import { nanoQuickPromptMap, nanoQuickPrompts } from "../lib/nanoTheme";
 import AIVoiceVisualizer from "./AIVoiceVisualizer";
+import NanoMark from "./NanoMark";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
@@ -189,21 +190,28 @@ const NanoChatPanel = ({
                   key={item.id}
                   className={`nano-message-enter flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
-                  <div
-                    className={`max-w-[720px] px-5 py-4 shadow-[0_14px_34px_rgba(2,6,23,0.18)] ${
-                      isUser
-                        ? "rounded-[26px_26px_14px_26px] bg-red-600/10 text-red-50"
-                        : "rounded-[26px_26px_26px_14px] bg-white/[0.04] text-zinc-100"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap text-sm leading-7">{item.content}</p>
-                    <p
-                      className={`mt-2 text-[11px] ${
-                        isUser ? "text-red-200/70" : "text-zinc-500"
+                  <div className={`flex max-w-[760px] items-start gap-2.5 ${isUser ? "" : "pl-0.5"}`}>
+                    {!isUser && (
+                      <div className="mt-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-red-500/22 bg-black/22 backdrop-blur-sm">
+                        <NanoMark className="h-[18px] w-[18px]" />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[720px] px-5 py-4 shadow-[0_14px_34px_rgba(2,6,23,0.18)] ${
+                        isUser
+                          ? "rounded-[26px_26px_14px_26px] bg-red-600/10 text-red-50"
+                          : "rounded-[26px_26px_26px_14px] bg-white/[0.04] text-zinc-100"
                       }`}
                     >
-                      {formatTime(item.created_at)}
-                    </p>
+                      <p className="whitespace-pre-wrap text-sm leading-7">{item.content}</p>
+                      <p
+                        className={`mt-2 text-[11px] ${
+                          isUser ? "text-red-200/70" : "text-zinc-500"
+                        }`}
+                      >
+                        {formatTime(item.created_at)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
@@ -231,15 +239,17 @@ const NanoChatPanel = ({
         </div>
 
         {shouldShowOverlay && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="flex w-full max-w-[420px] flex-col items-center px-6 text-center">
-              <div className="mx-auto max-w-[320px] opacity-90">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <div className="flex w-full max-w-[880px] flex-col items-center px-6 text-center">
+              <div className="mx-auto opacity-82">
                 <AIVoiceVisualizer
                   mode={voiceState === "error" ? "idle" : voiceState}
                   amplitude={currentLevel}
+                  size={560}
+                  transparent
                 />
               </div>
-              <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.28em] text-zinc-200/82">
+              <p className="-mt-6 text-[11px] font-medium uppercase tracking-[0.28em] text-zinc-200/82">
                 {voiceState === "processing"
                   ? "TRANSCREVENDO..."
                   : voiceState === "speaking"
