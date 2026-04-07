@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import React, { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const CustomCursor = () => {
   const [isHovered, setIsHovered] = useState(false);
@@ -17,8 +17,10 @@ const CustomCursor = () => {
 
   useEffect(() => {
     const touchCapable =
-      typeof window !== 'undefined' &&
-      (window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+      typeof window !== "undefined" &&
+      (window.matchMedia("(pointer: coarse)").matches ||
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0);
 
     setIsTouchDevice(touchCapable);
     if (touchCapable) return undefined;
@@ -31,7 +33,9 @@ const CustomCursor = () => {
     const onMouseOver = (event) => {
       const target = event.target;
       if (
-        target.matches('a, button, [role="button"], input[type="submit"], input[type="image"], .cursor-pointer') ||
+        target.matches(
+          'a, button, [role="button"], input[type="submit"], input[type="image"], .cursor-pointer',
+        ) ||
         target.closest('a, button, [role="button"], .cursor-pointer')
       ) {
         setIsHovered(true);
@@ -45,8 +49,10 @@ const CustomCursor = () => {
     const onMouseUp = () => setIsClicked(false);
 
     const animateCursor = () => {
-      ringCoords.current.x += (mouseCoords.current.x - ringCoords.current.x) * delayFactor;
-      ringCoords.current.y += (mouseCoords.current.y - ringCoords.current.y) * delayFactor;
+      ringCoords.current.x +=
+        (mouseCoords.current.x - ringCoords.current.x) * delayFactor;
+      ringCoords.current.y +=
+        (mouseCoords.current.y - ringCoords.current.y) * delayFactor;
 
       if (dotRef.current) {
         dotRef.current.style.left = `${mouseCoords.current.x}px`;
@@ -61,24 +67,24 @@ const CustomCursor = () => {
       animationFrameId.current = requestAnimationFrame(animateCursor);
     };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseover', onMouseOver);
-    document.addEventListener('mouseout', onMouseOut);
-    document.addEventListener('mouseenter', onMouseEnterWindow);
-    document.addEventListener('mouseleave', onMouseLeaveWindow);
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseover", onMouseOver);
+    document.addEventListener("mouseout", onMouseOut);
+    document.addEventListener("mouseenter", onMouseEnterWindow);
+    document.addEventListener("mouseleave", onMouseLeaveWindow);
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mouseup", onMouseUp);
 
     animateCursor();
 
     return () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseover', onMouseOver);
-      document.removeEventListener('mouseout', onMouseOut);
-      document.removeEventListener('mouseenter', onMouseEnterWindow);
-      document.removeEventListener('mouseleave', onMouseLeaveWindow);
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseover", onMouseOver);
+      document.removeEventListener("mouseout", onMouseOut);
+      document.removeEventListener("mouseenter", onMouseEnterWindow);
+      document.removeEventListener("mouseleave", onMouseLeaveWindow);
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("mouseup", onMouseUp);
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
@@ -90,27 +96,29 @@ const CustomCursor = () => {
   return (
     <div
       className={cn(
-        'fixed pointer-events-none z-[9999] transition-opacity duration-300',
-        isVisible ? 'opacity-100' : 'opacity-0'
+        "fixed pointer-events-none z-[9999] transition-opacity duration-300",
+        isVisible ? "opacity-100" : "opacity-0",
       )}
     >
       <div
         ref={dotRef}
         className={cn(
-          'fixed -translate-x-1/2 -translate-y-1/2 rounded-full transition-[background-color,width,height,transform,filter] duration-300',
-          !isHovered && 'h-1.5 w-1.5 bg-white',
-          isHovered && 'h-2 w-2 bg-sky-500',
-          isClicked && 'scale-75 brightness-75'
+          "fixed -translate-x-1/2 -translate-y-1/2 rounded-full transition-[background-color,width,height,transform,filter] duration-300",
+          !isHovered && "h-1.5 w-1.5 bg-white",
+          isHovered && "h-2 w-2 bg-red-600",
+          isClicked && "scale-75 brightness-75",
         )}
       />
 
       <div
         ref={ringRef}
         className={cn(
-          'fixed -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,opacity,border-color,background-color,border-width,transform,filter] duration-300 ease-out',
-          !isHovered && 'h-8 w-8 border border-gray-400 bg-transparent opacity-50',
-          isHovered && 'h-12 w-12 border-2 border-sky-500 bg-sky-500/10 opacity-100',
-          isClicked && 'scale-75 border-gray-600 bg-black/20'
+          "fixed -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height,opacity,border-color,background-color,border-width,transform,filter] duration-300 ease-out",
+          !isHovered &&
+            "h-8 w-8 border border-gray-400 bg-transparent opacity-50",
+          isHovered &&
+            "h-12 w-12 border-2 border-red-600 bg-sky-500/10 opacity-100",
+          isClicked && "scale-75 border-gray-600 bg-black/20",
         )}
       />
     </div>
