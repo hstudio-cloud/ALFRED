@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
+from bson import ObjectId
 
 from ai_service import AlfredAI
 from database import (
@@ -21,6 +22,18 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 ai = AlfredAI(api_key=os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY"))
+
+
+def _sanitize_json_payload(value):
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _sanitize_json_payload(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_json_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_json_payload(item) for item in value]
+    return value
 
 
 class SpeechRequest(BaseModel):
@@ -93,6 +106,8 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
             memory_profile=memory_profile,
         )
         executed_actions = await ai.execute_actions(workspace["id"], current_user, ai_response["actions"])
+        safe_actions = _sanitize_json_payload(ai_response["actions"])
+        safe_executed_actions = _sanitize_json_payload(executed_actions)
         await ai.persist_memory_profile(
             current_user["id"],
             ai_response["actions"],
@@ -109,8 +124,8 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
             role="assistant",
             content=assistant_content,
             metadata={
-                "actions": ai_response["actions"],
-                "executed_actions": executed_actions,
+                "actions": safe_actions,
+                "executed_actions": safe_executed_actions,
                 "workspace_id": workspace["id"],
             },
         )
@@ -118,8 +133,8 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
 
         return {
             "message": assistant_message.dict(),
-            "actions": ai_response["actions"],
-            "executed_actions": executed_actions,
+            "actions": safe_actions,
+            "executed_actions": safe_executed_actions,
             "workspace_id": workspace["id"],
         }
     except HTTPException:

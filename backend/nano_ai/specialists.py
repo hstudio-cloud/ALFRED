@@ -588,9 +588,13 @@ class ReminderSpecialist(SpecialistBase):
         message_lower = self.normalize_text(cleaned_message)
         reminder_keywords = ["lembrar", "lembre-me", "lembrete", "nao esquecer", "avise", "agendar", "agende", "marcar", "marque"]
         agenda_context_keywords = ["reuniao", "compromisso", "consulta", "evento", "agenda"]
+        agenda_query_keywords = ["tem algo", "tenho algo", "o que tenho", "o que eu tenho", "minha agenda", "meus compromissos", "agenda hoje"]
         has_intent = any(word in message_lower for word in reminder_keywords)
         has_context = any(word in message_lower for word in agenda_context_keywords)
         remind_at = self.extract_datetime(cleaned_message)
+
+        if not has_intent and any(keyword in message_lower for keyword in agenda_query_keywords):
+            return []
 
         if not has_intent and not (has_context and remind_at is not None):
             return []
