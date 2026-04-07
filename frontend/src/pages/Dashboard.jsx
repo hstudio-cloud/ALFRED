@@ -2412,6 +2412,7 @@ const Dashboard = () => {
         transactions={transactions}
         reminders={reminders}
         bills={bills}
+        onNavigateSection={setActiveSection}
       />
     </div>
   );

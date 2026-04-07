@@ -1,0 +1,20 @@
+{
+  "name": "nano-voice-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node/Express voice layer for Nano IA providers.",
+  "main": "voiceServer.js",
+  "scripts": {
+    "start": "node voiceServer.js",
+    "start:voice": "node voiceServer.js",
+    "check": "node --check voiceServer.js && node --check config/voiceConfig.js && node --check services/minimaxTtsService.js && node --check controllers/voiceController.js && node --check routes/voiceRoutes.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

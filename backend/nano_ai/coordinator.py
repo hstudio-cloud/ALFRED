@@ -4,8 +4,10 @@ from .brain import NanoBrain
 from .gateway import NanoGateway
 from .model_provider import resolve_model_provider
 from .specialists import (
+    AgendaSpecialist,
     FinanceOperationsSpecialist,
     InsightSpecialist,
+    NavigationSpecialist,
     ProductivitySpecialist,
     ReminderSpecialist,
 )
@@ -36,8 +38,10 @@ O que o Nano faz:
 - registrar receitas e despesas
 - criar contas a pagar e a receber
 - criar lembretes financeiros
+- consultar agenda do dia, lembretes, contas e tarefas
 - identificar categoria, metodo de pagamento e escopo pessoal ou empresa
 - analisar gastos, riscos e oportunidades de economia
+- navegar pelo sistema quando o usuario pedir uma area do painel
 
 Regras de entendimento:
 - trate erros pequenos de transcricao como normais
@@ -54,6 +58,8 @@ Regras de resposta:
 - quando detectar gasto recorrente, sugira recorrencia
 - nunca invente fatos, valores ou historicos"""
         self.specialists = [
+            AgendaSpecialist(),
+            NavigationSpecialist(),
             FinanceOperationsSpecialist(),
             ReminderSpecialist(),
             InsightSpecialist(),
@@ -144,7 +150,9 @@ Regras de resposta:
             "create_bill": "finance_operations",
             "create_reminder": "reminders",
             "analyze_spending": "insights",
+            "check_agenda": "agenda",
             "create_task": "productivity",
             "create_habit": "productivity",
+            "navigate": "navigation",
         }
         return mapping.get(action_type, "coordinator")

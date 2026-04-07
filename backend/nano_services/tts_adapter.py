@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import tempfile
 from functools import lru_cache
 from typing import Dict, Optional
@@ -19,6 +20,7 @@ COQUI_MODEL = os.getenv("NANO_TTS_MODEL", "tts_models/pt/cv/vits")
 COQUI_LANGUAGE = os.getenv("NANO_TTS_LANGUAGE", "pt")
 COQUI_SPEAKER = os.getenv("NANO_TTS_SPEAKER", "").strip() or None
 COQUI_SPEAKER_WAV = os.getenv("NANO_TTS_SPEAKER_WAV", "").strip() or None
+PYTTSX3_RATE = int(os.getenv("NANO_TTS_RATE", "165"))
 
 
 class SpeakRequest(BaseModel):
@@ -27,6 +29,49 @@ class SpeakRequest(BaseModel):
     voice_mode: str = "default"
     speed: float = 1.0
     metadata: Dict[str, str] = {}
+
+
+def normalize_text_for_speech(text: str) -> str:
+    """Turn UI/markdown text into a smoother pt-BR speech script."""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return ""
+
+    cleaned = re.sub(r"R\$\s*([0-9]+(?:[.,][0-9]{1,2})?)", r"\1 reais", cleaned)
+    cleaned = re.sub(r"(?im)^\s*[-*]\s*", "", cleaned)
+    cleaned = re.sub(r"[*_`#>\[\]]", "", cleaned)
+
+    replacements = {
+        "Nano IA": "Nano I A",
+        " IA ": " I A ",
+        "CPF": "C P F",
+        "CNPJ": "C N P J",
+        "PJ": "P J",
+        "PF": "P F",
+        "DRE": "D R E",
+        "PIX": "piks",
+        "Pix": "piks",
+        "pix": "piks",
+        "workspace": "espaco de trabalho",
+        "transaction": "transacao",
+    }
+
+    for source, target in replacements.items():
+        cleaned = cleaned.replace(source, target)
+
+    cleaned = cleaned.replace("\r", "\n")
+    cleaned = re.sub(r"\n{2,}", ". ", cleaned)
+    cleaned = re.sub(r"\n", ". ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    cleaned = re.sub(r"\s+([.,;:!?])", r"\1", cleaned)
+    cleaned = cleaned.strip(" .")
+
+    if len(cleaned) > 1000:
+        cleaned = cleaned[:1000].rsplit(" ", 1)[0].strip()
+        cleaned = f"{cleaned}."
+
+    return cleaned or "Tudo certo."
 
 
 def create_pyttsx3_engine():
@@ -38,12 +83,34 @@ def create_pyttsx3_engine():
     engine = pyttsx3.init()
     voices = engine.getProperty("voices")
     preferred = None
-    for voice in voices:
-        voice_name = (getattr(voice, "name", "") or "").lower()
-        voice_id = (getattr(voice, "id", "") or "").lower()
-        if "portuguese" in voice_name or "portuguese" in voice_id or "brazil" in voice_name:
-            preferred = voice
+    preferred_patterns = (
+        "maria",
+        "helena",
+        "francisca",
+        "luciana",
+        "portuguese",
+        "brazil",
+        "brasil",
+    )
+
+    for pattern in preferred_patterns:
+        for voice in voices:
+            voice_name = (getattr(voice, "name", "") or "").lower()
+            voice_id = (getattr(voice, "id", "") or "").lower()
+            if pattern in voice_name or pattern in voice_id:
+                preferred = voice
+                break
+        if preferred:
             break
+
+    if not preferred:
+        for voice in voices:
+            voice_name = (getattr(voice, "name", "") or "").lower()
+            voice_id = (getattr(voice, "id", "") or "").lower()
+            if "portuguese" in voice_name or "portuguese" in voice_id or "brazil" in voice_name:
+                preferred = voice
+                break
+
     if preferred:
         engine.setProperty("voice", preferred.id)
     return engine
@@ -86,9 +153,9 @@ def build_coqui_kwargs(request: SpeakRequest, file_path: str) -> Dict[str, Optio
 def synthesize_with_pyttsx3(request: SpeakRequest, file_path: str) -> None:
     engine = create_pyttsx3_engine()
     try:
-        default_rate = engine.getProperty("rate")
-        safe_rate = max(120, min(220, int(default_rate * request.speed)))
+        safe_rate = max(135, min(185, int(PYTTSX3_RATE * request.speed)))
         engine.setProperty("rate", safe_rate)
+        engine.setProperty("volume", 1.0)
         engine.save_to_file(request.text, file_path)
         engine.runAndWait()
     finally:
@@ -116,6 +183,9 @@ async def health() -> Dict[str, str]:
 async def speak(request: SpeakRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Texto vazio.")
+
+    speech_text = normalize_text_for_speech(request.text)
+    request = request.copy(update={"text": speech_text})
 
     tmp_path = None
     try:

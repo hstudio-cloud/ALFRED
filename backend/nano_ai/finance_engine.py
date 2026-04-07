@@ -30,17 +30,20 @@ class NanoFinanceEngine:
     def fallback_reply(self, actions: List[NanoAction]) -> str:
         if not actions:
             return (
-                "Entendi. Posso registrar uma movimentacao, criar uma conta, "
-                "montar um lembrete ou analisar seus gastos."
+                "Entendi. Me diga o que voce quer fazer no financeiro e eu conduzo por aqui. "
+                "Posso registrar movimentacoes, criar contas, abrir areas do painel, montar lembretes "
+                "ou analisar seus gastos."
             )
 
         fallback_map = {
-            "create_transaction": "Perfeito. Vou registrar essa movimentacao agora.",
+            "create_transaction": "Perfeito. Entendi a movimentacao e vou registrar agora.",
             "create_bill": "Perfeito. Vou criar essa conta e deixar o vencimento organizado.",
-            "create_reminder": "Perfeito. Vou deixar esse lembrete preparado.",
-            "analyze_spending": "Perfeito. Vou analisar seus gastos e resumir os pontos principais.",
+            "create_reminder": "Perfeito. Vou deixar esse lembrete preparado para voce.",
+            "analyze_spending": "Perfeito. Vou analisar seus gastos e te devolver os pontos principais.",
+            "check_agenda": "Claro. Vou conferir sua agenda financeira e operacional.",
             "create_task": "Perfeito. Vou transformar isso em uma tarefa.",
             "create_habit": "Perfeito. Vou registrar isso como habito.",
+            "navigate": "Claro. Vou abrir essa area do Nano para voce.",
         }
         return fallback_map.get(actions[0].type, "Perfeito. Vou cuidar disso agora.")
 
