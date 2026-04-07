@@ -105,7 +105,7 @@ const CustomCursor = () => {
         className={cn(
           "fixed -translate-x-1/2 -translate-y-1/2 rounded-full transition-[background-color,width,height,transform,filter] duration-300",
           !isHovered && "h-1.5 w-1.5 bg-white",
-          isHovered && "h-2 w-2 bg-red-600",
+          isHovered && "h-2 w-2 bg-red-700",
           isClicked && "scale-75 brightness-75",
         )}
       />
@@ -117,7 +117,7 @@ const CustomCursor = () => {
           !isHovered &&
             "h-8 w-8 border border-gray-400 bg-transparent opacity-50",
           isHovered &&
-            "h-12 w-12 border-2 border-red-600 bg-sky-500/10 opacity-100",
+            "h-12 w-12 border-2 border-red-700 bg-sky-500/10 opacity-100",
           isClicked && "scale-75 border-gray-600 bg-black/20",
         )}
       />
