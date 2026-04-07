@@ -38,6 +38,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   const backendCaptureRef = useRef(null);
   const backendCaptureStarterRef = useRef(null);
   const transcriptProcessorRef = useRef(null);
+  const backendTranscriptionAvailableRef = useRef(false);
   const preferBackendTranscriptionRef = useRef(false);
   const awaitingCommandRef = useRef(false);
   const keepListeningRef = useRef(false);
@@ -101,6 +102,31 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       'pessoal'
     ];
     return commandHints.some((hint) => lowered.includes(hint));
+  }, []);
+
+  const looksLikeNaturalVoiceQuestion = useCallback((text) => {
+    const lowered = (text || '').toLowerCase().trim();
+    if (!lowered || lowered.length < 8) return false;
+
+    const hints = [
+      'tem ',
+      'tenho ',
+      'qual ',
+      'quanto ',
+      'como ',
+      'me mostra',
+      'mostrar ',
+      'agenda',
+      'hoje',
+      'amanha',
+      'essa semana',
+      'me ajuda',
+      'preciso',
+      'quero',
+      'pode',
+    ];
+
+    return hints.some((hint) => lowered.includes(hint));
   }, []);
 
   useEffect(() => {
@@ -170,7 +196,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     provider.getVoiceStatus?.()
       .then((status) => {
         setVoiceProviderType(status?.provider || provider.type);
-        preferBackendTranscriptionRef.current = Boolean(status?.transcription_available);
+        backendTranscriptionAvailableRef.current = Boolean(status?.transcription_available);
+        // Browser-first strategy. Backend transcription enters only as fallback.
+        preferBackendTranscriptionRef.current = false;
         setAssistantRuntime({
           runtimeMode: status?.runtime_mode || 'browser_fallback',
           llmProvider: status?.llm_provider || 'rule_based',
@@ -182,6 +210,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       })
       .catch(() => {
         setVoiceProviderType(provider.type);
+        backendTranscriptionAvailableRef.current = false;
         preferBackendTranscriptionRef.current = false;
         setAssistantRuntime({
           runtimeMode: 'browser_fallback',
@@ -230,7 +259,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
           return;
         }
 
-        if (providerRef.current?.supportsBackendTranscription?.()) {
+        if (backendTranscriptionAvailableRef.current && providerRef.current?.supportsBackendTranscription?.()) {
           preferBackendTranscriptionRef.current = true;
           setError(null);
           updateVoiceState('listening', 'SpeechRecognition falhou. Vou continuar com transcricao pelo Nano.');
@@ -250,7 +279,12 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
             try {
               recognizer.start();
             } catch (startError) {
-              setError(startError);
+              if (backendTranscriptionAvailableRef.current) {
+                preferBackendTranscriptionRef.current = true;
+                backendCaptureStarterRef.current?.();
+              } else {
+                setError(startError);
+              }
             }
           }
         }
@@ -413,7 +447,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     }
 
     if (!wakeMatch) {
-      if (isWakeArmed && looksLikeDirectFinancialCommand(cleanedTranscript)) {
+      if (
+        isWakeArmed
+        && (looksLikeDirectFinancialCommand(cleanedTranscript) || looksLikeNaturalVoiceQuestion(cleanedTranscript))
+      ) {
         updateVoiceState('processing', `Comando recebido: "${cleanedTranscript}"`);
         await handleRealtimeTurn(cleanedTranscript, { source: 'voice' });
         return;
@@ -458,7 +495,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         resumeRecognitionAfterAssistant();
       }
     });
-  }, [handleRealtimeTurn, isWakeArmed, looksLikeDirectFinancialCommand, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
+  }, [handleRealtimeTurn, isWakeArmed, looksLikeDirectFinancialCommand, looksLikeNaturalVoiceQuestion, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
 
   useEffect(() => {
     transcriptProcessorRef.current = processVoiceTranscript;
@@ -563,17 +600,23 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     setFinalTranscript('');
     updateVoiceState('listening', `Escuta continua ativada. Diga ${wakeWord} quando quiser.`);
 
-    if (!preferBackendTranscriptionRef.current && providerRef.current?.isRecognitionSupported?.() && recognizerRef.current) {
+    if (providerRef.current?.isRecognitionSupported?.() && recognizerRef.current) {
       try {
+        preferBackendTranscriptionRef.current = false;
         recognizerRef.current.start();
         return;
       } catch (startError) {
-        preferBackendTranscriptionRef.current = true;
+        preferBackendTranscriptionRef.current = backendTranscriptionAvailableRef.current;
         void startError;
       }
     }
 
-    backendCaptureStarterRef.current?.();
+    if (backendTranscriptionAvailableRef.current) {
+      backendCaptureStarterRef.current?.();
+      return;
+    }
+
+    updateVoiceState('error', 'Nao consegui iniciar o reconhecimento de voz neste navegador.');
   }, [updateVoiceState, voiceSupported, wakeWord]);
 
   const stopListening = useCallback(() => {

@@ -381,3 +381,69 @@ class StatementImport(BaseModel):
     preview_rows: List[dict] = Field(default_factory=list)
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class EmployeeCreate(BaseModel):
+    name: str
+    cpf: str
+    role: str
+    salary: float
+    employee_type: str = "clt"  # clt, contract
+    payment_cycle: str = "monthly"  # monthly, biweekly
+    inss_percent: Optional[float] = None
+    active: bool = True
+    notes: Optional[str] = None
+
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    cpf: Optional[str] = None
+    role: Optional[str] = None
+    salary: Optional[float] = None
+    employee_type: Optional[str] = None
+    payment_cycle: Optional[str] = None
+    inss_percent: Optional[float] = None
+    active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class Employee(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    name: str
+    cpf: str
+    role: str
+    salary: float
+    employee_type: str = "clt"  # clt, contract
+    payment_cycle: str = "monthly"  # monthly, biweekly
+    inss_percent: float = 0.0
+    active: bool = True
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AttendanceRecordCreate(BaseModel):
+    employee_id: str
+    date: datetime
+    status: str = "present"  # present, absent
+    notes: Optional[str] = None
+
+
+class AttendanceRecordUpdate(BaseModel):
+    date: Optional[datetime] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class AttendanceRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    employee_id: str
+    date: datetime
+    status: str = "present"  # present, absent
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

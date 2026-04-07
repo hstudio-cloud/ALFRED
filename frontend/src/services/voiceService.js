@@ -2,6 +2,7 @@ import axios from 'axios';
 
 let currentAudio = null;
 let currentObjectUrl = null;
+let minimaxRouteAvailable = null;
 
 const getVoiceApiBase = () => {
   const configuredUrl = process.env.REACT_APP_VOICE_BACKEND_URL;
@@ -24,21 +25,30 @@ const cleanupCurrentAudio = () => {
 
 const speakWithMiniMax = async (text, options = {}) => {
   const apiBase = getVoiceApiBase();
-  if (!apiBase) {
+  if (!apiBase || minimaxRouteAvailable === false) {
     throw new Error('minimax_voice_backend_not_configured');
   }
 
   cleanupCurrentAudio();
-
-  const response = await axios.post(
-    `${apiBase}/api/voice/speak`,
-    {
-      text,
-      // Para trocar a voz do Nano por tela/configuracao, envie voiceId aqui.
-      voiceId: options.voiceId,
-    },
-    { responseType: 'blob' }
-  );
+  let response;
+  try {
+    response = await axios.post(
+      `${apiBase}/api/voice/speak`,
+      {
+        text,
+        // Para trocar a voz do Nano por tela/configuracao, envie voiceId aqui.
+        voiceId: options.voiceId,
+      },
+      { responseType: 'blob' }
+    );
+    minimaxRouteAvailable = true;
+  } catch (error) {
+    const statusCode = error?.response?.status;
+    if (statusCode === 404 || statusCode === 401) {
+      minimaxRouteAvailable = false;
+    }
+    throw error;
+  }
 
   currentObjectUrl = URL.createObjectURL(response.data);
   currentAudio = new Audio(currentObjectUrl);
@@ -61,7 +71,7 @@ const stopMiniMaxSpeech = () => {
   cleanupCurrentAudio();
 };
 
-const isMiniMaxConfigured = () => Boolean(getVoiceApiBase());
+const isMiniMaxConfigured = () => Boolean(getVoiceApiBase()) && minimaxRouteAvailable !== false;
 
 const voiceService = {
   isMiniMaxConfigured,

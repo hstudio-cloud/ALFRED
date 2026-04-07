@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 
@@ -21,13 +21,8 @@ export const WorkspaceProvider = ({ children }) => {
   const [currentWorkspace, setCurrentWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchWorkspaces();
-    }
-  }, [isAuthenticated]);
-
-  const fetchWorkspaces = async () => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchWorkspaces = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/workspaces`);
       setWorkspaces(response.data);
@@ -46,7 +41,13 @@ export const WorkspaceProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWorkspaces();
+    }
+  }, [isAuthenticated, fetchWorkspaces]);
 
   const switchWorkspace = (workspace) => {
     setCurrentWorkspace(workspace);

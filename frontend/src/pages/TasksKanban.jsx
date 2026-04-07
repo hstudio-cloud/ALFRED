@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
@@ -65,13 +65,7 @@ const TasksKanban = () => {
     stage: 'todo'
   });
 
-  useEffect(() => {
-    if (currentWorkspace) {
-      fetchTasks();
-    }
-  }, [currentWorkspace]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!currentWorkspace) return;
     
     try {
@@ -87,7 +81,13 @@ const TasksKanban = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace, toast]);
+
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchTasks();
+    }
+  }, [currentWorkspace, fetchTasks]);
 
   const handleDragEnd = async (result) => {
     if (!result.destination) return;

@@ -12,6 +12,7 @@ import {
   ReportsSection,
 } from "../components/DashboardFinanceSections";
 import financeService from "../services/financeService";
+import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -100,6 +101,13 @@ const navigationItems = [
     label: "Contatos",
     icon: Users2,
     description: "Clientes e pagadores",
+    group: "Negocio",
+  },
+  {
+    id: "employees",
+    label: "Funcionarios",
+    icon: CalendarDays,
+    description: "Ponto, presenca, faltas e folha",
     group: "Negocio",
   },
   {
@@ -192,6 +200,24 @@ const initialReminder = {
   description: "",
 };
 
+const initialEmployeeForm = {
+  name: "",
+  cpf: "",
+  role: "",
+  salary: "",
+  employee_type: "clt",
+  payment_cycle: "monthly",
+  inss_percent: "",
+  notes: "",
+};
+
+const initialAttendanceForm = {
+  employee_id: "",
+  date: "",
+  status: "present",
+  notes: "",
+};
+
 const initialCompanyForm = {
   name: "",
   subdomain: "",
@@ -258,6 +284,10 @@ const Dashboard = () => {
   const [categories, setCategories] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [statementImports, setStatementImports] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [payrollReport, setPayrollReport] = useState(null);
+  const [payrollLoading, setPayrollLoading] = useState(false);
 
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
@@ -273,6 +303,8 @@ const Dashboard = () => {
   const [companyForm, setCompanyForm] = useState(initialCompanyForm);
   const [profileForm, setProfileForm] = useState(initialProfileForm);
   const [settingsForm, setSettingsForm] = useState(initialSettingsForm);
+  const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
+  const [attendanceForm, setAttendanceForm] = useState(initialAttendanceForm);
 
   const [reportPeriod, setReportPeriod] = useState("30d");
   const [transactionSearch, setTransactionSearch] = useState("");
@@ -281,6 +313,11 @@ const Dashboard = () => {
   const [statementFile, setStatementFile] = useState(null);
   const [statementImportResult, setStatementImportResult] = useState(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
+  const [payrollMonth, setPayrollMonth] = useState(
+    () => new Date().toISOString().slice(0, 7),
+  );
+  const [payrollEmployeeTypeFilter, setPayrollEmployeeTypeFilter] = useState("all");
+  const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] = useState("all");
 
   const loadAll = useCallback(
     async (workspaceId) => {
@@ -391,6 +428,60 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
     }
   }, [currentWorkspace?.id, loadAll]);
+
+  const loadPayrollData = useCallback(
+    async (workspaceId) => {
+      if (!workspaceId) return;
+      setPayrollLoading(true);
+      try {
+        const employeeParams = {};
+        if (payrollEmployeeTypeFilter !== "all") {
+          employeeParams.employee_type = payrollEmployeeTypeFilter;
+        }
+        const attendanceParams = { month: payrollMonth };
+        if (payrollEmployeeTypeFilter !== "all") {
+          attendanceParams.employee_type = payrollEmployeeTypeFilter;
+        }
+        const reportParams = { month: payrollMonth };
+        if (payrollEmployeeTypeFilter !== "all") {
+          reportParams.employee_type = payrollEmployeeTypeFilter;
+        }
+        if (payrollPaymentCycleFilter !== "all") {
+          reportParams.payment_cycle = payrollPaymentCycleFilter;
+        }
+
+        const [employeesResponse, attendanceResponse, reportResponse] = await Promise.all([
+          payrollService.getEmployees(workspaceId, employeeParams),
+          payrollService.getAttendance(workspaceId, attendanceParams),
+          payrollService.getPayrollReport(workspaceId, reportParams),
+        ]);
+
+        setEmployees(employeesResponse || []);
+        setAttendanceRecords(attendanceResponse?.items || []);
+        setPayrollReport(reportResponse || null);
+      } catch (error) {
+        toast({
+          title: "Erro ao carregar funcionarios",
+          description: "Nao consegui carregar os dados de ponto e folha agora.",
+          variant: "destructive",
+        });
+      } finally {
+        setPayrollLoading(false);
+      }
+    },
+    [
+      payrollEmployeeTypeFilter,
+      payrollMonth,
+      payrollPaymentCycleFilter,
+      toast,
+    ],
+  );
+
+  useEffect(() => {
+    if (activeSection === "employees" && currentWorkspace?.id) {
+      loadPayrollData(currentWorkspace.id);
+    }
+  }, [activeSection, currentWorkspace?.id, loadPayrollData]);
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -726,6 +817,90 @@ const Dashboard = () => {
     }
   };
 
+  const submitEmployee = async (event) => {
+    event.preventDefault();
+    if (!currentWorkspace?.id) return;
+    try {
+      await payrollService.createEmployee(currentWorkspace.id, {
+        ...employeeForm,
+        salary: Number(employeeForm.salary || 0),
+        inss_percent:
+          employeeForm.employee_type === "clt"
+            ? Number(employeeForm.inss_percent || 0)
+            : 0,
+      });
+      setEmployeeForm(initialEmployeeForm);
+      await loadPayrollData(currentWorkspace.id);
+      toast({
+        title: "Funcionario cadastrado",
+        description: "O cadastro foi salvo e ja entrou no modulo de folha.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao cadastrar funcionario",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui salvar esse funcionario agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitAttendance = async (event) => {
+    event.preventDefault();
+    if (!currentWorkspace?.id) return;
+    if (!attendanceForm.employee_id || !attendanceForm.date) {
+      toast({
+        title: "Dados incompletos",
+        description: "Selecione funcionario e data para registrar o ponto.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await payrollService.registerAttendance(currentWorkspace.id, {
+        employee_id: attendanceForm.employee_id,
+        date: new Date(`${attendanceForm.date}T09:00:00`).toISOString(),
+        status: attendanceForm.status,
+        notes: attendanceForm.notes,
+      });
+      setAttendanceForm((prev) => ({ ...prev, notes: "" }));
+      await loadPayrollData(currentWorkspace.id);
+      toast({
+        title: "Ponto registrado",
+        description: "Presenca/falta registrada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao registrar ponto",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui registrar este ponto agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deactivateEmployee = async (employeeId) => {
+    if (!currentWorkspace?.id) return;
+    try {
+      await payrollService.deleteEmployee(currentWorkspace.id, employeeId, false);
+      await loadPayrollData(currentWorkspace.id);
+      toast({
+        title: "Funcionario desativado",
+        description: "Ele nao entra mais nos proximos fechamentos.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao desativar funcionario",
+        description:
+          error?.response?.data?.detail ||
+          "Nao foi possivel desativar o funcionario.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveCompanySettings = async (event) => {
     event.preventDefault();
 
@@ -1011,6 +1186,9 @@ const Dashboard = () => {
   const reportMessage =
     report?.savings_suggestion?.message ||
     "O Nano cruza receitas, despesas, contas e recorrencias para sugerir ajustes de rota no financeiro.";
+  const payrollSummary = payrollReport?.summary || {};
+  const payrollGroups = payrollReport?.groups || { clt: [], contract: [] };
+  const todayDateValue = new Date().toISOString().slice(0, 10);
 
   const renderOverview = () => (
     <SectionLayout
@@ -1645,6 +1823,358 @@ const Dashboard = () => {
           />
         )}
       </SurfacePanel>
+    </SectionLayout>
+  );
+
+  const renderEmployees = () => (
+    <SectionLayout
+      rail={
+        <OnboardingRail
+          steps={onboardingSteps}
+          percent={completionPercent}
+          completedSteps={completedSteps}
+        />
+      }
+    >
+      <PageHeader
+        eyebrow="Funcionarios e Folha"
+        title="Ponto, presenca, faltas e pagamento"
+        description="Cadastre equipe CLT e contrato, registre presenca/falta por dia e feche a estimativa do mes com desconto de faltas e INSS."
+        action={
+          <Button
+            type="button"
+            onClick={() => loadPayrollData(currentWorkspace.id)}
+            className={`h-12 ${actionButtonClass}`}
+          >
+            Atualizar folha
+          </Button>
+        }
+      />
+
+      <SurfacePanel title="Cadastro de funcionario">
+        <form onSubmit={submitEmployee} className="grid gap-3 xl:grid-cols-6">
+          <Input
+            placeholder="Nome completo"
+            value={employeeForm.name}
+            onChange={(event) =>
+              setEmployeeForm({ ...employeeForm, name: event.target.value })
+            }
+            className={`${pageFieldClass} xl:col-span-2`}
+          />
+          <Input
+            placeholder="CPF"
+            value={employeeForm.cpf}
+            onChange={(event) =>
+              setEmployeeForm({ ...employeeForm, cpf: event.target.value })
+            }
+            className={pageFieldClass}
+          />
+          <Input
+            placeholder="Funcao"
+            value={employeeForm.role}
+            onChange={(event) =>
+              setEmployeeForm({ ...employeeForm, role: event.target.value })
+            }
+            className={pageFieldClass}
+          />
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Salario"
+            value={employeeForm.salary}
+            onChange={(event) =>
+              setEmployeeForm({ ...employeeForm, salary: event.target.value })
+            }
+            className={pageFieldClass}
+          />
+          <select
+            className={pageFieldClass}
+            value={employeeForm.employee_type}
+            onChange={(event) =>
+              setEmployeeForm({
+                ...employeeForm,
+                employee_type: event.target.value,
+              })
+            }
+          >
+            <option value="clt">Carteira (CLT)</option>
+            <option value="contract">Contrato/Terceirizado</option>
+          </select>
+          <select
+            className={pageFieldClass}
+            value={employeeForm.payment_cycle}
+            onChange={(event) =>
+              setEmployeeForm({
+                ...employeeForm,
+                payment_cycle: event.target.value,
+              })
+            }
+          >
+            <option value="monthly">Mensal</option>
+            <option value="biweekly">Quinzenal</option>
+          </select>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            disabled={employeeForm.employee_type !== "clt"}
+            placeholder="% INSS (CLT)"
+            value={employeeForm.inss_percent}
+            onChange={(event) =>
+              setEmployeeForm({
+                ...employeeForm,
+                inss_percent: event.target.value,
+              })
+            }
+            className={pageFieldClass}
+          />
+          <Input
+            placeholder="Observacoes (opcional)"
+            value={employeeForm.notes}
+            onChange={(event) =>
+              setEmployeeForm({ ...employeeForm, notes: event.target.value })
+            }
+            className={`${pageFieldClass} xl:col-span-2`}
+          />
+          <Button type="submit" className={`h-12 xl:col-span-1 ${actionButtonClass}`}>
+            Cadastrar
+          </Button>
+        </form>
+      </SurfacePanel>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
+        <SurfacePanel title="Registro de presenca/falta">
+          <form onSubmit={submitAttendance} className="grid gap-3 md:grid-cols-4">
+            <select
+              className={pageFieldClass}
+              value={attendanceForm.employee_id}
+              onChange={(event) =>
+                setAttendanceForm({
+                  ...attendanceForm,
+                  employee_id: event.target.value,
+                })
+              }
+            >
+              <option value="">Selecione funcionario</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name} - {employee.role}
+                </option>
+              ))}
+            </select>
+            <Input
+              type="date"
+              value={attendanceForm.date}
+              onChange={(event) =>
+                setAttendanceForm({ ...attendanceForm, date: event.target.value })
+              }
+              max={todayDateValue}
+              className={pageFieldClass}
+            />
+            <select
+              className={pageFieldClass}
+              value={attendanceForm.status}
+              onChange={(event) =>
+                setAttendanceForm({
+                  ...attendanceForm,
+                  status: event.target.value,
+                })
+              }
+            >
+              <option value="present">Presenca</option>
+              <option value="absent">Falta</option>
+            </select>
+            <Button type="submit" className={`h-12 ${actionButtonClass}`}>
+              Registrar
+            </Button>
+          </form>
+          <div className="mt-4">
+            <Input
+              placeholder="Observacao do ponto (opcional)"
+              value={attendanceForm.notes}
+              onChange={(event) =>
+                setAttendanceForm({ ...attendanceForm, notes: event.target.value })
+              }
+              className={pageFieldClass}
+            />
+          </div>
+          <div className="mt-5 space-y-2">
+            {attendanceRecords.slice(0, 5).map((record) => (
+              <InfoRow
+                key={record.id}
+                title={`${record.employee_name || "Funcionario"} - ${
+                  record.status === "absent" ? "Falta" : "Presenca"
+                }`}
+                subtitle={new Date(record.date).toLocaleDateString("pt-BR")}
+                value={record.employee_type === "clt" ? "CLT" : "Contrato"}
+              />
+            ))}
+            {!attendanceRecords.length && (
+              <CenteredEmptyState
+                icon={CalendarDays}
+                title="Sem registros no periodo"
+                description="Registre presenca e falta para alimentar o calculo da folha."
+              />
+            )}
+          </div>
+        </SurfacePanel>
+
+        <SurfacePanel title={`Resumo da folha - ${payrollReport?.month || payrollMonth}`}>
+          {payrollLoading ? (
+            <p className="text-sm text-zinc-400">Calculando folha...</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <StatMiniCard
+                label="Funcionarios"
+                value={String(payrollSummary.employees || 0)}
+              />
+              <StatMiniCard
+                label="Faltas no mes"
+                value={String(payrollSummary.absent_days || 0)}
+              />
+              <StatMiniCard
+                label="Bruto"
+                value={currencyFormatter.format(payrollSummary.gross_salary || 0)}
+              />
+              <StatMiniCard
+                label="Liquido estimado"
+                value={currencyFormatter.format(payrollSummary.net_payable || 0)}
+              />
+              <StatMiniCard
+                label="Desconto faltas"
+                value={currencyFormatter.format(payrollSummary.absence_discount || 0)}
+              />
+              <StatMiniCard
+                label="Desconto INSS"
+                value={currencyFormatter.format(payrollSummary.inss_discount || 0)}
+              />
+            </div>
+          )}
+        </SurfacePanel>
+      </div>
+
+      <SurfacePanel
+        title="Equipe cadastrada"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Input
+              type="month"
+              value={payrollMonth}
+              onChange={(event) => setPayrollMonth(event.target.value)}
+              className="h-11 w-[160px] rounded-2xl border border-red-500/12 bg-black/20 px-3 text-sm text-zinc-100"
+            />
+            <select
+              className="h-11 rounded-2xl border border-red-500/12 bg-black/20 px-3 text-sm text-zinc-100"
+              value={payrollEmployeeTypeFilter}
+              onChange={(event) => setPayrollEmployeeTypeFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              <option value="clt">CLT</option>
+              <option value="contract">Contrato</option>
+            </select>
+            <select
+              className="h-11 rounded-2xl border border-red-500/12 bg-black/20 px-3 text-sm text-zinc-100"
+              value={payrollPaymentCycleFilter}
+              onChange={(event) => setPayrollPaymentCycleFilter(event.target.value)}
+            >
+              <option value="all">Ciclo: padrao</option>
+              <option value="monthly">Mensal</option>
+              <option value="biweekly">Quinzenal</option>
+            </select>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {employees.length ? (
+            employees.map((employee) => (
+              <div
+                key={employee.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-red-500/10 bg-black/20 p-4"
+              >
+                <div>
+                  <p className="font-semibold text-white">{employee.name}</p>
+                  <p className="text-sm text-zinc-400">
+                    {employee.role} • CPF {employee.cpf}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="border border-red-500/20 bg-red-500/10 text-red-100">
+                    {employee.employee_type === "clt" ? "CLT" : "Contrato"}
+                  </Badge>
+                  <Badge className="border border-white/10 bg-black/30 text-zinc-200">
+                    {employee.payment_cycle === "biweekly" ? "Quinzenal" : "Mensal"}
+                  </Badge>
+                  <Badge className="border border-white/10 bg-black/30 text-zinc-200">
+                    {currencyFormatter.format(employee.salary || 0)}
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => deactivateEmployee(employee.id)}
+                    className="h-9 rounded-xl border border-red-500/20 bg-black/20 px-3 text-xs text-zinc-200 hover:bg-red-500/10"
+                  >
+                    Desativar
+                  </Button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <CenteredEmptyState
+              icon={Users2}
+              title="Nenhum funcionario cadastrado"
+              description="Cadastre os funcionarios para iniciar o controle de ponto e folha."
+            />
+          )}
+        </div>
+      </SurfacePanel>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SurfacePanel title="Relatorio CLT">
+          {payrollGroups.clt?.length ? (
+            <div className="space-y-3">
+              {payrollGroups.clt.map((item) => (
+                <InfoRow
+                  key={item.employee_id}
+                  title={`${item.name} • Presencas: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  subtitle={`INSS ${item.inss_percent}% • Desconto faltas ${currencyFormatter.format(
+                    item.absence_discount || 0,
+                  )}`}
+                  value={currencyFormatter.format(item.net_month_estimated || 0)}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={CalendarDays}
+              title="Sem dados CLT neste periodo"
+              description="Nao ha funcionarios CLT ou registros para o mes selecionado."
+            />
+          )}
+        </SurfacePanel>
+        <SurfacePanel title="Relatorio Contrato/Terceirizado">
+          {payrollGroups.contract?.length ? (
+            <div className="space-y-3">
+              {payrollGroups.contract.map((item) => (
+                <InfoRow
+                  key={item.employee_id}
+                  title={`${item.name} • Presencas: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  subtitle={`Diaria ${currencyFormatter.format(item.daily_rate || 0)} • Desconto faltas ${currencyFormatter.format(
+                    item.absence_discount || 0,
+                  )}`}
+                  value={currencyFormatter.format(item.net_month_estimated || 0)}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={CalendarDays}
+              title="Sem dados de contrato neste periodo"
+              description="Nao ha terceirizados ou registros para o mes selecionado."
+            />
+          )}
+        </SurfacePanel>
+      </div>
     </SectionLayout>
   );
 
@@ -2448,6 +2978,7 @@ const Dashboard = () => {
       />
     ),
     contacts: renderContacts(),
+    employees: renderEmployees(),
     reports: (
       <ReportsSection
         currencyFormatter={currencyFormatter}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
@@ -39,13 +39,7 @@ const DashboardEnhanced = () => {
   const [tasksStats, setTasksStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (currentWorkspace) {
-      fetchAllStats();
-    }
-  }, [currentWorkspace]);
-
-  const fetchAllStats = async () => {
+  const fetchAllStats = useCallback(async () => {
     if (!currentWorkspace) return;
     
     try {
@@ -61,7 +55,13 @@ const DashboardEnhanced = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace]);
+
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchAllStats();
+    }
+  }, [currentWorkspace, fetchAllStats]);
 
   const handleLogout = () => {
     logout();

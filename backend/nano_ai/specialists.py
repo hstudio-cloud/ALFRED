@@ -192,17 +192,44 @@ class SpecialistBase:
     def extract_datetime(self, original_message: str) -> Optional[datetime]:
         message_lower = self.normalize_text(original_message)
         now = datetime.utcnow()
+        parsed_base: Optional[datetime] = None
+        default_hour = 9
+        default_minute = 0
+
+        def extract_time_parts(text: str) -> Optional[tuple[int, int]]:
+            contextual = re.search(r"\b(?:as|a|às)\s*(\d{1,2})(?:[:h](\d{1,2}))?\b", text)
+            if contextual:
+                hour = int(contextual.group(1))
+                minute = int(contextual.group(2) or 0)
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    return hour, minute
+
+            compact = re.search(r"\b(\d{1,2})h(\d{1,2})?\b", text)
+            if compact:
+                hour = int(compact.group(1))
+                minute = int(compact.group(2) or 0)
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    return hour, minute
+
+            clock = re.search(r"\b(\d{1,2}):(\d{2})\b", text)
+            if clock:
+                hour = int(clock.group(1))
+                minute = int(clock.group(2))
+                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                    return hour, minute
+            return None
 
         if "depois de amanha" in message_lower:
-            return (now + timedelta(days=2)).replace(hour=9, minute=0, second=0, microsecond=0)
-        if "amanha" in message_lower:
-            return (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-        if "hoje" in message_lower:
-            return now.replace(hour=18, minute=0, second=0, microsecond=0)
-        if "semana que vem" in message_lower:
-            return (now + timedelta(days=7)).replace(hour=9, minute=0, second=0, microsecond=0)
-        if "mes que vem" in message_lower:
-            return (now + timedelta(days=30)).replace(hour=9, minute=0, second=0, microsecond=0)
+            parsed_base = now + timedelta(days=2)
+        elif "amanha" in message_lower:
+            parsed_base = now + timedelta(days=1)
+        elif "hoje" in message_lower:
+            parsed_base = now
+            default_hour = 18
+        elif "semana que vem" in message_lower:
+            parsed_base = now + timedelta(days=7)
+        elif "mes que vem" in message_lower:
+            parsed_base = now + timedelta(days=30)
 
         date_match = re.search(r"\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b", message_lower)
         if date_match:
@@ -213,13 +240,19 @@ class SpecialistBase:
             if year < 100:
                 year += 2000
             try:
-                parsed = datetime(year, month, day, 9, 0, 0)
+                parsed = datetime(year, month, day, default_hour, default_minute, 0)
                 if not year_part and parsed < now:
-                    parsed = datetime(year + 1, month, day, 9, 0, 0)
-                return parsed
+                    parsed = datetime(year + 1, month, day, default_hour, default_minute, 0)
+                parsed_base = parsed
             except ValueError:
                 return None
-        return None
+
+        if parsed_base is None:
+            return None
+
+        time_parts = extract_time_parts(message_lower)
+        hour, minute = time_parts if time_parts else (default_hour, default_minute)
+        return parsed_base.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     def detect_payment_method(self, message_lower: str) -> str:
         if "pix" in message_lower:
@@ -460,6 +493,7 @@ class NavigationSpecialist(SpecialistBase):
         "banks": ["bancos", "banco", "contas bancarias", "conta bancaria", "instituicoes"],
         "cards": ["cartoes", "cartao", "fatura", "faturas", "limite"],
         "contacts": ["contatos", "clientes", "fornecedores", "pagadores"],
+        "employees": ["funcionarios", "funcionario", "colaboradores", "colaborador", "folha", "ponto"],
         "reports": ["relatorios", "relatorio", "analises", "dre", "fluxo de caixa"],
         "company": ["empresa", "configuracoes da empresa", "workspace", "dados da empresa"],
         "profile": ["perfil", "usuario", "minha conta"],
@@ -530,7 +564,7 @@ class ReminderSpecialist(SpecialistBase):
 
     def extract_reminder_title(self, cleaned_message: str) -> str:
         title = re.sub(
-            r"(?i)\b(criar|crie|cria|adicione|registrar|registre|lembrete|lembrar|lembre[- ]?me|nao esquecer|nao me deixe esquecer|avise)\b",
+            r"(?i)\b(criar|crie|cria|adicione|registrar|registre|lembrete|lembrar|lembre[- ]?me|nao esquecer|nao me deixe esquecer|avise|agendar|agende|marcar|marque)\b",
             "",
             cleaned_message,
         ).strip(" ,.-:")
@@ -540,18 +574,27 @@ class ReminderSpecialist(SpecialistBase):
         for token in ["amanha", "hoje", "depois de amanha", "semana que vem", "mes que vem"]:
             title = re.sub(rf"(?i)\b{re.escape(token)}\b", "", title).strip(" ,.-:")
 
+        title = re.sub(r"(?i)\b(pra mim|para mim)\b", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\b(?:as|a|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?\b", "", title).strip(" ,.-:")
+        title = re.sub(r"\b\d{1,2}h\d{0,2}\b", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\btenho\s+(uma|um)\b", "", title).strip(" ,.-:")
         title = re.sub(r"\b\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?\b", "", title).strip(" ,.-:")
         title = re.sub(r"(?i)^de\s+", "", title).strip(" ,.-:")
+        title = re.sub(r"\s+", " ", title).strip(" ,.-:")
         return title or "Lembrete financeiro"
 
     def detect(self, message: str) -> List[NanoAction]:
         cleaned_message = self.clean_command_prefix(message)
         message_lower = self.normalize_text(cleaned_message)
-        reminder_keywords = ["lembrar", "lembre-me", "lembrete", "nao esquecer", "avise"]
-        if not any(word in message_lower for word in reminder_keywords):
+        reminder_keywords = ["lembrar", "lembre-me", "lembrete", "nao esquecer", "avise", "agendar", "agende", "marcar", "marque"]
+        agenda_context_keywords = ["reuniao", "compromisso", "consulta", "evento", "agenda"]
+        has_intent = any(word in message_lower for word in reminder_keywords)
+        has_context = any(word in message_lower for word in agenda_context_keywords)
+        remind_at = self.extract_datetime(cleaned_message)
+
+        if not has_intent and not (has_context and remind_at is not None):
             return []
 
-        remind_at = self.extract_datetime(cleaned_message)
         assumptions = []
         if remind_at is None:
             remind_at = (datetime.utcnow() + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
@@ -572,6 +615,180 @@ class ReminderSpecialist(SpecialistBase):
                 confidence=0.86,
             )
         ]
+
+
+class PayrollSpecialist(SpecialistBase):
+    name = "payroll"
+
+    def _extract_cpf(self, text: str) -> Optional[str]:
+        match = re.search(r"\b(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\b", text)
+        if not match:
+            return None
+        return match.group(1)
+
+    def _extract_inss_percent(self, message_lower: str) -> Optional[float]:
+        patterns = [
+            r"inss\s*(?:de|:)?\s*(\d+(?:[.,]\d+)?)\s*%",
+            r"(\d+(?:[.,]\d+)?)\s*%\s*(?:de\s*)?inss",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, message_lower)
+            if not match:
+                continue
+            try:
+                return float(match.group(1).replace(",", "."))
+            except ValueError:
+                continue
+        return None
+
+    def _extract_name(self, cleaned_message: str) -> Optional[str]:
+        patterns = [
+            r"nome\s+([a-zA-ZÀ-ÿ\s]{3,})",
+            r"funcionario\s+([a-zA-ZÀ-ÿ\s]{3,})",
+            r"colaborador\s+([a-zA-ZÀ-ÿ\s]{3,})",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, cleaned_message, flags=re.IGNORECASE)
+            if not match:
+                continue
+            name = match.group(1)
+            name = re.split(r"\b(cpf|funcao|cargo|salario|clt|carteira|contrato|inss)\b", name, flags=re.IGNORECASE)[0]
+            name = re.sub(r"\s+", " ", name).strip(" ,.-:")
+            if len(name) >= 3:
+                return name.title()
+        return None
+
+    def _extract_role(self, cleaned_message: str) -> Optional[str]:
+        match = re.search(
+            r"(?:funcao|cargo)\s+(?:de\s+)?([a-zA-ZÀ-ÿ0-9\s]{2,})",
+            cleaned_message,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        role = re.split(r"\b(cpf|salario|clt|carteira|contrato|inss)\b", match.group(1), flags=re.IGNORECASE)[0]
+        role = re.sub(r"\s+", " ", role).strip(" ,.-:")
+        return role.title() if role else None
+
+    def _extract_month(self, message_lower: str) -> Optional[str]:
+        direct = re.search(r"\b(\d{4})-(\d{2})\b", message_lower)
+        if direct:
+            return f"{direct.group(1)}-{direct.group(2)}"
+
+        slash = re.search(r"\b(\d{1,2})\/(\d{4})\b", message_lower)
+        if slash:
+            month = int(slash.group(1))
+            if 1 <= month <= 12:
+                return f"{slash.group(2)}-{month:02d}"
+        return None
+
+    def detect(self, message: str) -> List[NanoAction]:
+        cleaned_message = self.clean_command_prefix(message)
+        message_lower = self.normalize_text(cleaned_message)
+        actions: List[NanoAction] = []
+
+        employee_keywords = [
+            "cadastrar funcionario",
+            "cadastrar colaborador",
+            "novo funcionario",
+            "novo colaborador",
+            "criar funcionario",
+            "registrar funcionario",
+            "registrar colaborador",
+        ]
+        attendance_keywords = [
+            "marcar presenca",
+            "registrar presenca",
+            "registrar ponto",
+            "marcar ponto",
+            "marcar falta",
+            "registrar falta",
+            "funcionario faltou",
+            "colaborador faltou",
+        ]
+        report_keywords = [
+            "relatorio de presenca",
+            "relatorio de falta",
+            "folha de pagamento",
+            "calcular folha",
+            "fechamento da folha",
+            "resumo da folha",
+            "pagamento do mes",
+            "relatorio de ponto",
+        ]
+
+        if any(keyword in message_lower for keyword in employee_keywords):
+            employee_type = "contract" if any(token in message_lower for token in ["contrato", "terceirizado"]) else "clt"
+            payment_cycle = "biweekly" if any(token in message_lower for token in ["quinzena", "quinzenal"]) else "monthly"
+            amount = self.extract_amount(message_lower)
+            data = {
+                "name": self._extract_name(cleaned_message),
+                "cpf": self._extract_cpf(cleaned_message),
+                "role": self._extract_role(cleaned_message),
+                "salary": amount,
+                "employee_type": employee_type,
+                "payment_cycle": payment_cycle,
+                "inss_percent": self._extract_inss_percent(message_lower),
+                "notes": cleaned_message,
+                "detected": True,
+            }
+            missing_fields = [field for field in ["name", "cpf", "role", "salary"] if not data.get(field)]
+            data["missing_fields"] = missing_fields
+            actions.append(
+                NanoAction(
+                    type="create_employee",
+                    data=data,
+                    confidence=0.9,
+                )
+            )
+
+        if any(keyword in message_lower for keyword in attendance_keywords):
+            status = "absent" if any(token in message_lower for token in ["falta", "faltou", "ausente"]) else "present"
+            attendance_date = self.extract_datetime(cleaned_message) or datetime.utcnow()
+            employee_reference = self._extract_cpf(cleaned_message) or self._extract_name(cleaned_message)
+            missing_fields = [] if employee_reference else ["employee_reference"]
+            actions.append(
+                NanoAction(
+                    type="register_attendance",
+                    data={
+                        "employee_reference": employee_reference,
+                        "status": status,
+                        "date": attendance_date.isoformat(),
+                        "notes": cleaned_message,
+                        "missing_fields": missing_fields,
+                        "detected": True,
+                    },
+                    confidence=0.88,
+                )
+            )
+
+        if any(keyword in message_lower for keyword in report_keywords):
+            employee_type = None
+            if any(token in message_lower for token in ["carteira", "clt"]):
+                employee_type = "clt"
+            elif any(token in message_lower for token in ["contrato", "terceirizado"]):
+                employee_type = "contract"
+
+            payment_cycle = None
+            if any(token in message_lower for token in ["quinzena", "quinzenal"]):
+                payment_cycle = "biweekly"
+            elif "mensal" in message_lower:
+                payment_cycle = "monthly"
+
+            actions.append(
+                NanoAction(
+                    type="generate_payroll_report",
+                    data={
+                        "month": self._extract_month(message_lower),
+                        "employee_type": employee_type,
+                        "payment_cycle": payment_cycle,
+                        "detected": True,
+                    },
+                    confidence=0.86,
+                )
+            )
+
+        return actions
 
 
 class ProductivitySpecialist(SpecialistBase):

@@ -76,6 +76,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
   let currentAudio = null;
   let currentUtterance = null;
   let backendCaptureSession = null;
+  let premiumUnavailable = false;
 
   return {
     type: 'browser-fallback',
@@ -343,7 +344,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       const speechText = sanitizeSpeechText(text);
       onStart?.();
 
-      if (preferPremium) {
+      if (preferPremium && !premiumUnavailable) {
         if (voiceService.isMiniMaxConfigured()) {
           try {
             await voiceService.speakWithMiniMax(speechText, {
@@ -351,6 +352,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
               onEnd,
               onError
             });
+            premiumUnavailable = false;
             return 'minimax';
           } catch (error) {
             // MiniMax e uma camada opcional. Se falhar, preservamos o chat e seguimos no TTS atual.
@@ -371,18 +373,24 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
           currentAudio.onended = () => {
             URL.revokeObjectURL(blobUrl);
             currentAudio = null;
+            premiumUnavailable = false;
             onEnd?.('backend');
           };
 
           currentAudio.onerror = () => {
             URL.revokeObjectURL(blobUrl);
             currentAudio = null;
+            premiumUnavailable = true;
             this.speakWithBrowser(speechText, { onEnd, onError });
           };
 
           await currentAudio.play();
           return 'backend';
         } catch (error) {
+          const statusCode = error?.response?.status;
+          if ([401, 402, 403, 404, 429, 500, 503].includes(statusCode)) {
+            premiumUnavailable = true;
+          }
           return this.speakWithBrowser(speechText, { onEnd, onError });
         }
       }

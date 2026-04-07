@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -56,13 +56,7 @@ const Clients = () => {
     notes: '',
   });
 
-  useEffect(() => {
-    if (currentWorkspace) {
-      fetchClients();
-    }
-  }, [currentWorkspace, searchTerm, statusFilter]);
-
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     if (!currentWorkspace) return;
 
     try {
@@ -85,7 +79,13 @@ const Clients = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWorkspace, searchTerm, statusFilter, toast]);
+
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchClients();
+    }
+  }, [currentWorkspace, fetchClients]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

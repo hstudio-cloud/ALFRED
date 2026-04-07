@@ -2,14 +2,24 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from database import (
+    attendance_collection,
     bills_collection,
     categories_collection,
+    employees_collection,
     reminders_collection,
     tasks_collection,
     transactions_collection,
 )
 from models import Transaction
-from models_extended import Bill, FinancialCategory, ReminderFinancial
+from models_extended import AttendanceRecord, Bill, Employee, FinancialCategory, ReminderFinancial
+from payroll_service import (
+    build_payroll_report,
+    month_window,
+    normalize_attendance_status,
+    normalize_employee_type,
+    normalize_payment_cycle,
+    truncate_day,
+)
 
 
 class NanoActionRunner:
@@ -33,6 +43,12 @@ class NanoActionRunner:
         if not value:
             return "-"
         return value.strftime("%d/%m/%Y %H:%M")
+
+    @staticmethod
+    def _normalize_cpf(value: Optional[str]) -> str:
+        if not value:
+            return ""
+        return "".join(ch for ch in str(value) if ch.isdigit())
 
     @staticmethod
     def _day_bounds(period: str = "today") -> tuple[datetime, datetime, str]:
@@ -376,6 +392,231 @@ class NanoActionRunner:
             },
         }
 
+    async def _resolve_employee_by_reference(self, workspace_id: str, reference: Optional[str]) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+        if not reference:
+            return None, "Informe qual funcionario devo usar (nome ou CPF)."
+
+        normalized_reference = reference.strip()
+        cpf_reference = self._normalize_cpf(normalized_reference)
+
+        if cpf_reference:
+            employees = await employees_collection.find(
+                {"workspace_id": workspace_id, "active": True}
+            ).to_list(2000)
+            for employee in employees:
+                if self._normalize_cpf(employee.get("cpf")) == cpf_reference:
+                    return employee, None
+
+        by_name = await employees_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "active": True,
+                "name": {"$regex": normalized_reference, "$options": "i"},
+            }
+        ).to_list(20)
+        if not by_name:
+            return None, "Nao encontrei funcionario com esse nome/CPF."
+        if len(by_name) > 1:
+            options = ", ".join(item.get("name", "Sem nome") for item in by_name[:3])
+            return None, f"Encontrei mais de um funcionario. Seja mais especifico: {options}."
+        return by_name[0], None
+
+    async def _execute_create_employee_action(
+        self,
+        workspace_id: str,
+        current_user: Dict[str, Any],
+        action: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        data = action.get("data", {})
+        missing_fields = data.get("missing_fields", [])
+        if missing_fields:
+            labels = {
+                "name": "nome",
+                "cpf": "CPF",
+                "role": "funcao",
+                "salary": "salario",
+            }
+            readable = ", ".join(labels.get(item, item) for item in missing_fields)
+            return {
+                "type": "create_employee",
+                "status": "needs_input",
+                "message": f"Para cadastrar o funcionario, preciso de: {readable}.",
+                "data": data,
+            }
+
+        cpf = str(data.get("cpf") or "").strip()
+        existing = await employees_collection.find_one(
+            {"workspace_id": workspace_id, "cpf": cpf, "active": True}
+        )
+        if existing:
+            return {
+                "type": "create_employee",
+                "status": "needs_input",
+                "message": "Ja existe funcionario ativo com esse CPF.",
+                "data": data,
+            }
+
+        employee_type = normalize_employee_type(data.get("employee_type"))
+        payment_cycle = normalize_payment_cycle(data.get("payment_cycle"))
+        inss_percent = float(data.get("inss_percent") or 0.0) if employee_type == "clt" else 0.0
+
+        employee = Employee(
+            workspace_id=workspace_id,
+            user_id=current_user["id"],
+            name=str(data.get("name")).strip(),
+            cpf=cpf,
+            role=str(data.get("role")).strip(),
+            salary=float(data.get("salary") or 0.0),
+            employee_type=employee_type,
+            payment_cycle=payment_cycle,
+            inss_percent=inss_percent,
+            notes=data.get("notes"),
+        )
+        await employees_collection.insert_one(employee.dict())
+
+        employee_label = "CLT" if employee_type == "clt" else "Contrato"
+        inss_label = f" com INSS de {inss_percent:.2f}%" if employee_type == "clt" else ""
+        cycle_label = "quinzenal" if payment_cycle == "biweekly" else "mensal"
+        return {
+            "type": "create_employee",
+            "status": "executed",
+            "message": (
+                f"Funcionario {employee.name} cadastrado como {employee_label}, salario {self._format_brl(employee.salary)}, "
+                f"pagamento {cycle_label}{inss_label}."
+            ),
+            "data": employee.dict(),
+        }
+
+    async def _execute_register_attendance_action(
+        self,
+        workspace_id: str,
+        current_user: Dict[str, Any],
+        action: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        data = action.get("data", {})
+        if data.get("missing_fields"):
+            return {
+                "type": "register_attendance",
+                "status": "needs_input",
+                "message": "Me diga o nome ou CPF do funcionario para registrar o ponto.",
+                "data": data,
+            }
+
+        employee, resolve_error = await self._resolve_employee_by_reference(
+            workspace_id=workspace_id,
+            reference=data.get("employee_reference"),
+        )
+        if resolve_error:
+            return {
+                "type": "register_attendance",
+                "status": "needs_input",
+                "message": resolve_error,
+                "data": data,
+            }
+
+        attendance_date = self._parse_iso_datetime(data.get("date")) or datetime.utcnow()
+        day = truncate_day(attendance_date)
+        status = normalize_attendance_status(data.get("status"))
+
+        existing = await attendance_collection.find_one(
+            {"workspace_id": workspace_id, "employee_id": employee["id"], "date": day}
+        )
+        if existing:
+            await attendance_collection.update_one(
+                {"workspace_id": workspace_id, "id": existing["id"]},
+                {
+                    "$set": {
+                        "status": status,
+                        "notes": data.get("notes"),
+                        "updated_at": datetime.utcnow(),
+                    }
+                },
+            )
+            payload = await attendance_collection.find_one({"workspace_id": workspace_id, "id": existing["id"]})
+        else:
+            record = AttendanceRecord(
+                workspace_id=workspace_id,
+                user_id=current_user["id"],
+                employee_id=employee["id"],
+                date=day,
+                status=status,
+                notes=data.get("notes"),
+            )
+            await attendance_collection.insert_one(record.dict())
+            payload = record.dict()
+
+        status_label = "presenca" if status == "present" else "falta"
+        return {
+            "type": "register_attendance",
+            "status": "executed",
+            "message": f"Registrei {status_label} de {employee.get('name')} em {day.strftime('%d/%m/%Y')}.",
+            "data": payload,
+        }
+
+    async def _execute_generate_payroll_report_action(
+        self,
+        workspace_id: str,
+        action: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        data = action.get("data", {})
+        try:
+            month_label, month_start, month_end = month_window(data.get("month"))
+        except ValueError as exc:
+            return {
+                "type": "generate_payroll_report",
+                "status": "needs_input",
+                "message": str(exc),
+                "data": data,
+            }
+
+        employee_query: Dict[str, Any] = {"workspace_id": workspace_id, "active": True}
+        if data.get("employee_type"):
+            employee_query["employee_type"] = normalize_employee_type(data.get("employee_type"))
+        employees = await employees_collection.find(employee_query).to_list(5000)
+        if not employees:
+            return {
+                "type": "generate_payroll_report",
+                "status": "needs_input",
+                "message": "Ainda nao ha funcionarios ativos cadastrados para gerar esse relatorio.",
+                "data": data,
+            }
+
+        attendance = await attendance_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "employee_id": {"$in": [item["id"] for item in employees]},
+                "date": {"$gte": month_start, "$lt": month_end},
+            }
+        ).to_list(50000)
+
+        report = build_payroll_report(
+            employees=employees,
+            attendance_records=attendance,
+            month_start=month_start,
+            month_end=month_end,
+            company_payment_cycle=data.get("payment_cycle"),
+        )
+
+        summary = report["summary"]
+        cycle = normalize_payment_cycle(data.get("payment_cycle")) if data.get("payment_cycle") else "padrao por funcionario"
+        message = (
+            f"Fechamento de {month_label}: {summary['employees']} funcionario(s), "
+            f"faltas {summary['absent_days']}, bruto {self._format_brl(summary['gross_salary'])}, "
+            f"descontos por falta {self._format_brl(summary['absence_discount'])}, "
+            f"INSS {self._format_brl(summary['inss_discount'])} e liquido estimado {self._format_brl(summary['net_payable'])}. "
+            f"Ciclo de pagamento considerado: {cycle}."
+        )
+
+        return {
+            "type": "generate_payroll_report",
+            "status": "executed",
+            "message": message,
+            "data": {
+                "month": month_label,
+                **report,
+            },
+        }
+
     async def execute_actions(
         self,
         workspace_id: str,
@@ -397,6 +638,12 @@ class NanoActionRunner:
                 results.append(await self._execute_navigation_action(action))
             elif action_type == "check_agenda":
                 results.append(await self._execute_agenda_action(workspace_id, current_user, action))
+            elif action_type == "create_employee":
+                results.append(await self._execute_create_employee_action(workspace_id, current_user, action))
+            elif action_type == "register_attendance":
+                results.append(await self._execute_register_attendance_action(workspace_id, current_user, action))
+            elif action_type == "generate_payroll_report":
+                results.append(await self._execute_generate_payroll_report_action(workspace_id, action))
         return results
 
     def compose_assistant_reply(

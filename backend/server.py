@@ -21,6 +21,7 @@ from routes import (
     dashboard_routes,
     finance_hub_routes,
     habit_routes,
+    payroll_routes,
     finance_routes,
     reports_routes,
     transactions_routes,
@@ -152,6 +153,7 @@ app.include_router(chat_routes.router)
 app.include_router(assistant_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(habit_routes.router)
+app.include_router(payroll_routes.router)
 app.include_router(finance_routes.router)
 app.include_router(finance_hub_routes.router)
 app.include_router(accounts_routes.router)

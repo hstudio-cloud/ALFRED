@@ -8,6 +8,7 @@ from .specialists import (
     FinanceOperationsSpecialist,
     InsightSpecialist,
     NavigationSpecialist,
+    PayrollSpecialist,
     ProductivitySpecialist,
     ReminderSpecialist,
 )
@@ -39,6 +40,9 @@ O que o Nano faz:
 - criar contas a pagar e a receber
 - criar lembretes financeiros
 - consultar agenda do dia, lembretes, contas e tarefas
+- cadastrar funcionarios CLT e contrato
+- registrar presenca e falta por data
+- gerar relatorio de ponto e estimativa de folha mensal/quinzenal
 - identificar categoria, metodo de pagamento e escopo pessoal ou empresa
 - analisar gastos, riscos e oportunidades de economia
 - navegar pelo sistema quando o usuario pedir uma area do painel
@@ -61,6 +65,7 @@ Regras de resposta:
             AgendaSpecialist(),
             NavigationSpecialist(),
             FinanceOperationsSpecialist(),
+            PayrollSpecialist(),
             ReminderSpecialist(),
             InsightSpecialist(),
             ProductivitySpecialist(),
@@ -151,6 +156,9 @@ Regras de resposta:
             "create_reminder": "reminders",
             "analyze_spending": "insights",
             "check_agenda": "agenda",
+            "create_employee": "payroll",
+            "register_attendance": "payroll",
+            "generate_payroll_report": "payroll",
             "create_task": "productivity",
             "create_habit": "productivity",
             "navigate": "navigation",
