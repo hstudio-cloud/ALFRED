@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Any, Dict, List
 
 from tools.orchestrator_tools import (
@@ -42,6 +43,7 @@ class NanoOrchestratorService:
     ) -> Dict[str, Any]:
         intent = self.classify_intent(message)
         tool_specs = self._tool_specs_for_intent(intent)
+        requires_tool = intent in {"system_action", "system_query", "web_research", "knowledge_lookup"}
         selected_tools = await self.llm.select_tools(
             message=message,
             intent=intent,
@@ -50,9 +52,17 @@ class NanoOrchestratorService:
 
         if not selected_tools:
             selected_tools = self._heuristic_tool_selection(message=message, intent=intent)
+        # Critical rule: if action/query/research intent, never answer without at least one tool.
+        if requires_tool and not selected_tools:
+            selected_tools = self._force_default_tool_selection(intent=intent, message=message)
 
         tool_results: Dict[str, Any] = {}
         used_tools: List[str] = []
+        tool_plan: List[Dict[str, Any]] = [
+            {"tool": item.get("name"), "input": item.get("arguments") or {}}
+            for item in selected_tools
+            if item.get("name")
+        ]
         followup_needed = False
         missing_fields: List[str] = []
 
@@ -79,6 +89,8 @@ class NanoOrchestratorService:
 
         if followup_needed:
             reply = await self.llm.ask_for_missing_data(message, missing_fields or ["dados"])
+        elif requires_tool:
+            reply = self._build_tool_grounded_reply(intent=intent, tool_results=tool_results)
         else:
             reply = await self.llm.respond_with_tool_results(
                 message=message,
@@ -89,6 +101,7 @@ class NanoOrchestratorService:
         return {
             "intent": intent,
             "used_tools": used_tools,
+            "tool_plan": tool_plan,
             "tool_results": tool_results,
             "message": reply,
             "followup_needed": followup_needed,
@@ -193,6 +206,17 @@ class NanoOrchestratorService:
             return [{"name": "search_internal_knowledge", "arguments": {"query": message}}]
         return []
 
+    def _force_default_tool_selection(self, *, intent: str, message: str) -> List[Dict[str, Any]]:
+        if intent == "web_research":
+            return [{"name": "search_web", "arguments": {"query": message}}]
+        if intent == "knowledge_lookup":
+            return [{"name": "search_internal_knowledge", "arguments": {"query": message}}]
+        if intent == "system_query":
+            return [{"name": "get_month_expenses", "arguments": {}}]
+        if intent == "system_action":
+            return [{"name": "create_transaction", "arguments": self._extract_transaction_args(message)}]
+        return []
+
     async def _execute_tool(
         self,
         *,
@@ -255,6 +279,67 @@ class NanoOrchestratorService:
             return await search_internal_knowledge(query=query)
 
         return None
+
+    def _build_tool_grounded_reply(self, *, intent: str, tool_results: Dict[str, Any]) -> str:
+        if intent == "web_research":
+            results = tool_results.get("search_web", {}) or {}
+            items = results.get("items") or []
+            if not items:
+                return "Pesquisei agora, mas nao encontrei resultados confiaveis. Posso refinar a busca com bairro ou tipo de local."
+            top = items[:5]
+            lines = ["Pesquisei agora e encontrei estes resultados reais:"]
+            for idx, item in enumerate(top, start=1):
+                title = item.get("title") or "Resultado"
+                description = item.get("description") or item.get("snippet") or "Sem descricao."
+                link = item.get("link") or item.get("url") or ""
+                lines.append(f"{idx}. {title} - {description} ({link})")
+            lines.append("Se quiser, eu filtro por melhor avaliacao, faixa de preco ou distancia.")
+            return "\n".join(lines)
+
+        if intent == "knowledge_lookup":
+            results = tool_results.get("search_internal_knowledge", {}) or {}
+            items = results.get("items") or []
+            if not items:
+                return "Consultei a base interna do Nano, mas nao achei essa informacao especifica. Posso te orientar com um fluxo padrao."
+            lines = ["Consultei a base interna do Nano e encontrei:"]
+            for idx, item in enumerate(items[:4], start=1):
+                lines.append(f"{idx}. {item.get('title')}: {item.get('content')}")
+            return "\n".join(lines)
+
+        if intent == "system_query":
+            if "get_cashflow" in tool_results:
+                result = tool_results["get_cashflow"] or {}
+                current = result.get("current_balance", 0)
+                forecasts = result.get("forecasts") or []
+                lines = [f"Consultei seu fluxo de caixa. Saldo atual: R$ {current:,.2f}."]
+                for row in forecasts[:3]:
+                    lines.append(
+                        f"{row.get('days')} dias -> saldo projetado R$ {float(row.get('projected_balance', 0)):,.2f}"
+                    )
+                return "\n".join(lines)
+            if "get_month_expenses" in tool_results:
+                result = tool_results["get_month_expenses"] or {}
+                return (
+                    f"Consultei as despesas do mes: R$ {float(result.get('total_expenses', 0)):,.2f} "
+                    f"em {int(result.get('count', 0))} movimentacoes."
+                )
+
+        if intent == "system_action":
+            if "create_reminder" in tool_results:
+                reminder = tool_results["create_reminder"] or {}
+                return (
+                    f"Lembrete criado com sucesso: {reminder.get('title', 'Lembrete')} "
+                    f"para {reminder.get('remind_at', 'horario informado')}."
+                )
+            if "create_transaction" in tool_results:
+                tx = tool_results["create_transaction"] or {}
+                tx_type = "receita" if tx.get("type") == "income" else "despesa"
+                return (
+                    f"{tx_type.capitalize()} registrada com sucesso: R$ {float(tx.get('amount', 0)):,.2f} "
+                    f"em {tx.get('category', 'Geral')}."
+                )
+
+        return "Acao executada com sucesso com base nos dados reais do sistema."
 
     def _extract_transaction_args(self, text: str) -> Dict[str, Any]:
         amount = 0.0

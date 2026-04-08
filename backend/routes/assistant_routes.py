@@ -191,6 +191,7 @@ async def assistant_orchestrate(payload: AssistantOrchestrateRequest, current_us
         return {
             "intent": result.get("intent", "general_chat"),
             "used_tools": result.get("used_tools", []),
+            "tool_plan": result.get("tool_plan", []),
             "tool_results": _sanitize_json_payload(result.get("tool_results", {})),
             "message": result.get("message", ""),
             "followup_needed": bool(result.get("followup_needed", False)),

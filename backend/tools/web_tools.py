@@ -39,6 +39,9 @@ async def web_search(query: str) -> Dict[str, Any]:
                 "items": [
                     {
                         "title": item.get("title"),
+                        "description": item.get("content"),
+                        "link": item.get("url"),
+                        # backward compatibility
                         "url": item.get("url"),
                         "snippet": item.get("content"),
                     }
@@ -69,6 +72,9 @@ async def web_search(query: str) -> Dict[str, Any]:
                 "items": [
                     {
                         "title": item.get("title"),
+                        "description": item.get("snippet"),
+                        "link": item.get("link"),
+                        # backward compatibility
                         "url": item.get("link"),
                         "snippet": item.get("snippet"),
                     }
@@ -96,7 +102,16 @@ async def web_search(query: str) -> Dict[str, Any]:
             href_part = chunk.split('href="', 1)[1]
             href = href_part.split('"', 1)[0]
             title = chunk.split(">", 1)[1].split("</a>", 1)[0]
-            items.append({"title": title.strip(), "url": href})
+            items.append(
+                {
+                    "title": title.strip(),
+                    "description": "",
+                    "link": href,
+                    # backward compatibility
+                    "url": href,
+                    "snippet": "",
+                }
+            )
         except Exception:
             continue
     return {"items": items, "provider": "duckduckgo"}
