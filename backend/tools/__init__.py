@@ -11,6 +11,13 @@ from .reports_tools import get_top_categories
 from .utility_tools import calculator, current_date_time
 from .web_tools import web_fetch, web_search
 from .workspace_tools import navigate_to_section, workspace_context
+from .orchestrator_tools import (
+    create_reminder as orchestrator_create_reminder,
+    create_transaction,
+    get_cashflow,
+    search_internal_knowledge,
+    search_web,
+)
 
 __all__ = [
     "get_account_balances",
@@ -26,7 +33,11 @@ __all__ = [
     "current_date_time",
     "web_fetch",
     "web_search",
+    "create_transaction",
+    "orchestrator_create_reminder",
+    "get_cashflow",
+    "search_web",
+    "search_internal_knowledge",
     "navigate_to_section",
     "workspace_context",
 ]
-

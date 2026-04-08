@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Any, Dict, List
 
 from openai import AsyncOpenAI
@@ -142,3 +143,84 @@ class LLMService:
             "consultar agenda e pesquisar na web quando voce pedir."
         )
 
+    async def select_tools(
+        self,
+        *,
+        message: str,
+        intent: str,
+        tools: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Use LLM tool-calling to decide which tools to execute."""
+        if not self.client or not tools:
+            return []
+
+        system_prompt = (
+            "Voce e o orquestrador do Nano IA. "
+            "Escolha ferramentas apenas quando houver ganho claro. "
+            "Se o pedido for conversa geral, nao chame ferramenta."
+        )
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": f"Intento classificado: {intent}\nPedido: {message}",
+                    },
+                ],
+                tools=tools,
+                tool_choice="auto",
+            )
+            choice = response.choices[0].message
+            selected = []
+            for tool_call in (choice.tool_calls or []):
+                raw_args = tool_call.function.arguments or "{}"
+                try:
+                    args = json.loads(raw_args)
+                except Exception:
+                    args = {}
+                selected.append(
+                    {
+                        "name": tool_call.function.name,
+                        "arguments": args,
+                    }
+                )
+            return selected
+        except Exception:
+            return []
+
+    async def respond_with_tool_results(
+        self,
+        *,
+        message: str,
+        intent: str,
+        tool_results: Dict[str, Any],
+    ) -> str:
+        if not self.client:
+            if tool_results:
+                return f"Conclui seu pedido com base nestes resultados: {tool_results}"
+            return "Entendi. Posso te ajudar com a proxima acao."
+        try:
+            response = await self.client.responses.create(
+                model=self.model,
+                input=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Voce e Nano IA. Responda em pt-BR, direto, claro e util. "
+                            "Confirme a acao e destaque o principal resultado."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Pedido: {message}\nIntent: {intent}\nResultados das tools: {tool_results}"
+                        ),
+                    },
+                ],
+            )
+            text = (getattr(response, "output_text", "") or "").strip()
+            return text or f"Conclui o pedido. Resultado: {tool_results}"
+        except Exception:
+            return f"Conclui o pedido. Resultado: {tool_results}"
