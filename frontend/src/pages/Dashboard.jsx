@@ -313,11 +313,13 @@ const Dashboard = () => {
   const [statementFile, setStatementFile] = useState(null);
   const [statementImportResult, setStatementImportResult] = useState(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
-  const [payrollMonth, setPayrollMonth] = useState(
-    () => new Date().toISOString().slice(0, 7),
+  const [payrollMonth, setPayrollMonth] = useState(() =>
+    new Date().toISOString().slice(0, 7),
   );
-  const [payrollEmployeeTypeFilter, setPayrollEmployeeTypeFilter] = useState("all");
-  const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] = useState("all");
+  const [payrollEmployeeTypeFilter, setPayrollEmployeeTypeFilter] =
+    useState("all");
+  const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] =
+    useState("all");
 
   const loadAll = useCallback(
     async (workspaceId) => {
@@ -450,11 +452,12 @@ const Dashboard = () => {
           reportParams.payment_cycle = payrollPaymentCycleFilter;
         }
 
-        const [employeesResponse, attendanceResponse, reportResponse] = await Promise.all([
-          payrollService.getEmployees(workspaceId, employeeParams),
-          payrollService.getAttendance(workspaceId, attendanceParams),
-          payrollService.getPayrollReport(workspaceId, reportParams),
-        ]);
+        const [employeesResponse, attendanceResponse, reportResponse] =
+          await Promise.all([
+            payrollService.getEmployees(workspaceId, employeeParams),
+            payrollService.getAttendance(workspaceId, attendanceParams),
+            payrollService.getPayrollReport(workspaceId, reportParams),
+          ]);
 
         setEmployees(employeesResponse || []);
         setAttendanceRecords(attendanceResponse?.items || []);
@@ -469,12 +472,7 @@ const Dashboard = () => {
         setPayrollLoading(false);
       }
     },
-    [
-      payrollEmployeeTypeFilter,
-      payrollMonth,
-      payrollPaymentCycleFilter,
-      toast,
-    ],
+    [payrollEmployeeTypeFilter, payrollMonth, payrollPaymentCycleFilter, toast],
   );
 
   useEffect(() => {
@@ -680,7 +678,12 @@ const Dashboard = () => {
   const refreshReport = async (period) => {
     setReportPeriod(period);
     try {
-      const [nextFinanceOverview, nextReportOverview, nextCategoryReport, nextAccountReport] = await Promise.all([
+      const [
+        nextFinanceOverview,
+        nextReportOverview,
+        nextCategoryReport,
+        nextAccountReport,
+      ] = await Promise.all([
         financeService.getOverview(currentWorkspace.id, {
           account_scope: financialView,
           period,
@@ -884,7 +887,11 @@ const Dashboard = () => {
   const deactivateEmployee = async (employeeId) => {
     if (!currentWorkspace?.id) return;
     try {
-      await payrollService.deleteEmployee(currentWorkspace.id, employeeId, false);
+      await payrollService.deleteEmployee(
+        currentWorkspace.id,
+        employeeId,
+        false,
+      );
       await loadPayrollData(currentWorkspace.id);
       toast({
         title: "Funcionario desativado",
@@ -1018,8 +1025,7 @@ const Dashboard = () => {
     [activeAccounts],
   );
   const cardLookup = useMemo(
-    () =>
-      Object.fromEntries(activeCards.map((card) => [card.id, card])),
+    () => Object.fromEntries(activeCards.map((card) => [card.id, card])),
     [activeCards],
   );
 
@@ -1060,7 +1066,8 @@ const Dashboard = () => {
   );
 
   const filteredTransactions = sortedTransactions.filter((transaction) => {
-    const text = `${transaction.description || ""} ${transaction.category || ""}`.toLowerCase();
+    const text =
+      `${transaction.description || ""} ${transaction.category || ""}`.toLowerCase();
     const searchMatch = text.includes(transactionSearch.toLowerCase());
     const typeMatch =
       transactionTypeFilter === "all" ||
@@ -1130,7 +1137,8 @@ const Dashboard = () => {
       date.setDate(start.getDate() + index);
       const dateKey = date.toISOString().slice(0, 10);
       const dayBills = openBills.filter(
-        (bill) => new Date(bill.due_date).toISOString().slice(0, 10) === dateKey,
+        (bill) =>
+          new Date(bill.due_date).toISOString().slice(0, 10) === dateKey,
       );
       return {
         label: date.getDate(),
@@ -1277,14 +1285,19 @@ const Dashboard = () => {
               <SummaryRow
                 label="Volume no periodo"
                 value={currencyFormatter.format(
-                  cardTransactions.reduce((total, item) => total + item.amount, 0),
+                  cardTransactions.reduce(
+                    (total, item) => total + item.amount,
+                    0,
+                  ),
                 )}
               />
               <SummaryRow
                 label="Maior fatura projetada"
                 value={currencyFormatter.format(
                   Math.max(
-                    ...cardTransactions.map((transaction) => transaction.amount),
+                    ...cardTransactions.map(
+                      (transaction) => transaction.amount,
+                    ),
                     0,
                   ),
                 )}
@@ -1332,14 +1345,16 @@ const Dashboard = () => {
                 tone="warning"
               />
             ))}
-            {[...insights, ...automationInsights].slice(0, 3).map((item, index) => (
-              <AlertRow
-                key={`${item.type || "item"}-${index}`}
-                title={item.label || "Leitura do Nano"}
-                message={item.message}
-                tone="neutral"
-              />
-            ))}
+            {[...insights, ...automationInsights]
+              .slice(0, 3)
+              .map((item, index) => (
+                <AlertRow
+                  key={`${item.type || "item"}-${index}`}
+                  title={item.label || "Leitura do Nano"}
+                  message={item.message}
+                  tone="neutral"
+                />
+              ))}
           </div>
         ) : (
           <AlertRow
@@ -1564,7 +1579,9 @@ const Dashboard = () => {
             </select>
             <select
               value={transactionMethodFilter}
-              onChange={(event) => setTransactionMethodFilter(event.target.value)}
+              onChange={(event) =>
+                setTransactionMethodFilter(event.target.value)
+              }
               className={pageFieldClass}
             >
               <option value="all">Metodo</option>
@@ -1598,11 +1615,15 @@ const Dashboard = () => {
                       {transaction.category} • {transaction.account_scope}
                     </div>
                   </div>
-                  <span>{new Date(transaction.date).toLocaleDateString("pt-BR")}</span>
+                  <span>
+                    {new Date(transaction.date).toLocaleDateString("pt-BR")}
+                  </span>
                   <span className="capitalize">
                     {transaction.type === "income" ? "Receita" : "Despesa"}
                   </span>
-                  <span className="capitalize">{transaction.payment_method}</span>
+                  <span className="capitalize">
+                    {transaction.payment_method}
+                  </span>
                   <span
                     className={`text-right font-semibold ${
                       transaction.type === "income"
@@ -1798,7 +1819,9 @@ const Dashboard = () => {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-[#1f1814]">{contact.name}</p>
+                    <p className="font-semibold text-[#1f1814]">
+                      {contact.name}
+                    </p>
                     <p className="text-sm text-[#8a7c73]">
                       {contact.scope === "personal" ? "Pessoal" : "Empresa"}
                     </p>
@@ -1937,7 +1960,10 @@ const Dashboard = () => {
             }
             className={`${pageFieldClass} xl:col-span-2`}
           />
-          <Button type="submit" className={`h-12 xl:col-span-1 ${actionButtonClass}`}>
+          <Button
+            type="submit"
+            className={`h-12 xl:col-span-1 ${actionButtonClass}`}
+          >
             Cadastrar
           </Button>
         </form>
@@ -1945,7 +1971,10 @@ const Dashboard = () => {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
         <SurfacePanel title="Registro de presenca/falta">
-          <form onSubmit={submitAttendance} className="grid gap-3 md:grid-cols-4">
+          <form
+            onSubmit={submitAttendance}
+            className="grid gap-3 md:grid-cols-4"
+          >
             <select
               className={pageFieldClass}
               value={attendanceForm.employee_id}
@@ -1967,7 +1996,10 @@ const Dashboard = () => {
               type="date"
               value={attendanceForm.date}
               onChange={(event) =>
-                setAttendanceForm({ ...attendanceForm, date: event.target.value })
+                setAttendanceForm({
+                  ...attendanceForm,
+                  date: event.target.value,
+                })
               }
               max={todayDateValue}
               className={pageFieldClass}
@@ -1994,7 +2026,10 @@ const Dashboard = () => {
               placeholder="Observacao do ponto (opcional)"
               value={attendanceForm.notes}
               onChange={(event) =>
-                setAttendanceForm({ ...attendanceForm, notes: event.target.value })
+                setAttendanceForm({
+                  ...attendanceForm,
+                  notes: event.target.value,
+                })
               }
               className={pageFieldClass}
             />
@@ -2020,7 +2055,9 @@ const Dashboard = () => {
           </div>
         </SurfacePanel>
 
-        <SurfacePanel title={`Resumo da folha - ${payrollReport?.month || payrollMonth}`}>
+        <SurfacePanel
+          title={`Resumo da folha - ${payrollReport?.month || payrollMonth}`}
+        >
           {payrollLoading ? (
             <p className="text-sm text-zinc-400">Calculando folha...</p>
           ) : (
@@ -2035,19 +2072,27 @@ const Dashboard = () => {
               />
               <StatMiniCard
                 label="Bruto"
-                value={currencyFormatter.format(payrollSummary.gross_salary || 0)}
+                value={currencyFormatter.format(
+                  payrollSummary.gross_salary || 0,
+                )}
               />
               <StatMiniCard
                 label="Liquido estimado"
-                value={currencyFormatter.format(payrollSummary.net_payable || 0)}
+                value={currencyFormatter.format(
+                  payrollSummary.net_payable || 0,
+                )}
               />
               <StatMiniCard
                 label="Desconto faltas"
-                value={currencyFormatter.format(payrollSummary.absence_discount || 0)}
+                value={currencyFormatter.format(
+                  payrollSummary.absence_discount || 0,
+                )}
               />
               <StatMiniCard
                 label="Desconto INSS"
-                value={currencyFormatter.format(payrollSummary.inss_discount || 0)}
+                value={currencyFormatter.format(
+                  payrollSummary.inss_discount || 0,
+                )}
               />
             </div>
           )}
@@ -2067,7 +2112,9 @@ const Dashboard = () => {
             <select
               className="h-11 rounded-2xl border border-red-500/12 bg-black/20 px-3 text-sm text-zinc-100"
               value={payrollEmployeeTypeFilter}
-              onChange={(event) => setPayrollEmployeeTypeFilter(event.target.value)}
+              onChange={(event) =>
+                setPayrollEmployeeTypeFilter(event.target.value)
+              }
             >
               <option value="all">Todos</option>
               <option value="clt">CLT</option>
@@ -2076,7 +2123,9 @@ const Dashboard = () => {
             <select
               className="h-11 rounded-2xl border border-red-500/12 bg-black/20 px-3 text-sm text-zinc-100"
               value={payrollPaymentCycleFilter}
-              onChange={(event) => setPayrollPaymentCycleFilter(event.target.value)}
+              onChange={(event) =>
+                setPayrollPaymentCycleFilter(event.target.value)
+              }
             >
               <option value="all">Ciclo: padrao</option>
               <option value="monthly">Mensal</option>
@@ -2103,7 +2152,9 @@ const Dashboard = () => {
                     {employee.employee_type === "clt" ? "CLT" : "Contrato"}
                   </Badge>
                   <Badge className="border border-white/10 bg-black/30 text-zinc-200">
-                    {employee.payment_cycle === "biweekly" ? "Quinzenal" : "Mensal"}
+                    {employee.payment_cycle === "biweekly"
+                      ? "Quinzenal"
+                      : "Mensal"}
                   </Badge>
                   <Badge className="border border-white/10 bg-black/30 text-zinc-200">
                     {currencyFormatter.format(employee.salary || 0)}
@@ -2140,7 +2191,9 @@ const Dashboard = () => {
                   subtitle={`INSS ${item.inss_percent}% • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}
-                  value={currencyFormatter.format(item.net_month_estimated || 0)}
+                  value={currencyFormatter.format(
+                    item.net_month_estimated || 0,
+                  )}
                 />
               ))}
             </div>
@@ -2162,7 +2215,9 @@ const Dashboard = () => {
                   subtitle={`Diaria ${currencyFormatter.format(item.daily_rate || 0)} • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}
-                  value={currencyFormatter.format(item.net_month_estimated || 0)}
+                  value={currencyFormatter.format(
+                    item.net_month_estimated || 0,
+                  )}
                 />
               ))}
             </div>
@@ -2325,21 +2380,25 @@ const Dashboard = () => {
         <SurfacePanel title="Importacoes recentes">
           {statementImportResult?.preview_rows?.length ? (
             <div className="space-y-3">
-              {statementImportResult.preview_rows.slice(0, 5).map((row, index) => (
-                <div
-                  key={index}
-                  className="rounded-[24px] border border-[#eadfd6] bg-[#fffdf9] p-4"
-                >
-                  {Object.entries(row)
-                    .slice(0, 4)
-                    .map(([key, value]) => (
-                      <div key={key} className="text-xs text-[#6d615a]">
-                        <span className="font-semibold text-[#9e8f85]">{key}:</span>{" "}
-                        {String(value || "-")}
-                      </div>
-                    ))}
-                </div>
-              ))}
+              {statementImportResult.preview_rows
+                .slice(0, 5)
+                .map((row, index) => (
+                  <div
+                    key={index}
+                    className="rounded-[24px] border border-[#eadfd6] bg-[#fffdf9] p-4"
+                  >
+                    {Object.entries(row)
+                      .slice(0, 4)
+                      .map(([key, value]) => (
+                        <div key={key} className="text-xs text-[#6d615a]">
+                          <span className="font-semibold text-[#9e8f85]">
+                            {key}:
+                          </span>{" "}
+                          {String(value || "-")}
+                        </div>
+                      ))}
+                  </div>
+                ))}
             </div>
           ) : statementImports.length ? (
             <div className="space-y-3">
@@ -2514,7 +2573,10 @@ const Dashboard = () => {
                 placeholder="Website"
                 value={companyForm.website}
                 onChange={(event) =>
-                  setCompanyForm({ ...companyForm, website: event.target.value })
+                  setCompanyForm({
+                    ...companyForm,
+                    website: event.target.value,
+                  })
                 }
                 className={pageFieldClass}
               />
@@ -2739,9 +2801,12 @@ const Dashboard = () => {
             />
 
             <div className="rounded-[24px] border border-[#eadfd6] bg-[#fff8f4] p-4">
-              <p className="text-sm font-semibold text-[#1f1814]">Tema visual</p>
+              <p className="text-sm font-semibold text-[#1f1814]">
+                Tema visual
+              </p>
               <p className="mt-1 text-sm text-[#857870]">
-                O painel agora usa o tema claro com acento vermelho, inspirado no ritmo do Fingu.
+                O painel agora usa o tema claro com acento vermelho, inspirado
+                no ritmo do Fingu.
               </p>
             </div>
 
@@ -2857,7 +2922,10 @@ const Dashboard = () => {
               </Button>
             }
           >
-            <form onSubmit={submitReminder} className="grid gap-3 md:grid-cols-[1fr_0.8fr_auto]">
+            <form
+              onSubmit={submitReminder}
+              className="grid gap-3 md:grid-cols-[1fr_0.8fr_auto]"
+            >
               <Input
                 placeholder="Titulo do lembrete"
                 value={reminderForm.title}
@@ -3019,8 +3087,8 @@ const Dashboard = () => {
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-zinc-400">
               O novo layout do Nano fica muito melhor quando o workspace ja esta
-              criado, porque ai o painel monta dashboard, movimentacoes e relatorios
-              com base no seu contexto.
+              criado, porque ai o painel monta dashboard, movimentacoes e
+              relatorios com base no seu contexto.
             </p>
           </div>
 
@@ -3072,7 +3140,9 @@ const Dashboard = () => {
   return (
     <div
       className={`bg-[radial-gradient(circle_at_16%_18%,_rgba(127,29,29,0.20),_transparent_24%),radial-gradient(circle_at_72%_78%,_rgba(69,10,10,0.18),_transparent_28%),linear-gradient(180deg,_#070102_0%,_#0b0204_42%,_#140406_100%)] text-zinc-100 ${
-        activeSection === "assistant" ? "h-screen overflow-hidden" : "min-h-screen"
+        activeSection === "assistant"
+          ? "h-screen overflow-hidden"
+          : "min-h-screen"
       }`}
     >
       <Sidebar
@@ -3089,7 +3159,9 @@ const Dashboard = () => {
         onLogout={handleLogout}
       />
 
-      <main className={`lg:pl-[108px] ${activeSection === "assistant" ? "h-full overflow-hidden" : ""}`}>
+      <main
+        className={`lg:pl-[108px] ${activeSection === "assistant" ? "h-full overflow-hidden" : ""}`}
+      >
         <div
           className={`mx-auto max-w-[1720px] px-4 py-4 sm:px-6 lg:px-8 ${
             activeSection === "assistant"
@@ -3266,7 +3338,11 @@ const TrendChart = ({ data }) => {
   return (
     <div className="space-y-5">
       <div className="h-[280px] rounded-[24px] border border-red-500/10 bg-black/20 p-4">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="h-full w-full"
+        >
           {Array.from({ length: 5 }).map((_, index) => (
             <line
               key={index}
@@ -3347,10 +3423,17 @@ const CalendarPanel = ({ days }) => (
   </div>
 );
 
-const SummaryRow = ({ label, value, valueClass = "text-white", strong = false }) => (
+const SummaryRow = ({
+  label,
+  value,
+  valueClass = "text-white",
+  strong = false,
+}) => (
   <div className="flex items-center justify-between gap-4 border-b border-white/6 py-4 last:border-b-0">
     <span className="text-sm font-medium text-zinc-300">{label}</span>
-    <span className={`${strong ? "text-3xl" : "text-lg"} font-semibold ${valueClass}`}>
+    <span
+      className={`${strong ? "text-3xl" : "text-lg"} font-semibold ${valueClass}`}
+    >
       {value}
     </span>
   </div>
@@ -3362,9 +3445,7 @@ const InfoRow = ({ title, subtitle, value }) => (
       <p className="font-semibold text-white">{title}</p>
       <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
     </div>
-    <span className="text-right text-sm font-semibold text-white">
-      {value}
-    </span>
+    <span className="text-right text-sm font-semibold text-white">{value}</span>
   </div>
 );
 
@@ -3501,8 +3582,12 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
 const DreRow = ({ label, income, expense, balance, negative = false }) => (
   <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)] gap-3 border-b border-white/6 px-4 py-4 text-sm last:border-b-0">
     <span className="font-medium text-white">{label}</span>
-    <span className="text-[#166534]">{currencyFormatter.format(income || 0)}</span>
-    <span className="text-[#b91c1c]">{currencyFormatter.format(expense || 0)}</span>
+    <span className="text-[#166534]">
+      {currencyFormatter.format(income || 0)}
+    </span>
+    <span className="text-[#b91c1c]">
+      {currencyFormatter.format(expense || 0)}
+    </span>
     <span className={negative ? "text-[#b91c1c]" : "text-[#166534]"}>
       {currencyFormatter.format(balance || 0)}
     </span>

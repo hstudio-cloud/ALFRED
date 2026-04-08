@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Building2,
   Edit2,
@@ -12,16 +12,16 @@ import {
   Search,
   Trash2,
   Users,
-} from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { useToast } from '../hooks/use-toast';
+} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { useToast } from "../hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +29,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../components/ui/dialog';
+} from "../components/ui/dialog";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const fieldClass = 'bg-black/35 border-red-500/15 text-white placeholder:text-red-100/35 focus:border-red-400/50';
+const fieldClass =
+  "bg-black/35 border-red-500/15 text-white placeholder:text-red-100/35 focus:border-red-400/50";
 
 const Clients = () => {
   const { user, logout } = useAuth();
@@ -44,16 +45,16 @@ const Clients = () => {
 
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    document: '',
-    notes: '',
+    name: "",
+    phone: "",
+    email: "",
+    document: "",
+    notes: "",
   });
 
   const fetchClients = useCallback(async () => {
@@ -64,17 +65,17 @@ const Clients = () => {
         workspace_id: currentWorkspace.id,
       });
 
-      if (searchTerm) params.append('search', searchTerm);
-      if (statusFilter) params.append('status', statusFilter);
+      if (searchTerm) params.append("search", searchTerm);
+      if (statusFilter) params.append("status", statusFilter);
 
       const response = await axios.get(`${API}/clients?${params}`);
       setClients(response.data);
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      console.error("Error fetching clients:", error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao buscar clientes',
-        variant: 'destructive',
+        title: "Erro",
+        description: "Erro ao buscar clientes",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -97,8 +98,8 @@ const Clients = () => {
           formData,
         );
         toast({
-          title: 'Sucesso',
-          description: 'Cliente atualizado com sucesso',
+          title: "Sucesso",
+          description: "Cliente atualizado com sucesso",
         });
       } else {
         await axios.post(
@@ -106,8 +107,8 @@ const Clients = () => {
           formData,
         );
         toast({
-          title: 'Sucesso',
-          description: 'Cliente criado com sucesso',
+          title: "Sucesso",
+          description: "Cliente criado com sucesso",
         });
       }
 
@@ -115,31 +116,33 @@ const Clients = () => {
       resetForm();
       fetchClients();
     } catch (error) {
-      console.error('Error saving client:', error);
+      console.error("Error saving client:", error);
       toast({
-        title: 'Erro',
-        description: error.response?.data?.detail || 'Erro ao salvar cliente',
-        variant: 'destructive',
+        title: "Erro",
+        description: error.response?.data?.detail || "Erro ao salvar cliente",
+        variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (clientId) => {
-    if (!window.confirm('Tem certeza que deseja deletar este cliente?')) return;
+    if (!window.confirm("Tem certeza que deseja deletar este cliente?")) return;
 
     try {
-      await axios.delete(`${API}/clients/${clientId}?workspace_id=${currentWorkspace.id}`);
+      await axios.delete(
+        `${API}/clients/${clientId}?workspace_id=${currentWorkspace.id}`,
+      );
       toast({
-        title: 'Sucesso',
-        description: 'Cliente deletado com sucesso',
+        title: "Sucesso",
+        description: "Cliente deletado com sucesso",
       });
       fetchClients();
     } catch (error) {
-      console.error('Error deleting client:', error);
+      console.error("Error deleting client:", error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao deletar cliente',
-        variant: 'destructive',
+        title: "Erro",
+        description: "Erro ao deletar cliente",
+        variant: "destructive",
       });
     }
   };
@@ -147,11 +150,11 @@ const Clients = () => {
   const resetForm = () => {
     setEditingClient(null);
     setFormData({
-      name: '',
-      phone: '',
-      email: '',
-      document: '',
-      notes: '',
+      name: "",
+      phone: "",
+      email: "",
+      document: "",
+      notes: "",
     });
   };
 
@@ -159,11 +162,11 @@ const Clients = () => {
     if (client) {
       setEditingClient(client);
       setFormData({
-        name: client.name || '',
-        phone: client.phone || '',
-        email: client.email || '',
-        document: client.document || '',
-        notes: client.notes || '',
+        name: client.name || "",
+        phone: client.phone || "",
+        email: client.email || "",
+        document: client.document || "",
+        notes: client.notes || "",
       });
     } else {
       resetForm();
@@ -173,7 +176,7 @@ const Clients = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   if (!currentWorkspace) {
@@ -191,7 +194,7 @@ const Clients = () => {
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className="text-red-200/80 hover:text-red-100 hover:bg-red-500/10"
             >
               &lt;- Dashboard
@@ -200,7 +203,10 @@ const Clients = () => {
               <Users className="w-6 h-6 text-red-300" />
               <h1 className="text-2xl font-bold text-white">Clientes</h1>
             </div>
-            <Badge variant="outline" className="bg-red-500/10 border-red-500/20 text-red-200">
+            <Badge
+              variant="outline"
+              className="bg-red-500/10 border-red-500/20 text-red-200"
+            >
               <Building2 className="w-3 h-3 mr-1" />
               {currentWorkspace.name}
             </Badge>
@@ -260,7 +266,10 @@ const Clients = () => {
           <Card className="bg-black/30 border-red-500/15 p-12 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
             <Users className="w-16 h-16 mx-auto mb-4 text-red-100/25" />
             <p className="text-red-100/55 mb-4">Nenhum cliente encontrado</p>
-            <Button onClick={() => openDialog()} className="bg-red-600 hover:bg-red-500">
+            <Button
+              onClick={() => openDialog()}
+              className="bg-red-600 hover:bg-red-500"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Criar Primeiro Cliente
             </Button>
@@ -274,9 +283,15 @@ const Clients = () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">{client.name}</h3>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      {client.name}
+                    </h3>
                     <Badge className="text-xs bg-red-500/15 text-red-100 border border-red-500/20">
-                      {client.status === 'active' ? 'Ativo' : client.status === 'inactive' ? 'Inativo' : 'Bloqueado'}
+                      {client.status === "active"
+                        ? "Ativo"
+                        : client.status === "inactive"
+                          ? "Inativo"
+                          : "Bloqueado"}
                     </Badge>
                   </div>
                   <div className="flex gap-2">
@@ -322,7 +337,9 @@ const Clients = () => {
 
                 {client.notes && (
                   <div className="mt-4 pt-4 border-t border-red-500/10">
-                    <p className="text-xs text-red-100/40 line-clamp-2">{client.notes}</p>
+                    <p className="text-xs text-red-100/40 line-clamp-2">
+                      {client.notes}
+                    </p>
                   </div>
                 )}
               </Card>
@@ -334,7 +351,9 @@ const Clients = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="bg-[#100407] border-red-500/15 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
+            <DialogTitle>
+              {editingClient ? "Editar Cliente" : "Novo Cliente"}
+            </DialogTitle>
             <DialogDescription className="text-red-100/50">
               Preencha os dados do cliente
             </DialogDescription>
@@ -347,7 +366,9 @@ const Clients = () => {
                 <Input
                   required
                   value={formData.name}
-                  onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                  onChange={(event) =>
+                    setFormData({ ...formData, name: event.target.value })
+                  }
                   className={fieldClass}
                 />
               </div>
@@ -355,7 +376,9 @@ const Clients = () => {
                 <Label>Telefone</Label>
                 <Input
                   value={formData.phone}
-                  onChange={(event) => setFormData({ ...formData, phone: event.target.value })}
+                  onChange={(event) =>
+                    setFormData({ ...formData, phone: event.target.value })
+                  }
                   className={fieldClass}
                 />
               </div>
@@ -367,7 +390,9 @@ const Clients = () => {
                 <Input
                   type="email"
                   value={formData.email}
-                  onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                  onChange={(event) =>
+                    setFormData({ ...formData, email: event.target.value })
+                  }
                   className={fieldClass}
                 />
               </div>
@@ -375,28 +400,36 @@ const Clients = () => {
                 <Label>CPF/CNPJ</Label>
                 <Input
                   value={formData.document}
-                  onChange={(event) => setFormData({ ...formData, document: event.target.value })}
+                  onChange={(event) =>
+                    setFormData({ ...formData, document: event.target.value })
+                  }
                   className={fieldClass}
                 />
               </div>
             </div>
 
             <div>
-              <Label>Observacoes</Label>
+              <Label>Observações</Label>
               <Textarea
                 value={formData.notes}
-                onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
+                onChange={(event) =>
+                  setFormData({ ...formData, notes: event.target.value })
+                }
                 className={fieldClass}
                 rows={3}
               />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsDialogOpen(false)}
+              >
                 Cancelar
               </Button>
               <Button type="submit" className="bg-red-600 hover:bg-red-500">
-                {editingClient ? 'Atualizar' : 'Criar'}
+                {editingClient ? "Atualizar" : "Criar"}
               </Button>
             </DialogFooter>
           </form>

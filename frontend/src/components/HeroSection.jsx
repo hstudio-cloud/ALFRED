@@ -141,7 +141,7 @@ const HeroSection = () => {
                     {[
                       ["Pessoal", "R$ 4.320"],
                       ["Empresa", "R$ 20.360"],
-                      ["IA", "12 sugestoes"],
+                      ["IA", "12 sugestões"],
                     ].map(([label, value]) => (
                       <div
                         key={label}

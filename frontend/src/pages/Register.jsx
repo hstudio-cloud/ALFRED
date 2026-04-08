@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { useToast } from '../hooks/use-toast';
-import { Building2, Loader2, Sparkles, Wallet } from 'lucide-react';
-import NanoMark from '../components/NanoMark';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
+import { Building2, Loader2, Sparkles, Wallet } from "lucide-react";
+import NanoMark from "../components/NanoMark";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -15,10 +15,10 @@ const Register = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
 
   const handleSubmit = async (e) => {
@@ -26,28 +26,32 @@ const Register = () => {
 
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: 'Erro',
-        description: 'As senhas nao coincidem.',
-        variant: 'destructive',
+        title: "Erro",
+        description: "As senhas não coincidem.",
+        variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
 
-    const result = await register(formData.name, formData.email, formData.password);
+    const result = await register(
+      formData.name,
+      formData.email,
+      formData.password,
+    );
 
     if (result.success) {
       toast({
-        title: 'Conta criada',
-        description: 'Seu ambiente no Nano IA ja esta pronto.',
+        title: "Conta criada",
+        description: "Seu ambiente no Nano IA já está pronto.",
       });
-      navigate('/dashboard');
+      navigate("/dashboard");
     } else {
       toast({
-        title: 'Erro no registro',
+        title: "Erro no registro",
         description: result.error,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
 
@@ -68,7 +72,9 @@ const Register = () => {
               Novo ambiente financeiro
             </div>
             <h1 className="text-3xl font-semibold text-white">Criar conta</h1>
-            <p className="mt-2 text-slate-400">Comece seu painel de pagamentos e gestao financeira.</p>
+            <p className="mt-2 text-slate-400">
+              Comece seu painel de pagamentos e gestão financeira.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -138,27 +144,34 @@ const Register = () => {
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-red-500 py-6 text-white hover:bg-red-600">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-red-500 py-6 text-white hover:bg-red-600"
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Criando conta...
                 </>
               ) : (
-                'Criar conta'
+                "Criar conta"
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-400">
-            Ja tem uma conta?{' '}
+            Já tem uma conta?{" "}
             <Link to="/login" className="text-red-300 hover:text-red-200">
               Entrar
             </Link>
           </div>
 
           <div className="mt-4 text-center">
-            <Link to="/" className="text-sm text-slate-500 hover:text-slate-300">
+            <Link
+              to="/"
+              className="text-sm text-slate-500 hover:text-slate-300"
+            >
               Voltar para a home
             </Link>
           </div>
@@ -169,34 +182,43 @@ const Register = () => {
             <div className="flex items-center gap-4">
               <NanoMark className="h-14 w-14" />
               <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-red-300/80">Nano IA</p>
+                <p className="text-sm uppercase tracking-[0.35em] text-red-300/80">
+                  Nano IA
+                </p>
                 <p className="mt-1 text-sm text-slate-400">Setup inicial</p>
               </div>
             </div>
 
             <h2 className="max-w-2xl text-4xl font-semibold leading-tight text-white md:text-6xl">
-              Abra sua base para controlar contas, gastos e recebimentos com clareza.
+              Abra sua base para controlar contas, gastos e recebimentos com
+              clareza.
             </h2>
             <p className="max-w-xl text-lg leading-8 text-slate-300">
-              O Nano ja nasce com foco em fluxo de caixa, categorias, lembretes e separacao entre
-              operacao pessoal e empresarial.
+              O Nano ja nasce com foco em fluxo de caixa, categorias, lembretes
+              e separação entre operação pessoal e empresarial.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
               <Wallet className="mb-4 h-6 w-6 text-red-300" />
-              <h3 className="text-base font-semibold text-white">Categorias vivas</h3>
+              <h3 className="text-base font-semibold text-white">
+                Categorias vivas
+              </h3>
               <p className="mt-2 text-sm text-slate-400">
-                Organize cartao, Pix, assinaturas, equipe, impostos e o que mais fizer sentido para voce.
+                Organize cartão, Pix, assinaturas, equipe, impostos e o que mais
+                fizer sentido para voce.
               </p>
             </Card>
 
             <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
               <Building2 className="mb-4 h-6 w-6 text-red-200" />
-              <h3 className="text-base font-semibold text-white">Separacao natural</h3>
+              <h3 className="text-base font-semibold text-white">
+                Separação natural
+              </h3>
               <p className="mt-2 text-sm text-slate-400">
-                Controle gastos pessoais e da empresa sem misturar a visao do negocio.
+                Controle gastos pessoais e da empresa sem misturar a visão do
+                negócio.
               </p>
             </Card>
           </div>

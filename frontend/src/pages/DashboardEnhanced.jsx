@@ -1,19 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { 
-  BarChart, Bar, PieChart, Pie, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
-} from 'recharts';
-import { 
-  TrendingUp, 
-  Users, 
-  CheckSquare, 
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import {
+  TrendingUp,
+  Users,
+  CheckSquare,
   DollarSign,
   Activity,
   Calendar,
@@ -22,13 +35,13 @@ import {
   ArrowUp,
   ArrowDown,
   Target,
-  Zap
-} from 'lucide-react';
+  Zap,
+} from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-const COLORS = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'];
+const COLORS = ["#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b"];
 
 const DashboardEnhanced = () => {
   const { user, logout } = useAuth();
@@ -41,17 +54,19 @@ const DashboardEnhanced = () => {
 
   const fetchAllStats = useCallback(async () => {
     if (!currentWorkspace) return;
-    
+
     try {
       const [dashboardRes, tasksRes] = await Promise.all([
         axios.get(`${API}/dashboard/stats`),
-        axios.get(`${API}/tasks-enhanced/stats?workspace_id=${currentWorkspace.id}`)
+        axios.get(
+          `${API}/tasks-enhanced/stats?workspace_id=${currentWorkspace.id}`,
+        ),
       ]);
-      
+
       setStats(dashboardRes.data);
       setTasksStats(tasksRes.data);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
@@ -65,33 +80,41 @@ const DashboardEnhanced = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   // Prepare data for charts
-  const tasksByStageData = tasksStats ? [
-    { name: 'A Fazer', value: tasksStats.stages.todo, color: '#64748b' },
-    { name: 'Em Progresso', value: tasksStats.stages.in_progress, color: '#3b82f6' },
-    { name: 'Revisão', value: tasksStats.stages.review, color: '#8b5cf6' },
-    { name: 'Concluído', value: tasksStats.stages.done, color: '#22c55e' }
-  ] : [];
+  const tasksByStageData = tasksStats
+    ? [
+        { name: "A Fazer", value: tasksStats.stages.todo, color: "#64748b" },
+        {
+          name: "Em Progresso",
+          value: tasksStats.stages.in_progress,
+          color: "#3b82f6",
+        },
+        { name: "Revisão", value: tasksStats.stages.review, color: "#8b5cf6" },
+        { name: "Concluído", value: tasksStats.stages.done, color: "#22c55e" },
+      ]
+    : [];
 
-  const priorityData = tasksStats ? [
-    { name: 'Baixa', value: tasksStats.priorities.low },
-    { name: 'Média', value: tasksStats.priorities.medium },
-    { name: 'Alta', value: tasksStats.priorities.high },
-    { name: 'Urgente', value: tasksStats.priorities.urgent }
-  ] : [];
+  const priorityData = tasksStats
+    ? [
+        { name: "Baixa", value: tasksStats.priorities.low },
+        { name: "Média", value: tasksStats.priorities.medium },
+        { name: "Alta", value: tasksStats.priorities.high },
+        { name: "Urgente", value: tasksStats.priorities.urgent },
+      ]
+    : [];
 
   // Mock productivity data for line chart
   const productivityData = [
-    { day: 'Seg', tasks: 8, completed: 6 },
-    { day: 'Ter', tasks: 10, completed: 8 },
-    { day: 'Qua', tasks: 12, completed: 10 },
-    { day: 'Qui', tasks: 9, completed: 9 },
-    { day: 'Sex', tasks: 11, completed: 8 },
-    { day: 'Sáb', tasks: 5, completed: 4 },
-    { day: 'Dom', tasks: 3, completed: 3 }
+    { day: "Seg", tasks: 8, completed: 6 },
+    { day: "Ter", tasks: 10, completed: 8 },
+    { day: "Qua", tasks: 12, completed: 10 },
+    { day: "Qui", tasks: 9, completed: 9 },
+    { day: "Sex", tasks: 11, completed: 8 },
+    { day: "Sáb", tasks: 5, completed: 4 },
+    { day: "Dom", tasks: 3, completed: 3 },
   ];
 
   if (!currentWorkspace) {
@@ -108,14 +131,20 @@ const DashboardEnhanced = () => {
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-red-500 to-red-700 bg-clip-text text-transparent">
               Nano IA
             </h1>
-            <Badge variant="outline" className="bg-cyan-500/10 border-cyan-500/20 text-cyan-400">
+            <Badge
+              variant="outline"
+              className="bg-cyan-500/10 border-cyan-500/20 text-cyan-400"
+            >
               Analytics
             </Badge>
             {currentWorkspace && (
-              <Badge variant="outline" className="bg-blue-500/10 border-blue-500/20 text-blue-400">
+              <Badge
+                variant="outline"
+                className="bg-blue-500/10 border-blue-500/20 text-blue-400"
+              >
                 <Building2 className="w-3 h-3 mr-1" />
                 {currentWorkspace.name}
               </Badge>
@@ -124,7 +153,7 @@ const DashboardEnhanced = () => {
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className="text-slate-400 hover:text-cyan-400"
             >
               ← Voltar
@@ -150,7 +179,9 @@ const DashboardEnhanced = () => {
             <div className="grid md:grid-cols-4 gap-6">
               <Card className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border-cyan-500/20 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-cyan-400 text-sm font-semibold">Taxa de Conclusão</div>
+                  <div className="text-cyan-400 text-sm font-semibold">
+                    Taxa de Conclusão
+                  </div>
                   <TrendingUp className="w-5 h-5 text-cyan-400" />
                 </div>
                 <div className="text-4xl font-bold text-white mb-2">
@@ -164,7 +195,9 @@ const DashboardEnhanced = () => {
 
               <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-purple-400 text-sm font-semibold">Total de Tarefas</div>
+                  <div className="text-purple-400 text-sm font-semibold">
+                    Total de Tarefas
+                  </div>
                   <CheckSquare className="w-5 h-5 text-purple-400" />
                 </div>
                 <div className="text-4xl font-bold text-white mb-2">
@@ -178,7 +211,9 @@ const DashboardEnhanced = () => {
 
               <Card className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-orange-400 text-sm font-semibold">Produtividade</div>
+                  <div className="text-orange-400 text-sm font-semibold">
+                    Produtividade
+                  </div>
                   <Zap className="w-5 h-5 text-orange-400" />
                 </div>
                 <div className="text-4xl font-bold text-white mb-2">
@@ -192,7 +227,9 @@ const DashboardEnhanced = () => {
 
               <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20 p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-green-400 text-sm font-semibold">Saldo</div>
+                  <div className="text-green-400 text-sm font-semibold">
+                    Saldo
+                  </div>
                   <DollarSign className="w-5 h-5 text-green-400" />
                 </div>
                 <div className="text-4xl font-bold text-white mb-2">
@@ -220,7 +257,9 @@ const DashboardEnhanced = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -245,12 +284,12 @@ const DashboardEnhanced = () => {
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="name" stroke="#94a3b8" />
                     <YAxis stroke="#94a3b8" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1e293b', 
-                        border: '1px solid #334155',
-                        borderRadius: '8px'
-                      }} 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        border: "1px solid #334155",
+                        borderRadius: "8px",
+                      }}
                     />
                     <Bar dataKey="value" fill="#8b5cf6" />
                   </BarChart>
@@ -269,40 +308,68 @@ const DashboardEnhanced = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={productivityData}>
                     <defs>
-                      <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                      <linearGradient
+                        id="colorTasks"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#06b6d4"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#06b6d4"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
-                      <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                      <linearGradient
+                        id="colorCompleted"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#22c55e"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#22c55e"
+                          stopOpacity={0}
+                        />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="day" stroke="#94a3b8" />
                     <YAxis stroke="#94a3b8" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1e293b', 
-                        border: '1px solid #334155',
-                        borderRadius: '8px'
-                      }} 
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        border: "1px solid #334155",
+                        borderRadius: "8px",
+                      }}
                     />
                     <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="tasks" 
-                      stroke="#06b6d4" 
-                      fillOpacity={1} 
-                      fill="url(#colorTasks)" 
+                    <Area
+                      type="monotone"
+                      dataKey="tasks"
+                      stroke="#06b6d4"
+                      fillOpacity={1}
+                      fill="url(#colorTasks)"
                       name="Tarefas Criadas"
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="completed" 
-                      stroke="#22c55e" 
-                      fillOpacity={1} 
-                      fill="url(#colorCompleted)" 
+                    <Area
+                      type="monotone"
+                      dataKey="completed"
+                      stroke="#22c55e"
+                      fillOpacity={1}
+                      fill="url(#colorCompleted)"
                       name="Concluídas"
                     />
                   </AreaChart>
@@ -319,29 +386,46 @@ const DashboardEnhanced = () => {
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-sm">Clientes Ativos</span>
+                    <span className="text-slate-400 text-sm">
+                      Clientes Ativos
+                    </span>
                     <span className="text-white font-semibold">12</span>
                   </div>
                   <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div className="bg-cyan-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+                    <div
+                      className="bg-cyan-500 h-2 rounded-full"
+                      style={{ width: "75%" }}
+                    ></div>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-sm">Projetos em Andamento</span>
+                    <span className="text-slate-400 text-sm">
+                      Projetos em Andamento
+                    </span>
                     <span className="text-white font-semibold">5</span>
                   </div>
                   <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: '60%' }}></div>
+                    <div
+                      className="bg-purple-500 h-2 rounded-full"
+                      style={{ width: "60%" }}
+                    ></div>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400 text-sm">Hábitos Mantidos</span>
-                    <span className="text-white font-semibold">{stats?.habits_active || 0}</span>
+                    <span className="text-slate-400 text-sm">
+                      Hábitos Mantidos
+                    </span>
+                    <span className="text-white font-semibold">
+                      {stats?.habits_active || 0}
+                    </span>
                   </div>
                   <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '90%' }}></div>
+                    <div
+                      className="bg-green-500 h-2 rounded-full"
+                      style={{ width: "90%" }}
+                    ></div>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 export const mockData = {
   hero: {
-    badge: "Operacao financeira inteligente para rotina pessoal e empresarial",
+    badge: "Operação financeira inteligente para rotina pessoal e empresarial",
     title: "Pagamentos, contas e controle financeiro",
     titleHighlight: "com o Nano IA ao seu lado.",
     subtitle:
