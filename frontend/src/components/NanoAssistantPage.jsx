@@ -11,6 +11,7 @@ const NanoAssistantPage = ({
   reminders = [],
   bills = [],
   onNavigateSection,
+  onNavigateRoute,
 }) => {
   const {
     chatHistory,
@@ -36,8 +37,14 @@ const NanoAssistantPage = ({
   } = useVoiceAssistant({
     onAfterMessage,
     onAssistantAction: (action) => {
-      if (action?.type === "navigate" && action?.data?.section) {
-        onNavigateSection?.(action.data.section);
+      if (action?.type === "navigate") {
+        if (action?.data?.route && action.data.route !== "/dashboard") {
+          onNavigateRoute?.(action.data.route);
+          return;
+        }
+        if (action?.data?.section) {
+          onNavigateSection?.(action.data.section);
+        }
       }
     },
   });

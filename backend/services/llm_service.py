@@ -1,0 +1,144 @@
+import os
+from typing import Any, Dict, List
+
+from openai import AsyncOpenAI
+
+from agent.types import IntentClassification
+
+
+class LLMService:
+    """LLM helper with safe deterministic fallback."""
+
+    def __init__(self):
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or ""
+        base_url = os.getenv("OPENAI_BASE_URL") or None
+        self.model = os.getenv("OPENAI_TEXT_MODEL", "gpt-4o-mini")
+        self.client = AsyncOpenAI(api_key=api_key, base_url=base_url) if api_key else None
+
+    async def classify_intent(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
+        _ = context
+        if not self.client:
+            return {}
+        prompt = (
+            "Classifique a intencao em: system_action, system_query, financial_analysis, "
+            "general_chat, web_research, memory_recall, followup_missing_data, unknown. "
+            "Retorne JSON puro com label e confidence.\nMensagem:\n"
+            f"{message}"
+        )
+        try:
+            response = await self.client.responses.create(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": "Voce classifica intencao de assistente financeiro."},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            text = (getattr(response, "output_text", "") or "").strip()
+            return {"raw": text}
+        except Exception:
+            return {}
+
+    async def generate_response(
+        self,
+        message: str,
+        context: Dict[str, Any],
+        tool_results: Dict[str, Any],
+        intent: IntentClassification,
+        executed_actions: List[Dict[str, Any]] | None = None,
+        fallback_response: str = "",
+    ) -> str:
+        executed_actions = executed_actions or []
+        if not self.client:
+            return self._fallback_answer(message, intent, tool_results, executed_actions, fallback_response)
+
+        system_prompt = (
+            "Voce e Nano, copiloto financeiro e assistente geral. "
+            "Responda em portugues-br, curto, claro, proativo. "
+            "Se houver acoes executadas, confirme o resultado objetivo."
+        )
+        user_prompt = (
+            f"Mensagem do usuario:\n{message}\n\n"
+            f"Intent:\n{intent.label}\n\n"
+            f"Contexto:\n{context}\n\n"
+            f"Resultados de tools:\n{tool_results}\n\n"
+            f"Acoes executadas:\n{executed_actions}\n\n"
+            f"Fallback:\n{fallback_response}\n"
+        )
+        try:
+            response = await self.client.responses.create(
+                model=self.model,
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            text = (getattr(response, "output_text", "") or "").strip()
+            return text or self._fallback_answer(message, intent, tool_results, executed_actions, fallback_response)
+        except Exception:
+            return self._fallback_answer(message, intent, tool_results, executed_actions, fallback_response)
+
+    async def ask_for_missing_data(self, message: str, missing_fields: List[str]) -> str:
+        if self.client:
+            try:
+                prompt = (
+                    "Escreva uma pergunta curta e cordial pedindo apenas os campos faltantes.\n"
+                    f"Mensagem original: {message}\nCampos faltantes: {missing_fields}"
+                )
+                response = await self.client.responses.create(
+                    model=self.model,
+                    input=[
+                        {"role": "system", "content": "Voce pede dados faltantes de forma objetiva."},
+                        {"role": "user", "content": prompt},
+                    ],
+                )
+                text = (getattr(response, "output_text", "") or "").strip()
+                if text:
+                    return text
+            except Exception:
+                pass
+        missing = ", ".join(missing_fields)
+        return f"Para concluir, preciso de: {missing}. Pode me informar?"
+
+    async def summarize_search_results(self, results: Dict[str, Any]) -> str:
+        if self.client:
+            try:
+                response = await self.client.responses.create(
+                    model=self.model,
+                    input=[
+                        {"role": "system", "content": "Resuma pesquisas em 3-5 linhas objetivas."},
+                        {"role": "user", "content": f"Resultados:\n{results}"},
+                    ],
+                )
+                text = (getattr(response, "output_text", "") or "").strip()
+                if text:
+                    return text
+            except Exception:
+                pass
+        items = results.get("items") or []
+        if not items:
+            return "Nao encontrei resultados confiaveis nesta busca."
+        top = items[:3]
+        lines = [f"- {item.get('title', 'Resultado')}" for item in top]
+        return "Resumo rapido da pesquisa:\n" + "\n".join(lines)
+
+    def _fallback_answer(
+        self,
+        message: str,
+        intent: IntentClassification,
+        tool_results: Dict[str, Any],
+        executed_actions: List[Dict[str, Any]],
+        fallback_response: str,
+    ) -> str:
+        if executed_actions:
+            executed_lines = [action.get("message") for action in executed_actions if action.get("message")]
+            if executed_lines:
+                return "\n".join(executed_lines)
+        if intent.label in {"system_query", "financial_analysis"} and tool_results:
+            return f"Entendi. Aqui esta o que encontrei: {tool_results}"
+        if intent.label == "web_research":
+            return f"Pesquisei isso para voce. {tool_results.get('web_summary', '')}".strip()
+        return fallback_response or (
+            "Entendi seu pedido. Posso registrar movimentacoes, analisar seu financeiro, "
+            "consultar agenda e pesquisar na web quando voce pedir."
+        )
+

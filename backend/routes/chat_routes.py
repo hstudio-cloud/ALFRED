@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from bson import ObjectId
 
+from agent import AgentOrchestrator
 from ai_service import AlfredAI
 from database import (
     chat_messages_collection,
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 ai = AlfredAI(api_key=os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY"))
+orchestrator = AgentOrchestrator(api_key=os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or "")
 
 
 def _sanitize_json_payload(value):
@@ -97,27 +99,16 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
             )
 
         conversation_history = await _load_conversation_context(current_user["id"])
-        memory_profile = await ai.load_memory_profile(current_user["id"])
-
-        ai_response = await ai.process_message(
-            current_user["id"],
-            message_data.content,
+        agent_result = await orchestrator.handle_message(
+            user=current_user,
+            workspace=workspace,
+            message=message_data.content,
             conversation_history=conversation_history,
-            memory_profile=memory_profile,
         )
-        executed_actions = await ai.execute_actions(workspace["id"], current_user, ai_response["actions"])
-        safe_actions = _sanitize_json_payload(ai_response["actions"])
-        safe_executed_actions = _sanitize_json_payload(executed_actions)
-        await ai.persist_memory_profile(
-            current_user["id"],
-            ai_response["actions"],
-            message_data.content,
-        )
-        assistant_content = ai.compose_assistant_reply(
-            workspace_name=workspace.get("name", "principal"),
-            executed_actions=executed_actions,
-            fallback_response=ai_response["response"],
-        )
+        safe_actions = _sanitize_json_payload(agent_result.actions)
+        safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
+        safe_tool_results = _sanitize_json_payload(agent_result.tool_results)
+        assistant_content = agent_result.message
 
         assistant_message = ChatMessage(
             user_id=current_user["id"],
@@ -126,6 +117,11 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
             metadata={
                 "actions": safe_actions,
                 "executed_actions": safe_executed_actions,
+                "intent": agent_result.intent,
+                "tool_results": safe_tool_results,
+                "followup_needed": agent_result.followup_needed,
+                "missing_fields": agent_result.missing_fields,
+                "agent_metadata": _sanitize_json_payload(agent_result.metadata),
                 "workspace_id": workspace["id"],
             },
         )
@@ -135,6 +131,10 @@ async def send_message(message_data: ChatMessageCreate, current_user: dict = Dep
             "message": assistant_message.dict(),
             "actions": safe_actions,
             "executed_actions": safe_executed_actions,
+            "intent": agent_result.intent,
+            "tool_results": safe_tool_results,
+            "followup_needed": agent_result.followup_needed,
+            "missing_fields": agent_result.missing_fields,
             "workspace_id": workspace["id"],
         }
     except HTTPException:

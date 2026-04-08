@@ -369,9 +369,19 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       }
 
       const executedActions = response.executed_actions || assistantMessage?.metadata?.executed_actions || [];
-      executedActions.forEach((action) => {
+      const declaredActions = response.actions || assistantMessage?.metadata?.actions || [];
+      [...declaredActions, ...executedActions].forEach((action) => {
         onAssistantAction?.(action);
       });
+
+      const intent = response.intent || assistantMessage?.metadata?.intent;
+      if (response.followup_needed) {
+        updateVoiceState('idle', 'Nano precisa de mais um dado para concluir.');
+      } else if (intent === 'web_research') {
+        updateVoiceState('processing', 'Nano pesquisou e esta resumindo para voce...');
+      } else if (intent === 'financial_analysis') {
+        updateVoiceState('processing', 'Nano analisou seu financeiro e esta organizando os insights...');
+      }
 
       const shouldSpeak = options.speak !== false;
       if (shouldSpeak) {

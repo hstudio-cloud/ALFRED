@@ -3011,6 +3011,7 @@ const Dashboard = () => {
         reminders={reminders}
         bills={bills}
         onNavigateSection={setActiveSection}
+        onNavigateRoute={(route) => navigate(route)}
       />
     </div>
   );
