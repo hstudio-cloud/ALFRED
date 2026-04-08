@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from typing import Any, Dict
 
 from .types import IntentClassification
@@ -19,6 +20,8 @@ class IntentClassifier:
         "agendar",
         "cadastrar funcionario",
         "registrar ponto",
+        "abra",
+        "abre",
         "abrir",
         "ir para",
         "navegar",
@@ -49,7 +52,8 @@ class IntentClassifier:
     _MEMORY_HINTS = ("lembra", "lembrar", "ultima vez", "que eu pedi")
 
     def classify(self, message: str, context: Dict[str, Any]) -> IntentClassification:
-        text = (message or "").strip().lower()
+        raw_text = (message or "").strip()
+        text = self._normalize_text(raw_text)
         entities = self._extract_entities(text)
 
         if not text:
@@ -66,6 +70,15 @@ class IntentClassifier:
             return IntentClassification(
                 label="web_research",
                 confidence=0.85,
+                entities=entities,
+                requires_tool=True,
+            )
+
+        # Navigation commands like "abra bancos" should be actions even if no other hint matched.
+        if entities.get("section") and re.search(r"\b(abra|abre|abrir|ir para|navegar)\b", text):
+            return IntentClassification(
+                label="system_action",
+                confidence=0.93,
                 entities=entities,
                 requires_tool=True,
             )
@@ -150,20 +163,35 @@ class IntentClassifier:
         section_map = {
             "dashboard": "overview",
             "visao geral": "overview",
+            "painel": "overview",
             "movimentacoes": "transactions",
+            "movimentacao": "transactions",
+            "transacoes": "transactions",
+            "transacao": "transactions",
             "bancos": "banks",
+            "banco": "banks",
             "contas": "banks",
+            "conta": "banks",
             "cartoes": "cards",
+            "cartao": "cards",
             "contatos": "contacts",
+            "contato": "contacts",
             "relatorios": "reports",
+            "relatorio": "reports",
             "empresa": "company",
             "perfil": "profile",
             "configuracoes": "settings",
+            "configuracao": "settings",
             "funcionarios": "employees",
+            "funcionario": "employees",
             "clientes": "clients",
+            "cliente": "clients",
             "tarefas": "tasks",
+            "tarefa": "tasks",
             "assistente": "assistant",
             "chat": "assistant",
+            "nano ia": "assistant",
+            "nano": "assistant",
         }
         section = None
         for key, value in section_map.items():
@@ -176,13 +204,19 @@ class IntentClassifier:
             "category": category,
             "scope": scope,
             "section": section,
-            "compare_with_balance": any(token in text for token in ("comparar com meu saldo", "comparar com o saldo", "cabe no meu saldo")),
-            "period": "month" if any(token in text for token in ("mes", "mês")) else None,
+            "compare_with_balance": any(
+                token in text
+                for token in (
+                    "comparar com meu saldo",
+                    "comparar com o saldo",
+                    "cabe no meu saldo",
+                )
+            ),
+            "period": "month" if any(token in text for token in ("mes", "meses")) else None,
         }
-        if entities.get("section"):
-            return IntentClassification(
-                label="system_action",
-                confidence=0.9,
-                entities=entities,
-                requires_tool=True,
-            )
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        base = unicodedata.normalize("NFKD", text or "")
+        without_accents = "".join(ch for ch in base if not unicodedata.combining(ch))
+        return without_accents.lower().strip()

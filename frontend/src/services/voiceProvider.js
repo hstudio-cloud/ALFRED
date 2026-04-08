@@ -77,6 +77,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
   let currentUtterance = null;
   let backendCaptureSession = null;
   let premiumUnavailable = false;
+  let backendSpeechAvailable = true;
 
   return {
     type: 'browser-fallback',
@@ -94,8 +95,10 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
     async getVoiceStatus() {
       try {
         const response = await axios.get(`${apiBase}/assistant/voice-status`);
+        backendSpeechAvailable = Boolean(response?.data?.premium_available);
         return response.data;
       } catch (error) {
+        backendSpeechAvailable = false;
         return {
           provider: 'browser_fallback',
           premium_available: false,
@@ -360,6 +363,10 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
           }
         }
 
+        if (!backendSpeechAvailable) {
+          return this.speakWithBrowser(speechText, { onEnd, onError });
+        }
+
         try {
           const response = await axios.post(
             `${apiBase}/assistant/speech`,
@@ -390,6 +397,9 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
           const statusCode = error?.response?.status;
           if ([401, 402, 403, 404, 429, 500, 503].includes(statusCode)) {
             premiumUnavailable = true;
+            if ([401, 402, 403, 404, 503].includes(statusCode)) {
+              backendSpeechAvailable = false;
+            }
           }
           return this.speakWithBrowser(speechText, { onEnd, onError });
         }
