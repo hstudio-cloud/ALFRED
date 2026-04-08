@@ -6,7 +6,9 @@ import bcrypt
 from jose import JWTError, jwt
 
 
-SECRET_KEY = os.getenv("SECRET_KEY", "alfred-secret-key-change-in-production")
+# JWT_SECRET is the preferred env var name.
+# SECRET_KEY is kept for backward compatibility with previous deployments.
+SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "alfred-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
