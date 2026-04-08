@@ -173,7 +173,8 @@ async def assistant_history(current_user: dict = Depends(get_current_user)):
         {"_id": 0},
     ).sort("created_at", -1).limit(50).to_list(50)
     messages.reverse()
-    return [ChatMessage(**msg) for msg in messages]
+    safe_messages = [_sanitize_json_payload(msg) for msg in messages]
+    return [ChatMessage(**msg) for msg in safe_messages]
 
 
 @router.delete("/clear")

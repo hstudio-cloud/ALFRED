@@ -159,6 +159,7 @@ class NanoVoiceManager:
     def __init__(self, provider: Optional[str] = None):
         self.provider_name = provider or os.getenv("NANO_VOICE_PROVIDER", "auto")
         self.provider = self._resolve_provider(self.provider_name)
+        self.fallback_provider = self._resolve_fallback_provider(self.provider_name, self.provider)
 
     def _resolve_provider(self, provider_name: str) -> VoiceProviderBase:
         api_key = os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or ""
@@ -180,16 +181,55 @@ class NanoVoiceManager:
             return OpenAIVoiceProvider(api_key=api_key)
         return BrowserFallbackVoiceProvider()
 
+    def _resolve_fallback_provider(self, provider_name: str, primary: VoiceProviderBase) -> Optional[VoiceProviderBase]:
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or ""
+        if not api_key:
+            return None
+
+        # Se o modo principal nao for OpenAI, deixamos OpenAI como fallback premium.
+        if primary.name != "openai":
+            return OpenAIVoiceProvider(api_key=api_key)
+        return None
+
     async def synthesize(self, request: NanoVoiceRequest) -> Optional[bytes]:
         try:
-            return await self.provider.synthesize(request)
+            primary_audio = await self.provider.synthesize(request)
+            if primary_audio:
+                return primary_audio
         except Exception as exc:
             logger.error("Voice synth failed via %s: %s", self.provider.name, exc)
-            return None
+
+        if self.fallback_provider is not None:
+            try:
+                logger.info("Voice synth fallback: switching from %s to %s", self.provider.name, self.fallback_provider.name)
+                fallback_audio = await self.fallback_provider.synthesize(request)
+                if fallback_audio:
+                    return fallback_audio
+            except Exception as exc:
+                logger.error("Voice synth fallback failed via %s: %s", self.fallback_provider.name, exc)
+        return None
 
     async def transcribe(self, audio_bytes: bytes, locale: str = "pt-BR", mime_type: str = "audio/webm") -> str:
         try:
-            return await self.provider.transcribe(audio_bytes, locale=locale, mime_type=mime_type)
+            primary_text = await self.provider.transcribe(audio_bytes, locale=locale, mime_type=mime_type)
+            if primary_text:
+                return primary_text
         except Exception as exc:
             logger.error("Voice transcription failed via %s: %s", self.provider.name, exc)
-            return ""
+
+        if self.fallback_provider is not None:
+            try:
+                logger.info(
+                    "Voice transcription fallback: switching from %s to %s",
+                    self.provider.name,
+                    self.fallback_provider.name,
+                )
+                fallback_text = await self.fallback_provider.transcribe(
+                    audio_bytes=audio_bytes,
+                    locale=locale,
+                    mime_type=mime_type,
+                )
+                return fallback_text or ""
+            except Exception as exc:
+                logger.error("Voice transcription fallback failed via %s: %s", self.fallback_provider.name, exc)
+        return ""
