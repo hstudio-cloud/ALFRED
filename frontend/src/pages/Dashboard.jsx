@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -265,6 +265,7 @@ const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("overview");
   const [financialView, setFinancialView] = useState("general");
   const [loading, setLoading] = useState(true);
+  const activeSectionRef = useRef(activeSection);
 
   const [stats, setStats] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -321,11 +322,18 @@ const Dashboard = () => {
   const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] =
     useState("all");
 
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
   const loadAll = useCallback(
     async (workspaceId) => {
       if (!workspaceId) return;
 
-      setLoading(true);
+      const shouldBlockUi = loading || activeSectionRef.current !== "assistant";
+      if (shouldBlockUi) {
+        setLoading(true);
+      }
       try {
         const [
           statsRes,
@@ -419,10 +427,12 @@ const Dashboard = () => {
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (shouldBlockUi) {
+          setLoading(false);
+        }
       }
     },
-    [financialView, reportPeriod, toast],
+    [financialView, loading, reportPeriod, toast],
   );
 
   useEffect(() => {
