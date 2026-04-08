@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createVoiceProvider } from '../services/voiceProvider';
 import assistantService from '../services/assistantService';
+import { API_BASE_URL, VOICE_PROVIDER } from '../config/env';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = API_BASE_URL;
 
 export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssistantAction } = {}) => {
   const [chatHistory, setChatHistory] = useState([]);
@@ -186,7 +186,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   useEffect(() => {
     const provider = createVoiceProvider({
       apiBase: API,
-      mode: process.env.REACT_APP_VOICE_PROVIDER === 'realtime' ? 'realtime' : 'browser-fallback'
+      mode: VOICE_PROVIDER === 'realtime' ? 'realtime' : 'browser-fallback'
     });
     providerRef.current = provider;
     setVoiceSupported(

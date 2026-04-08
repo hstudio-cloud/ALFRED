@@ -14,6 +14,7 @@ import {
 import financeService from "../services/financeService";
 import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
+import { API_BASE_URL } from "../config/env";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -46,8 +47,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = API_BASE_URL;
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",

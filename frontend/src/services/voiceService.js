@@ -1,11 +1,12 @@
 import axios from 'axios';
+import { VOICE_BACKEND_URL } from '../config/env';
 
 let currentAudio = null;
 let currentObjectUrl = null;
 let minimaxRouteAvailable = null;
 
 const getVoiceApiBase = () => {
-  const configuredUrl = process.env.REACT_APP_VOICE_BACKEND_URL;
+  const configuredUrl = VOICE_BACKEND_URL;
   return configuredUrl ? configuredUrl.replace(/\/$/, '') : '';
 };
 

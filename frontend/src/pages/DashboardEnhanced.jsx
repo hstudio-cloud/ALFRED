@@ -37,9 +37,9 @@ import {
   Target,
   Zap,
 } from "lucide-react";
+import { API_BASE_URL } from "../config/env";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = API_BASE_URL;
 
 const COLORS = ["#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b"];
 

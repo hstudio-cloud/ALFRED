@@ -30,9 +30,9 @@ import {
 } from "../components/ui/dialog";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
+import { API_BASE_URL } from "../config/env";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = API_BASE_URL;
 
 const STAGES = [
   { id: "todo", name: "A Fazer", color: "bg-slate-700" },

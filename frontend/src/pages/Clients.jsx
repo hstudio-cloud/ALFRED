@@ -22,6 +22,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { useToast } from "../hooks/use-toast";
+import { API_BASE_URL } from "../config/env";
 import {
   Dialog,
   DialogContent,
@@ -31,8 +32,7 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = API_BASE_URL;
 
 const fieldClass =
   "bg-black/35 border-red-500/15 text-white placeholder:text-red-100/35 focus:border-red-400/50";

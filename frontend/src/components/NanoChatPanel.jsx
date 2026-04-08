@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Mic, MicOff, Send, Square } from "lucide-react";
 
 import { nanoQuickPromptMap, nanoQuickPrompts } from "../lib/nanoTheme";
@@ -57,6 +57,9 @@ const NanoChatPanel = ({
   onInterrupt,
 }) => {
   const scrollRef = useRef(null);
+  const lastAssistantMessageIdRef = useRef(null);
+  const overlayTimerRef = useRef(null);
+  const [responsePulseActive, setResponsePulseActive] = useState(false);
 
   const liveStatus = useMemo(
     () =>
@@ -75,6 +78,34 @@ const NanoChatPanel = ({
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [chatHistory, liveStatus]);
 
+  useEffect(() => {
+    const lastAssistantMessage = [...chatHistory]
+      .reverse()
+      .find((entry) => entry?.role === "assistant");
+
+    if (!lastAssistantMessage?.id) return;
+    if (lastAssistantMessage.id === lastAssistantMessageIdRef.current) return;
+
+    lastAssistantMessageIdRef.current = lastAssistantMessage.id;
+    setResponsePulseActive(true);
+
+    if (overlayTimerRef.current) {
+      clearTimeout(overlayTimerRef.current);
+    }
+    overlayTimerRef.current = setTimeout(() => {
+      setResponsePulseActive(false);
+      overlayTimerRef.current = null;
+    }, 2400);
+  }, [chatHistory]);
+
+  useEffect(() => {
+    return () => {
+      if (overlayTimerRef.current) {
+        clearTimeout(overlayTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -85,7 +116,8 @@ const NanoChatPanel = ({
   const shouldShowOverlay =
     voiceState === "listening" ||
     voiceState === "processing" ||
-    voiceState === "speaking";
+    voiceState === "speaking" ||
+    responsePulseActive;
 
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -256,6 +288,8 @@ const NanoChatPanel = ({
                   ? "RESPONDENDO..."
                   : voiceState === "listening"
                   ? "OUVINDO..."
+                  : responsePulseActive
+                  ? "SINTESE VISUAL ATIVA..."
                   : "NANO ATIVO"}
               </p>
             </div>
