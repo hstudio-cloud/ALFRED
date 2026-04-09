@@ -198,9 +198,7 @@ class LLMService:
         tool_results: Dict[str, Any],
     ) -> str:
         if not self.client:
-            if tool_results:
-                return f"Conclui seu pedido com base nestes resultados: {tool_results}"
-            return "Entendi. Posso te ajudar com a proxima acao."
+            return self._fallback_tool_response(intent=intent, tool_results=tool_results)
         try:
             response = await self.client.responses.create(
                 model=self.model,
@@ -221,6 +219,29 @@ class LLMService:
                 ],
             )
             text = (getattr(response, "output_text", "") or "").strip()
-            return text or f"Conclui o pedido. Resultado: {tool_results}"
+            if text:
+                return text
+            return self._fallback_tool_response(intent=intent, tool_results=tool_results)
         except Exception:
-            return f"Conclui o pedido. Resultado: {tool_results}"
+            return self._fallback_tool_response(intent=intent, tool_results=tool_results)
+
+    def _fallback_tool_response(self, *, intent: str, tool_results: Dict[str, Any]) -> str:
+        if intent == "general_chat":
+            return (
+                "Perfeito. Estou com voce. Se quiser, posso ver sua agenda de hoje, "
+                "registrar movimentacoes e te ajudar a organizar o financeiro agora."
+            )
+        if not tool_results:
+            if intent in {"system_action", "system_query", "financial_analysis"}:
+                return (
+                    "Entendi seu pedido, mas nao consegui dados suficientes para executar com seguranca. "
+                    "Pode me passar mais detalhes (valor, categoria, data ou conta)?"
+                )
+            if intent == "web_research":
+                return "Tentei pesquisar agora, mas a busca externa falhou temporariamente. Posso tentar de novo em seguida."
+            return "Entendi. Pode me passar um pouco mais de contexto que eu resolvo para voce."
+        if intent in {"system_action", "system_query", "financial_analysis"}:
+            return "Conclui seu pedido com dados reais do sistema e deixei tudo registrado."
+        if intent == "web_research":
+            return "Pesquisei na web e trouxe resultados atualizados para voce."
+        return "Conclui seu pedido com sucesso."

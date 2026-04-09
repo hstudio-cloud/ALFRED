@@ -10,6 +10,7 @@ from tools.orchestrator_tools import (
     search_web,
 )
 from tools.finance_tools import get_month_expenses
+from tools.reminder_tools import get_agenda_today
 from services.llm_service import LLMService
 
 
@@ -30,7 +31,21 @@ class NanoOrchestratorService:
             return "knowledge_lookup"
         if any(token in text for token in ("criar", "registre", "registrar", "agende", "lembrete")):
             return "system_action"
-        if any(token in text for token in ("quanto", "saldo", "gastos", "fluxo de caixa", "despesas do mes")):
+        if any(
+            token in text
+            for token in (
+                "quanto",
+                "saldo",
+                "gastos",
+                "fluxo de caixa",
+                "despesas do mes",
+                "agenda hoje",
+                "tem algo para minha agenda",
+                "o que temos pra hoje",
+                "o que temos para hoje",
+                "lembretes de hoje",
+            )
+        ):
             return "system_query"
         return "general_chat"
 
@@ -96,6 +111,11 @@ class NanoOrchestratorService:
                 message=message,
                 intent=intent,
                 tool_results=tool_results,
+            )
+        if requires_tool and not tool_results:
+            reply = (
+                "Entendi seu pedido, mas nao consegui executar nenhuma acao agora. "
+                "Pode repetir com mais contexto para eu concluir corretamente?"
             )
 
         return {
@@ -165,6 +185,14 @@ class NanoOrchestratorService:
                         "parameters": {"type": "object", "properties": {"account_scope": {"type": "string"}}},
                     },
                 },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "get_agenda_today",
+                        "description": "Retorna os lembretes e compromissos do usuario para hoje.",
+                        "parameters": {"type": "object", "properties": {}},
+                    },
+                },
             ]
         if intent == "web_research":
             return [
@@ -197,6 +225,8 @@ class NanoOrchestratorService:
                 return [{"name": "create_reminder", "arguments": self._extract_reminder_args(text)}]
             return [{"name": "create_transaction", "arguments": self._extract_transaction_args(text)}]
         if intent == "system_query":
+            if "agenda" in text or "hoje" in text or "lembrete" in text:
+                return [{"name": "get_agenda_today", "arguments": {}}]
             if "fluxo" in text or "caixa" in text or "previs" in text:
                 return [{"name": "get_cashflow", "arguments": {}}]
             return [{"name": "get_month_expenses", "arguments": {}}]
@@ -212,6 +242,8 @@ class NanoOrchestratorService:
         if intent == "knowledge_lookup":
             return [{"name": "search_internal_knowledge", "arguments": {"query": message}}]
         if intent == "system_query":
+            if any(token in (message or "").lower() for token in ("agenda", "hoje", "lembrete")):
+                return [{"name": "get_agenda_today", "arguments": {}}]
             return [{"name": "get_month_expenses", "arguments": {}}]
         if intent == "system_action":
             return [{"name": "create_transaction", "arguments": self._extract_transaction_args(message)}]
@@ -270,6 +302,12 @@ class NanoOrchestratorService:
                 account_scope=(tool_args or {}).get("account_scope"),
             )
 
+        if tool_name == "get_agenda_today":
+            return await get_agenda_today(
+                workspace_id=workspace_id,
+                user_id=user_id,
+            )
+
         if tool_name == "search_web":
             query = (tool_args or {}).get("query") or message
             return await search_web(query=query)
@@ -307,6 +345,18 @@ class NanoOrchestratorService:
             return "\n".join(lines)
 
         if intent == "system_query":
+            if "get_agenda_today" in tool_results:
+                result = tool_results["get_agenda_today"] or {}
+                items = result.get("items") or []
+                if not items:
+                    return "Olhei sua agenda de hoje e, por enquanto, voce nao tem lembretes pendentes."
+                lines = ["Verifiquei sua agenda de hoje. Voce tem:"]
+                for idx, item in enumerate(items[:5], start=1):
+                    remind_at = str(item.get("remind_at") or "")
+                    hour = remind_at[11:16] if len(remind_at) >= 16 else "sem horario"
+                    lines.append(f"{idx}. {item.get('title', 'Lembrete')} - {hour}")
+                lines.append("Se quiser, eu ja posso criar ou ajustar algum desses lembretes.")
+                return "\n".join(lines)
             if "get_cashflow" in tool_results:
                 result = tool_results["get_cashflow"] or {}
                 current = result.get("current_balance", 0)
