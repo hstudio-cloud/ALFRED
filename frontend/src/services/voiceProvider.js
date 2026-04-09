@@ -55,6 +55,67 @@ const sanitizeSpeechText = (text = '') => {
     cleaned = cleaned.replace(pattern, value);
   });
 
+  // Ajustes de acentuacao para melhorar a pronuncia em pt-BR no TTS.
+  // Mantemos o mapa pequeno e focado nas palavras mais frequentes no Nano.
+  const accentFixes = [
+    [/\bvoce\b/gi, 'você'],
+    [/\bvoces\b/gi, 'vocês'],
+    [/\bja\b/gi, 'já'],
+    [/\bnao\b/gi, 'não'],
+    [/\best[aá]\b/gi, 'está'],
+    [/\bsera\b/gi, 'será'],
+    [/\bpossivel\b/gi, 'possível'],
+    [/\brelatorio\b/gi, 'relatório'],
+    [/\brelatorios\b/gi, 'relatórios'],
+    [/\bfinanceiro\b/gi, 'financeiro'],
+    [/\bfinanceiros\b/gi, 'financeiros'],
+    [/\btransacao\b/gi, 'transação'],
+    [/\btransacoes\b/gi, 'transações'],
+    [/\bmovimentacao\b/gi, 'movimentação'],
+    [/\bmovimentacoes\b/gi, 'movimentações'],
+    [/\bcategoria\b/gi, 'categoria'],
+    [/\bcategorias\b/gi, 'categorias'],
+    [/\blembrete\b/gi, 'lembrete'],
+    [/\blembretes\b/gi, 'lembretes'],
+    [/\bagenda\b/gi, 'agenda'],
+    [/\bproximo\b/gi, 'próximo'],
+    [/\bproximos\b/gi, 'próximos'],
+    [/\bmes\b/gi, 'mês'],
+    [/\bmeses\b/gi, 'meses'],
+    [/\bcredito\b/gi, 'crédito'],
+    [/\bdebito\b/gi, 'débito'],
+    [/\bempresa\b/gi, 'empresa'],
+    [/\bpessoal\b/gi, 'pessoal'],
+    [/\banalise\b/gi, 'análise'],
+    [/\banalises\b/gi, 'análises'],
+    [/\batingiu\b/gi, 'atingiu'],
+    [/\bhistorico\b/gi, 'histórico'],
+    [/\bautomatico\b/gi, 'automático'],
+    [/\bautomaticos\b/gi, 'automáticos'],
+    [/\bautomaticamente\b/gi, 'automaticamente'],
+    [/\bnumero\b/gi, 'número'],
+    [/\bpercentual\b/gi, 'percentual'],
+    [/\bjuros\b/gi, 'juros'],
+    [/\bcartao\b/gi, 'cartão'],
+    [/\bcartoes\b/gi, 'cartões'],
+    [/\bfuncionario\b/gi, 'funcionário'],
+    [/\bfuncionarios\b/gi, 'funcionários'],
+    [/\bacao\b/gi, 'ação'],
+    [/\bacoes\b/gi, 'ações'],
+    [/\bconclui\b/gi, 'concluí'],
+    [/\bconcluido\b/gi, 'concluído'],
+    [/\bconteudo\b/gi, 'conteúdo'],
+    [/\bexperiencia\b/gi, 'experiência'],
+    [/\bnegocio\b/gi, 'negócio'],
+    [/\bnegocios\b/gi, 'negócios'],
+    [/\bprojecao\b/gi, 'projeção'],
+    [/\bprojecoes\b/gi, 'projeções'],
+  ];
+
+  accentFixes.forEach(([pattern, value]) => {
+    cleaned = cleaned.replace(pattern, value);
+  });
+
   cleaned = cleaned
     .replace(/\r/g, '\n')
     .replace(/\n{2,}/g, '. ')
