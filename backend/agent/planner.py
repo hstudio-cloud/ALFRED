@@ -57,8 +57,9 @@ class Planner:
             plan.steps.extend(
                 [
                     PlanStep(name="month_expenses", tool="finance_tools.get_month_expenses"),
-                    PlanStep(name="cashflow_forecast", tool="finance_tools.get_cashflow_forecast"),
-                    PlanStep(name="top_categories", tool="reports_tools.get_top_categories"),
+                    PlanStep(name="cashflow_forecast", tool="finance_tools.get_cashflow"),
+                    PlanStep(name="top_categories", tool="report_tools.get_top_categories"),
+                    PlanStep(name="workspace_summary", tool="system_tools.get_workspace_summary"),
                 ]
             )
             return plan
@@ -78,6 +79,16 @@ class Planner:
                         tool_input={"scope": intent.entities.get("scope")},
                     )
                 )
+            return plan
+
+        if intent.label == "knowledge_lookup":
+            plan.steps.append(
+                PlanStep(
+                    name="knowledge_lookup",
+                    tool="knowledge_tools.search_internal_knowledge",
+                    tool_input={"query": message},
+                )
+            )
             return plan
 
         if intent.label == "memory_recall":

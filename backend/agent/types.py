@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Literal, Optional
 IntentLabel = Literal[
     "system_action",
     "system_query",
+    "knowledge_lookup",
     "financial_analysis",
     "general_chat",
     "web_research",
@@ -19,9 +20,14 @@ class IntentClassification:
     label: IntentLabel
     confidence: float
     entities: Dict[str, Any] = field(default_factory=dict)
+    suggested_tool: str | None = None
     needs_context: bool = True
     requires_tool: bool = False
     missing_fields: List[str] = field(default_factory=list)
+
+    @property
+    def extracted_entities(self) -> Dict[str, Any]:
+        return self.entities
 
 
 @dataclass
@@ -50,4 +56,3 @@ class AgentResult:
     followup_needed: bool = False
     missing_fields: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
-

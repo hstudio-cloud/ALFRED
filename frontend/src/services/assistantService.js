@@ -5,7 +5,7 @@ const API = API_BASE_URL;
 
 export const assistantService = {
   sendMessage(content) {
-    return axios.post(`${API}/assistant/message`, { content }).then((response) => response.data);
+    return axios.post(`${API}/assistant/orchestrate`, { content }).then((response) => response.data);
   },
 
   getHistory() {

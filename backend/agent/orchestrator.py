@@ -9,14 +9,16 @@ from tools import (
     current_date_time,
     get_account_balances,
     get_agenda_today,
-    get_cashflow_forecast,
+    get_cashflow,
     get_month_expenses,
     get_open_bills,
     get_payroll_summary,
     get_recent_transactions,
+    get_workspace_summary,
+    search_internal_knowledge,
     get_top_categories,
     navigate_to_section,
-    web_search,
+    search_web,
     workspace_context,
 )
 
@@ -167,10 +169,16 @@ class AgentOrchestrator:
             return await get_month_expenses(workspace_id=workspace_id)
 
         if step.tool == "finance_tools.get_cashflow_forecast":
-            return await get_cashflow_forecast(workspace_id=workspace_id)
+            return await get_cashflow(workspace_id=workspace_id)
 
-        if step.tool == "reports_tools.get_top_categories":
+        if step.tool == "finance_tools.get_cashflow":
+            return await get_cashflow(workspace_id=workspace_id)
+
+        if step.tool == "report_tools.get_top_categories":
             return await get_top_categories(workspace_id=workspace_id)
+
+        if step.tool == "system_tools.get_workspace_summary":
+            return await get_workspace_summary(workspace_id=workspace_id, user_id=user_id)
 
         if step.tool == "account_tools.get_account_balances":
             return await get_account_balances(
@@ -182,7 +190,10 @@ class AgentOrchestrator:
             return await get_payroll_summary(workspace_id=workspace_id)
 
         if step.tool == "web_tools.web_search":
-            return await web_search(step.tool_input.get("query") or message)
+            return await search_web(step.tool_input.get("query") or message)
+
+        if step.tool == "knowledge_tools.search_internal_knowledge":
+            return await search_internal_knowledge(step.tool_input.get("query") or message)
 
         if step.tool == "utility_tools.current_date_time":
             return current_date_time()

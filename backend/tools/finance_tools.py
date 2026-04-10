@@ -98,3 +98,7 @@ async def get_cashflow_forecast(workspace_id: str, scope: Optional[str] = None) 
 
     return {"current_balance": round(current_balance, 2), "forecasts": forecasts}
 
+
+async def get_cashflow(workspace_id: str, scope: Optional[str] = None) -> Dict[str, Any]:
+    # Alias semantico para manter o contrato de tools do agente.
+    return await get_cashflow_forecast(workspace_id=workspace_id, scope=scope)

@@ -14,7 +14,6 @@ from ai_service import AlfredAI
 from database import chat_messages_collection, db
 from models import ChatMessage, ChatMessageCreate
 from routes.auth_routes import get_current_user
-from services.nano_orchestrator_service import NanoOrchestratorService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -22,7 +21,6 @@ router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 load_dotenv(Path(__file__).parent.parent / ".env")
 ai = AlfredAI(api_key=os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY"))
 orchestrator = AgentOrchestrator(api_key=os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or "")
-nano_orchestrator = NanoOrchestratorService()
 
 
 def _sanitize_json_payload(value):
@@ -56,7 +54,8 @@ class AssistantVoiceStatusResponse(BaseModel):
 
 
 class AssistantOrchestrateRequest(BaseModel):
-    message: str
+    message: str | None = None
+    content: str | None = None
 
 
 async def _resolve_workspace(current_user: dict) -> Optional[dict]:
@@ -75,54 +74,11 @@ async def _load_conversation_context(user_id: str) -> list:
 @router.post("/message")
 async def assistant_message(message_data: ChatMessageCreate, current_user: dict = Depends(get_current_user)):
     try:
-        user_message = ChatMessage(user_id=current_user["id"], role="user", content=message_data.content)
-        await chat_messages_collection.insert_one(user_message.dict())
-
-        workspace = await _resolve_workspace(current_user)
-        if not workspace:
-            raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
-
-        # New path: dedicated orchestrator with tool-calling and structured tool metadata.
-        orchestrated = await nano_orchestrator.orchestrate(
-            message=message_data.content,
-            user=current_user,
-            workspace=workspace,
+        return await _process_orchestrated_message(
+            content=message_data.content,
+            current_user=current_user,
+            persist_history=True,
         )
-        safe_actions = []
-        safe_executed_actions = []
-        safe_tool_results = _sanitize_json_payload(orchestrated.get("tool_results", {}))
-        assistant_content = orchestrated.get("message", "")
-        intent_label = orchestrated.get("intent", "general_chat")
-        followup_needed = bool(orchestrated.get("followup_needed", False))
-        used_tools = orchestrated.get("used_tools", [])
-
-        assistant_message = ChatMessage(
-            user_id=current_user["id"],
-            role="assistant",
-            content=assistant_content,
-            metadata={
-                "actions": safe_actions,
-                "executed_actions": safe_executed_actions,
-                "intent": intent_label,
-                "tool_results": safe_tool_results,
-                "followup_needed": followup_needed,
-                "missing_fields": [],
-                "agent_metadata": {"used_tools": used_tools, "mode": "orchestrate_v1"},
-                "workspace_id": workspace["id"],
-            },
-        )
-        await chat_messages_collection.insert_one(assistant_message.dict())
-        return {
-            "message": assistant_message.dict(),
-            "actions": safe_actions,
-            "executed_actions": safe_executed_actions,
-            "intent": intent_label,
-            "tool_results": safe_tool_results,
-            "followup_needed": followup_needed,
-            "missing_fields": [],
-            "workspace_id": workspace["id"],
-            "used_tools": used_tools,
-        }
     except HTTPException:
         raise
     except Exception as exc:
@@ -179,28 +135,87 @@ async def assistant_message(message_data: ChatMessageCreate, current_user: dict 
 @router.post("/orchestrate")
 async def assistant_orchestrate(payload: AssistantOrchestrateRequest, current_user: dict = Depends(get_current_user)):
     try:
-        workspace = await _resolve_workspace(current_user)
-        if not workspace:
-            raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
-
-        result = await nano_orchestrator.orchestrate(
-            message=payload.message,
-            user=current_user,
-            workspace=workspace,
+        content = (payload.content or payload.message or "").strip()
+        if not content:
+            raise HTTPException(status_code=400, detail="Mensagem vazia para orquestracao.")
+        return await _process_orchestrated_message(
+            content=content,
+            current_user=current_user,
+            persist_history=True,
         )
-        return {
-            "intent": result.get("intent", "general_chat"),
-            "used_tools": result.get("used_tools", []),
-            "tool_plan": result.get("tool_plan", []),
-            "tool_results": _sanitize_json_payload(result.get("tool_results", {})),
-            "message": result.get("message", ""),
-            "followup_needed": bool(result.get("followup_needed", False)),
-        }
     except HTTPException:
         raise
     except Exception as exc:
         logger.error("Error in /assistant/orchestrate: %s", exc)
         raise HTTPException(status_code=500, detail="Erro ao orquestrar comando do Nano")
+
+
+async def _process_orchestrated_message(
+    *,
+    content: str,
+    current_user: dict,
+    persist_history: bool,
+):
+    workspace = await _resolve_workspace(current_user)
+    if not workspace:
+        raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
+
+    if persist_history:
+        user_message = ChatMessage(user_id=current_user["id"], role="user", content=content)
+        await chat_messages_collection.insert_one(user_message.dict())
+
+    conversation_context = await _load_conversation_context(current_user["id"])
+    agent_result = await orchestrator.handle_message(
+        user=current_user,
+        workspace=workspace,
+        message=content,
+        conversation_history=conversation_context,
+    )
+
+    safe_actions = _sanitize_json_payload(agent_result.actions)
+    safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
+    safe_tool_results = _sanitize_json_payload(agent_result.tool_results)
+    used_tools = list(safe_tool_results.keys())
+    execution_status = "responding"
+    if used_tools:
+        if agent_result.intent == "web_research":
+            execution_status = "researching"
+        elif agent_result.intent in {"system_action", "system_query", "financial_analysis", "knowledge_lookup"}:
+            execution_status = "executing"
+        else:
+            execution_status = "thinking"
+
+    assistant_message = ChatMessage(
+        user_id=current_user["id"],
+        role="assistant",
+        content=agent_result.message,
+        metadata={
+            "actions": safe_actions,
+            "executed_actions": safe_executed_actions,
+            "intent": agent_result.intent,
+            "tool_results": safe_tool_results,
+            "followup_needed": agent_result.followup_needed,
+            "missing_fields": agent_result.missing_fields,
+            "agent_metadata": _sanitize_json_payload(agent_result.metadata),
+            "workspace_id": workspace["id"],
+            "execution_status": execution_status,
+        },
+    )
+    if persist_history:
+        await chat_messages_collection.insert_one(assistant_message.dict())
+
+    return {
+        "intent": agent_result.intent,
+        "used_tools": used_tools,
+        "tool_results": safe_tool_results,
+        "message": assistant_message.dict(),
+        "followup_needed": agent_result.followup_needed,
+        "missing_fields": agent_result.missing_fields,
+        "actions": safe_actions,
+        "executed_actions": safe_executed_actions,
+        "execution_status": execution_status,
+        "workspace_id": workspace["id"],
+    }
 
 
 @router.post("/speech")

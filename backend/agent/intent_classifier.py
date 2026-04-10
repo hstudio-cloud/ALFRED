@@ -48,7 +48,24 @@ class IntentClassifier:
         "lucro",
         "faturamento",
     )
-    _WEB_HINTS = ("pesquisar", "procura na internet", "web", "noticia", "preco do")
+    _WEB_HINTS = (
+        "pesquisar",
+        "procura na internet",
+        "web",
+        "noticia",
+        "noticia de hoje",
+        "preco do",
+        "restaurantes em",
+        "cotacao",
+        "tempo em",
+    )
+    _KNOWLEDGE_HINTS = (
+        "como funciona o nano",
+        "o que o nano faz",
+        "manual do nano",
+        "documentacao do nano",
+        "como usar o nano",
+    )
     _MEMORY_HINTS = ("lembra", "lembrar", "ultima vez", "que eu pedi")
 
     def classify(self, message: str, context: Dict[str, Any]) -> IntentClassification:
@@ -64,6 +81,7 @@ class IntentClassifier:
                 missing_fields=["message"],
                 needs_context=False,
                 requires_tool=False,
+                suggested_tool=None,
             )
 
         if any(h in text for h in self._WEB_HINTS):
@@ -72,6 +90,16 @@ class IntentClassifier:
                 confidence=0.85,
                 entities=entities,
                 requires_tool=True,
+                suggested_tool="search_web",
+            )
+
+        if any(h in text for h in self._KNOWLEDGE_HINTS):
+            return IntentClassification(
+                label="knowledge_lookup",
+                confidence=0.82,
+                entities=entities,
+                requires_tool=True,
+                suggested_tool="search_internal_knowledge",
             )
 
         # Navigation commands like "abra bancos" should be actions even if no other hint matched.
@@ -81,6 +109,7 @@ class IntentClassifier:
                 confidence=0.93,
                 entities=entities,
                 requires_tool=True,
+                suggested_tool="navigate_to_section",
             )
 
         if any(h in text for h in self._ACTION_HINTS):
@@ -96,6 +125,7 @@ class IntentClassifier:
                 entities=entities,
                 requires_tool=True,
                 missing_fields=missing,
+                suggested_tool="create_transaction" if "despesa" in text or "receita" in text else "create_reminder",
             )
 
         if any(h in text for h in self._ANALYSIS_HINTS):
@@ -104,6 +134,7 @@ class IntentClassifier:
                 confidence=0.82,
                 entities=entities,
                 requires_tool=True,
+                suggested_tool="get_cashflow",
             )
 
         if any(h in text for h in self._QUERY_HINTS):
@@ -112,6 +143,7 @@ class IntentClassifier:
                 confidence=0.78,
                 entities=entities,
                 requires_tool=True,
+                suggested_tool="get_month_expenses",
             )
 
         if any(h in text for h in self._MEMORY_HINTS):
@@ -120,6 +152,7 @@ class IntentClassifier:
                 confidence=0.73,
                 entities=entities,
                 requires_tool=True,
+                suggested_tool="recall_memory",
             )
 
         if len(text.split()) <= 2:
@@ -128,6 +161,7 @@ class IntentClassifier:
                 confidence=0.45,
                 entities=entities,
                 requires_tool=False,
+                suggested_tool=None,
             )
 
         _ = context
@@ -136,6 +170,7 @@ class IntentClassifier:
             confidence=0.7,
             entities=entities,
             requires_tool=False,
+            suggested_tool=None,
         )
 
     def _extract_entities(self, text: str) -> Dict[str, Any]:

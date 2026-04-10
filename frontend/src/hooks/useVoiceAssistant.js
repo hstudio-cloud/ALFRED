@@ -375,8 +375,17 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       });
 
       const intent = response.intent || assistantMessage?.metadata?.intent;
+      const executionStatus = response.execution_status || assistantMessage?.metadata?.execution_status;
       if (response.followup_needed) {
         updateVoiceState('idle', 'Nano precisa de mais um dado para concluir.');
+      } else if (executionStatus === 'thinking') {
+        updateVoiceState('processing', 'Nano esta pensando na melhor resposta...');
+      } else if (executionStatus === 'researching') {
+        updateVoiceState('processing', 'Nano esta pesquisando na web agora...');
+      } else if (executionStatus === 'executing') {
+        updateVoiceState('processing', 'Nano esta executando no sistema...');
+      } else if (executionStatus === 'responding') {
+        updateVoiceState('processing', 'Nano esta finalizando a resposta...');
       } else if (intent === 'web_research') {
         updateVoiceState('processing', 'Nano pesquisou e esta resumindo para voce...');
       } else if (intent === 'financial_analysis') {
