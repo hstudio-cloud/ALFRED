@@ -351,7 +351,7 @@ const Dashboard = () => {
     async (workspaceId) => {
       if (!workspaceId) return;
 
-      const shouldBlockUi = loading || activeSectionRef.current !== "assistant";
+      const shouldBlockUi = activeSectionRef.current !== "assistant";
       if (shouldBlockUi) {
         setLoading(true);
       }
@@ -435,6 +435,23 @@ const Dashboard = () => {
         const results = await Promise.allSettled(tasks);
         const getValue = (index, fallback) =>
           results[index]?.status === "fulfilled" ? results[index].value : fallback;
+        const hasUnauthorized = results.some(
+          (item) =>
+            item.status === "rejected" &&
+            (item.reason?.response?.status === 401 ||
+              item.reason?.status === 401),
+        );
+        if (hasUnauthorized) {
+          logout();
+          navigate("/login");
+          toast({
+            title: "Sessao expirada",
+            description:
+              "Sua autenticacao expirou no backend. Faça login novamente para carregar o painel.",
+            variant: "destructive",
+          });
+          return;
+        }
 
         const statsRes = getValue(0, { data: {} });
         const financeOverview = getValue(1, {});
@@ -493,7 +510,7 @@ const Dashboard = () => {
         }
       }
     },
-    [financialView, loading, reportPeriod, toast],
+    [financialView, reportPeriod, toast, logout, navigate],
   );
 
   useEffect(() => {
