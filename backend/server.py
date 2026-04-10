@@ -1,9 +1,10 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Request, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List
@@ -184,6 +185,52 @@ cors_origin_regex = (
     ).strip()
     or None
 )
+compiled_cors_origin_regex = (
+    re.compile(cors_origin_regex, re.IGNORECASE) if cors_origin_regex else None
+)
+
+
+def _is_origin_allowed(origin: str) -> bool:
+    if not origin:
+        return False
+    if cors_allow_all:
+        return True
+    if origin in cors_origins:
+        return True
+    if compiled_cors_origin_regex and compiled_cors_origin_regex.match(origin):
+        return True
+    return False
+
+
+def _attach_cors_headers(response: Response, origin: str) -> Response:
+    if not origin or not _is_origin_allowed(origin):
+        return response
+
+    response.headers["Access-Control-Allow-Origin"] = "*" if cors_allow_all else origin
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "authorization,content-type,x-requested-with"
+    response.headers["Access-Control-Expose-Headers"] = "*"
+    if not cors_allow_all:
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Vary"] = "Origin"
+    return response
+
+
+@app.middleware("http")
+async def ensure_cors_headers(request: Request, call_next):
+    """
+    Defensive CORS layer:
+    - answers OPTIONS preflight even if another layer fails;
+    - ensures CORS headers are present on error responses as well.
+    """
+    origin = request.headers.get("origin", "")
+
+    if request.method == "OPTIONS":
+        # Return explicit preflight response for browser CORS checks.
+        return _attach_cors_headers(Response(status_code=200), origin)
+
+    response = await call_next(request)
+    return _attach_cors_headers(response, origin)
 
 if cors_allow_all:
     # Beta mode: liberamos CORS geral para evitar bloqueio em previews do Vercel.
