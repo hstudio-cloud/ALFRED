@@ -25,6 +25,7 @@ from routes import (
     finance_routes,
     reports_routes,
     transactions_routes,
+    whatsapp_routes,
     workspace_routes,
     client_routes,
     tasks_enhanced_routes,
@@ -159,6 +160,7 @@ app.include_router(finance_hub_routes.router)
 app.include_router(accounts_routes.router)
 app.include_router(transactions_routes.router)
 app.include_router(reports_routes.router)
+app.include_router(whatsapp_routes.router)
 
 # CORS configuration:
 # - Keep explicit allowlist via CORS_ORIGINS for fixed domains.

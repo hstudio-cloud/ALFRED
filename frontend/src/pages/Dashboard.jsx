@@ -21,6 +21,18 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { dashboardClass, dashboardTheme } from "../lib/dashboardTheme";
+import {
   ArrowDownRight,
   ArrowLeftRight,
   ArrowUpRight,
@@ -36,6 +48,7 @@ import {
   Landmark,
   LayoutDashboard,
   Moon,
+  Sparkles,
   Plus,
   Search,
   Settings2,
@@ -248,12 +261,10 @@ const initialSettingsForm = {
   theme_mode: "light",
 };
 
-const pageFieldClass =
-  "h-12 rounded-2xl border border-red-500/12 bg-black/30 px-4 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
+const pageFieldClass = dashboardClass.input;
 const textAreaClass =
   "min-h-[120px] rounded-[24px] border border-red-500/12 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
-const actionButtonClass =
-  "rounded-2xl bg-[#7f1d1d] px-5 text-white hover:bg-[#991b1b]";
+const actionButtonClass = dashboardClass.buttonPrimary;
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -311,6 +322,7 @@ const Dashboard = () => {
   const [transactionSearch, setTransactionSearch] = useState("");
   const [transactionTypeFilter, setTransactionTypeFilter] = useState("all");
   const [transactionMethodFilter, setTransactionMethodFilter] = useState("all");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
   const [statementFile, setStatementFile] = useState(null);
   const [statementImportResult, setStatementImportResult] = useState(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
@@ -1005,7 +1017,7 @@ const Dashboard = () => {
   const forecastCards = forecast?.forecasts || [];
   const activeAccounts = accounts.filter((item) => item.active !== false);
   const activeCards = cards.filter((item) => item.active !== false);
-  const topExpenses = report?.top_expenses || [];
+  const topExpenses = useMemo(() => report?.top_expenses || [], [report]);
   const receivablesOpen = report?.receivables_open || 0;
   const payablesOpen = report?.payables_open || 0;
   const cardTransactions = transactions.filter(
@@ -1039,9 +1051,13 @@ const Dashboard = () => {
     [activeCards],
   );
 
-  const openBills = [...bills]
-    .filter((bill) => bill.status !== "paid" && bill.status !== "received")
-    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+  const openBills = useMemo(
+    () =>
+      [...bills]
+        .filter((bill) => bill.status !== "paid" && bill.status !== "received")
+        .sort((a, b) => new Date(a.due_date) - new Date(b.due_date)),
+    [bills],
+  );
 
   const onboardingSteps = [
     {
@@ -1146,18 +1162,42 @@ const Dashboard = () => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       const dateKey = date.toISOString().slice(0, 10);
+      const dayTransactions = transactions.filter(
+        (transaction) =>
+          new Date(transaction.date).toISOString().slice(0, 10) === dateKey,
+      );
       const dayBills = openBills.filter(
         (bill) =>
           new Date(bill.due_date).toISOString().slice(0, 10) === dateKey,
       );
+      const dayReminders = reminders.filter(
+        (reminder) =>
+          new Date(reminder.remind_at).toISOString().slice(0, 10) === dateKey,
+      );
+      const income = dayTransactions
+        .filter((transaction) => transaction.type === "income")
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+      const expense = dayTransactions
+        .filter((transaction) => transaction.type === "expense")
+        .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
       return {
+        date: dateKey,
         label: date.getDate(),
         isCurrentMonth: date.getMonth() === month,
         isToday: date.toDateString() === today.toDateString(),
         dueCount: dayBills.length,
+        hasReminder: dayReminders.length > 0,
+        hasActivity: dayTransactions.length > 0,
+        hasDue: dayBills.length > 0,
+        income,
+        expense,
+        net: income - expense,
+        reminders: dayReminders,
+        transactions: dayTransactions,
+        bills: dayBills,
       };
     });
-  }, [openBills]);
+  }, [openBills, reminders, transactions]);
 
   const metrics = [
     {
@@ -1200,6 +1240,45 @@ const Dashboard = () => {
         : monthlyTrend,
     [monthlyReport, monthlyTrend],
   );
+  const categoryChartData = useMemo(
+    () =>
+      topExpenses.slice(0, 6).map((item) => ({
+        category: item.category,
+        amount: item.amount,
+      })),
+    [topExpenses],
+  );
+  const cashflowChartData = useMemo(
+    () =>
+      (cashflowReport?.forecasts || []).slice(0, 6).map((item) => ({
+        label: item.month || item.period || "-",
+        projected: Number(item.projected_balance || 0),
+        income: Number(item.income || 0),
+        expense: Number(item.expenses || 0),
+      })),
+    [cashflowReport],
+  );
+  const activeCalendarDay = useMemo(() => {
+    const fallbackDay =
+      calendarDays.find((day) => day.isToday) ||
+      calendarDays.find((day) => day.isCurrentMonth) ||
+      calendarDays[0];
+    const selected = calendarDays.find((day) => day.date === selectedCalendarDate);
+    return selected || fallbackDay || null;
+  }, [calendarDays, selectedCalendarDate]);
+  const topNanoInsights = useMemo(() => {
+    const insightsSource = [...insights, ...automationInsights]
+      .filter((item) => item?.message)
+      .slice(0, 3);
+    if (insightsSource.length) return insightsSource;
+    return [
+      {
+        label: "Visao inteligente",
+        message:
+          "O Nano cruza contas, fluxo e agenda para mostrar o que merece acao hoje.",
+      },
+    ];
+  }, [automationInsights, insights]);
   const cashflowItems = cashflowReport?.forecasts || forecastCards;
   const reportMessage =
     report?.savings_suggestion?.message ||
@@ -1223,10 +1302,23 @@ const Dashboard = () => {
         title="Visao geral das suas financas"
         description="Um cockpit limpo para acompanhar entradas, saidas, contas, agenda financeira e o que merece acao no Nano."
       />
+      <div className="grid gap-3 lg:grid-cols-3">
+        {topNanoInsights.map((item, index) => (
+          <div
+            key={`${item.label || "insight"}-${index}`}
+            className={`${dashboardTheme.panelSecondary} px-4 py-3`}
+          >
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-red-200/70">
+              {item.label || "Insight do Nano"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-200">{item.message}</p>
+          </div>
+        ))}
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-4">
         {metrics.map((item) => (
-          <StatCard key={item.title} {...item} />
+          <StatCard key={item.title} trendData={monthlyTrend} {...item} />
         ))}
       </div>
 
@@ -1235,7 +1327,7 @@ const Dashboard = () => {
           title="Receitas x Despesas"
           action={<GhostChip>Ultimos 6 meses</GhostChip>}
         >
-          <TrendChart data={monthlyTrend} />
+          <TrendChart data={reportTrendData} />
         </SurfacePanel>
 
         <SurfacePanel
@@ -1248,11 +1340,11 @@ const Dashboard = () => {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="min-w-[108px] text-center font-medium">
-                {new Date().toLocaleDateString("pt-BR", {
-                  month: "long",
-                  year: "numeric",
-                })}
+                <span className="min-w-[108px] text-center font-medium">
+                  {new Date().toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                  })}
               </span>
               <button
                 type="button"
@@ -1263,7 +1355,34 @@ const Dashboard = () => {
             </div>
           }
         >
-          <CalendarPanel days={calendarDays} />
+          <CalendarPanel
+            days={calendarDays}
+            selectedDate={activeCalendarDay?.date || null}
+            onDaySelect={setSelectedCalendarDate}
+            formatter={currencyFormatter}
+          />
+        </SurfacePanel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
+        <SurfacePanel title="Despesas por categoria">
+          <CategoryChart data={categoryChartData} />
+        </SurfacePanel>
+        <SurfacePanel title="Fluxo de caixa projetado">
+          <CashflowChart data={cashflowChartData} />
+        </SurfacePanel>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
+        <SurfacePanel
+          title={`Resumo do dia ${activeCalendarDay ? new Date(activeCalendarDay.date).toLocaleDateString("pt-BR") : ""}`}
+          action={
+            <GhostChip>
+              {activeCalendarDay?.isToday ? "Hoje" : "Detalhes do dia"}
+            </GhostChip>
+          }
+        >
+          <CalendarDaySummary day={activeCalendarDay} formatter={currencyFormatter} />
         </SurfacePanel>
       </div>
 
@@ -3087,7 +3206,7 @@ const Dashboard = () => {
 
   if (!currentWorkspace) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.22),_transparent_30%),linear-gradient(180deg,_#050101_0%,_#0b0204_42%,_#120406_100%)] px-6 py-10 text-zinc-100">
+      <div className={`min-h-screen ${dashboardTheme.layout} px-6 py-10 text-zinc-100`}>
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="space-y-3">
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
@@ -3103,7 +3222,7 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <Card className="rounded-[32px] border border-red-500/12 bg-black/30 p-6 shadow-[0_18px_60px_rgba(20,2,6,0.45)]">
+          <Card className={`${dashboardTheme.panel} p-6`}>
             <form onSubmit={submitWorkspace} className="space-y-4">
               <Input
                 placeholder="Nome da empresa"
@@ -3150,7 +3269,7 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`bg-[radial-gradient(circle_at_16%_18%,_rgba(127,29,29,0.20),_transparent_24%),radial-gradient(circle_at_72%_78%,_rgba(69,10,10,0.18),_transparent_28%),linear-gradient(180deg,_#070102_0%,_#0b0204_42%,_#140406_100%)] text-zinc-100 ${
+      className={`${dashboardTheme.layout} text-zinc-100 ${
         activeSection === "assistant"
           ? "h-screen overflow-hidden"
           : "min-h-screen"
@@ -3181,31 +3300,49 @@ const Dashboard = () => {
           }`}
         >
           {activeSection !== "assistant" && (
-            <div className="mb-6 flex flex-col gap-4 rounded-[30px] border border-red-500/12 bg-black/30 px-5 py-4 shadow-[0_14px_50px_rgba(20,2,6,0.4)] sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
-                  {activeSectionMeta.label}
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">
-                  {activeSectionMeta.description}
-                </h2>
-              </div>
+            <div className={`${dashboardTheme.panel} mb-6 px-5 py-4`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
+                    {activeSectionMeta.label}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                    {activeSectionMeta.description}
+                  </h2>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <ScopeSwitcher
-                  options={scopeOptions}
-                  value={financialView}
-                  onChange={setFinancialView}
-                />
-                <TopIconButton icon={Search} />
-                <TopIconButton icon={Bell} />
-                <TopIconButton icon={Moon} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <ScopeSwitcher
+                    options={scopeOptions}
+                    value={financialView}
+                    onChange={setFinancialView}
+                  />
+                  <TopIconButton icon={Search} />
+                  <TopIconButton icon={Bell} />
+                  <TopIconButton icon={Moon} />
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {topNanoInsights.map((item, index) => (
+                  <div
+                    key={`header-insight-${index}`}
+                    className={`${dashboardTheme.panelSecondary} px-4 py-3`}
+                  >
+                    <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-red-200/70">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>{item.label || "Leitura do Nano"}</span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm text-zinc-300">
+                      {item.message}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {loading ? (
-            <div className="rounded-[32px] border border-red-500/12 bg-black/30 px-6 py-16 text-center text-zinc-400 shadow-[0_18px_60px_rgba(20,2,6,0.45)]">
+            <div className={`${dashboardTheme.panel} px-6 py-16 text-center text-zinc-400`}>
               Carregando o novo cockpit financeiro do Nano...
             </div>
           ) : activeSection === "assistant" ? (
@@ -3248,7 +3385,7 @@ const PageHeader = ({ eyebrow, title, description, action }) => (
 );
 
 const SurfacePanel = ({ title, action, children }) => (
-  <Card className="rounded-[32px] border border-red-500/12 bg-black/30 p-6 shadow-[0_18px_60px_rgba(20,2,6,0.45)]">
+  <Card className={`${dashboardTheme.panel} p-6`}>
     {(title || action) && (
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
@@ -3273,7 +3410,7 @@ const TopIconButton = ({ icon: Icon }) => (
 );
 
 const ScopeSwitcher = ({ options, value, onChange }) => (
-  <div className="flex items-center rounded-2xl border border-red-500/12 bg-black/30 p-1">
+  <div className="flex items-center rounded-2xl border border-red-500/12 bg-black/30 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
     {options.map((option) => (
       <button
         key={option.id}
@@ -3291,7 +3428,7 @@ const ScopeSwitcher = ({ options, value, onChange }) => (
   </div>
 );
 
-const StatCard = ({ title, value, direction }) => {
+const StatCard = ({ title, value, direction, trendData = [] }) => {
   const icon =
     direction === "up" ? (
       <ArrowUpRight className="h-4.5 w-4.5 text-[#166534]" />
@@ -3301,8 +3438,12 @@ const StatCard = ({ title, value, direction }) => {
       <Wallet className="h-4.5 w-4.5 text-[#7f1d1d]" />
     );
 
+  const sparkline = trendData.slice(-6).map((item) =>
+    direction === "down" ? item.expense : item.income,
+  );
+  const maxSpark = Math.max(...sparkline, 1);
   return (
-    <Card className="rounded-[28px] border border-red-500/12 bg-black/30 p-5 shadow-[0_18px_60px_rgba(20,2,6,0.4)]">
+    <Card className={`${dashboardTheme.panel} p-5`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-zinc-400">{title}</p>
@@ -3314,80 +3455,91 @@ const StatCard = ({ title, value, direction }) => {
           {icon}
         </span>
       </div>
+      <div className="mt-4 h-8">
+        <svg viewBox="0 0 100 20" className="h-full w-full">
+          <polyline
+            fill="none"
+            stroke={direction === "down" ? "#f97316" : "#34d399"}
+            strokeWidth="2"
+            points={sparkline
+              .map((point, index) => {
+                const x = (index / Math.max(sparkline.length - 1, 1)) * 100;
+                const y = 20 - ((point || 0) / maxSpark) * 18;
+                return `${x},${y}`;
+              })
+              .join(" ")}
+          />
+        </svg>
+      </div>
     </Card>
   );
 };
 
 const StatMiniCard = ({ label, value }) => (
-  <div className="rounded-[24px] border border-red-500/12 bg-black/25 p-4">
+  <div className={`${dashboardTheme.panelSecondary} p-4`}>
     <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
     <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
   </div>
 );
 
 const GhostChip = ({ children }) => (
-  <span className="inline-flex h-11 items-center rounded-2xl border border-red-500/12 bg-black/25 px-4 text-sm font-medium text-zinc-300">
+  <span className={`inline-flex h-11 items-center ${dashboardTheme.panelSecondary} px-4 text-sm font-medium text-zinc-300`}>
     {children}
   </span>
 );
 
 const TrendChart = ({ data }) => {
-  const maxValue = Math.max(
-    ...data.flatMap((item) => [item.income, item.expense]),
-    1,
-  );
-
-  const buildPath = (key) =>
-    data
-      .map((item, index) => {
-        const x = (index / Math.max(data.length - 1, 1)) * 100;
-        const y = 100 - (item[key] / maxValue) * 85;
-        return `${x},${y}`;
-      })
-      .join(" ");
-
   return (
-    <div className="space-y-5">
-      <div className="h-[280px] rounded-[24px] border border-red-500/10 bg-black/20 p-4">
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          className="h-full w-full"
-        >
-          {Array.from({ length: 5 }).map((_, index) => (
-            <line
-              key={index}
-              x1="0"
-              y1={index * 25}
-              x2="100"
-              y2={index * 25}
-              stroke="#2a1014"
-              strokeDasharray="1.5 2"
-              strokeWidth="0.4"
+    <div className="space-y-4">
+      <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#34d399" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#fb7185" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#fb7185" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
+            <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+            <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+            <RechartsTooltip
+              contentStyle={{
+                background: "rgba(8,2,4,0.95)",
+                border: "1px solid rgba(239,68,68,0.18)",
+                borderRadius: "14px",
+              }}
+              labelStyle={{ color: "#f4f4f5" }}
             />
-          ))}
-          <polyline
-            fill="none"
-            stroke="#16a34a"
-            strokeWidth="2.2"
-            points={buildPath("income")}
-          />
-          <polyline
-            fill="none"
-            stroke="#dc2626"
-            strokeWidth="2.2"
-            points={buildPath("expense")}
-          />
-        </svg>
+            <Area
+              type="monotone"
+              dataKey="income"
+              stroke="#34d399"
+              strokeWidth={2.5}
+              fill="url(#incomeGradient)"
+            />
+            <Area
+              type="monotone"
+              dataKey="expense"
+              stroke="#fb7185"
+              strokeWidth={2.5}
+              fill="url(#expenseGradient)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-5 text-sm">
-          <span className="flex items-center gap-2 text-[#166534]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#16a34a]" />
+          <span className="flex items-center gap-2 text-emerald-300">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
             Receitas
           </span>
-          <span className="flex items-center gap-2 text-[#b91c1c]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#dc2626]" />
+          <span className="flex items-center gap-2 text-rose-300">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
             Despesas
           </span>
         </div>
@@ -3401,7 +3553,56 @@ const TrendChart = ({ data }) => {
   );
 };
 
-const CalendarPanel = ({ days }) => (
+const CategoryChart = ({ data }) => (
+  <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
+        <XAxis dataKey="category" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+        <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+        <RechartsTooltip
+          contentStyle={{
+            background: "rgba(8,2,4,0.95)",
+            border: "1px solid rgba(239,68,68,0.18)",
+            borderRadius: "14px",
+          }}
+          labelStyle={{ color: "#f4f4f5" }}
+        />
+        <Bar dataKey="amount" fill="#ef4444" radius={[8, 8, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+const CashflowChart = ({ data }) => (
+  <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
+        <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
+        <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+        <RechartsTooltip
+          contentStyle={{
+            background: "rgba(8,2,4,0.95)",
+            border: "1px solid rgba(239,68,68,0.18)",
+            borderRadius: "14px",
+          }}
+          labelStyle={{ color: "#f4f4f5" }}
+        />
+        <Area
+          type="monotone"
+          dataKey="projected"
+          stroke="#f59e0b"
+          strokeWidth={2.5}
+          fillOpacity={0.25}
+          fill="#f59e0b"
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+);
+
+const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
   <div>
     <div className="mb-3 grid grid-cols-7 gap-2 text-center text-xs font-medium uppercase tracking-[0.12em] text-[#9b8d84]">
       {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((day) => (
@@ -3412,11 +3613,12 @@ const CalendarPanel = ({ days }) => (
       {days.map((day, index) => (
         <div
           key={index}
-          className={`min-h-[68px] rounded-[18px] border p-2 text-sm ${
+          onClick={() => onDaySelect(day.date)}
+          className={`min-h-[96px] cursor-pointer rounded-[18px] border p-2 text-sm transition ${
             day.isCurrentMonth
               ? "border-red-500/10 bg-black/20 text-zinc-200"
               : "border-white/5 bg-black/10 text-zinc-600"
-          } ${day.isToday ? "shadow-[inset_0_0_0_1px_rgba(185,28,28,0.2)]" : ""}`}
+          } ${day.isToday ? "shadow-[inset_0_0_0_1px_rgba(185,28,28,0.2)]" : ""} ${selectedDate === day.date ? "ring-1 ring-red-300/40" : ""}`}
         >
           <div className="flex items-center justify-between">
             <span className={day.isToday ? "font-semibold text-[#7f1d1d]" : ""}>
@@ -3428,11 +3630,77 @@ const CalendarPanel = ({ days }) => (
               </span>
             )}
           </div>
+          <div className="mt-1 space-y-1 text-[10px] leading-none">
+            <div className="flex items-center justify-between text-emerald-300">
+              <span>Entradas</span>
+              <span>{formatter.format(day.income || 0)}</span>
+            </div>
+            <div className="flex items-center justify-between text-rose-300">
+              <span>Saidas</span>
+              <span>{formatter.format(day.expense || 0)}</span>
+            </div>
+            <div className="flex items-center justify-between text-zinc-400">
+              <span>Liq.</span>
+              <span>{formatter.format(day.net || 0)}</span>
+            </div>
+          </div>
+          <div className="mt-1 flex items-center gap-1 text-[10px]">
+            {day.hasReminder && <span className="rounded-full bg-amber-500/25 px-1 text-amber-300">L</span>}
+            {day.hasActivity && <span className="rounded-full bg-emerald-500/25 px-1 text-emerald-300">A</span>}
+            {day.hasDue && <span className="rounded-full bg-rose-500/25 px-1 text-rose-300">V</span>}
+          </div>
         </div>
       ))}
     </div>
   </div>
 );
+
+const CalendarDaySummary = ({ day, formatter }) => {
+  if (!day) {
+    return (
+      <p className="text-sm text-zinc-400">
+        Selecione um dia no calendario para ver movimentacoes e lembretes.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatMiniCard label="Entradas" value={formatter.format(day.income || 0)} />
+        <StatMiniCard label="Saidas" value={formatter.format(day.expense || 0)} />
+        <StatMiniCard label="Saldo liquido" value={formatter.format(day.net || 0)} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <div className={`${dashboardTheme.panelSecondary} p-4`}>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            Movimentacoes
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-white">
+            {day.transactions?.length || 0}
+          </p>
+        </div>
+        <div className={`${dashboardTheme.panelSecondary} p-4`}>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            Lembretes
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-white">
+            {day.reminders?.length || 0}
+          </p>
+        </div>
+        <div className={`${dashboardTheme.panelSecondary} p-4`}>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            Contas vencendo
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-white">
+            {day.bills?.length || 0}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SummaryRow = ({
   label,
@@ -3451,7 +3719,7 @@ const SummaryRow = ({
 );
 
 const InfoRow = ({ title, subtitle, value }) => (
-  <div className="flex items-center justify-between gap-4 rounded-[24px] border border-red-500/10 bg-black/20 px-4 py-4">
+  <div className={`flex items-center justify-between gap-4 ${dashboardTheme.panelSecondary} px-4 py-4`}>
     <div>
       <p className="font-semibold text-white">{title}</p>
       <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
@@ -3463,9 +3731,9 @@ const InfoRow = ({ title, subtitle, value }) => (
 const AlertRow = ({ title, message, tone }) => {
   const toneClass =
     tone === "positive"
-      ? "border-[#d4f0db] bg-[#f4fff6] text-[#166534]"
+      ? "border-emerald-500/25 bg-emerald-500/8 text-emerald-200"
       : tone === "warning"
-        ? "border-[#f6d4d4] bg-[#fff4f4] text-[#9f1239]"
+        ? "border-amber-500/25 bg-amber-500/8 text-amber-200"
         : "border-red-500/10 bg-black/20 text-zinc-200";
 
   return (

@@ -135,7 +135,7 @@ const DesktopSidebar = ({
   return (
     <TooltipProvider delayDuration={80}>
       <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
-        <div className="flex h-full w-full flex-col gap-3 px-0 py-2 bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.12),_transparent_22%),linear-gradient(180deg,rgba(14,3,5,0.76)_0%,rgba(8,2,3,0.44)_100%)]">
+        <div className="flex h-full w-full flex-col gap-3 rounded-[28px] border border-red-500/10 bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.14),_transparent_24%),linear-gradient(180deg,rgba(14,3,5,0.68)_0%,rgba(8,2,3,0.34)_100%)] px-0 py-2 shadow-[0_20px_55px_rgba(15,2,6,0.45)]">
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
               <NanoMark className="h-10 w-10" />
@@ -147,7 +147,7 @@ const DesktopSidebar = ({
           </div>
 
           <div className="px-1">
-            <div className="rounded-2xl bg-red-500/[0.03] p-2 backdrop-blur-md">
+            <div className="rounded-2xl border border-red-500/10 bg-red-500/[0.04] p-2 backdrop-blur-md">
               <div className="flex items-center justify-center group-hover/sidebar:justify-between px-2">
                 <Building2 className="h-4 w-4 shrink-0 text-zinc-500" />
                 <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -202,7 +202,7 @@ const DesktopSidebar = ({
               ))}
             </div>
 
-            <div className="mt-4 rounded-2xl bg-red-500/[0.03] p-2 backdrop-blur-md">
+            <div className="mt-4 rounded-2xl border border-red-500/10 bg-red-500/[0.04] p-2 backdrop-blur-md">
               <div className="flex items-center justify-center gap-3 group-hover/sidebar:justify-start">
                 <Avatar className="h-10 w-10 shrink-0 border border-red-400/18 bg-red-600/90">
                   <AvatarFallback className="bg-transparent text-sm font-semibold text-white">

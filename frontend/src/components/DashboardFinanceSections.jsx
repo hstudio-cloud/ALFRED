@@ -12,14 +12,13 @@ import {
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
+import { dashboardClass, dashboardTheme } from "../lib/dashboardTheme";
 
-const fieldClass =
-  "h-12 rounded-2xl border border-red-500/12 bg-black/30 px-4 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
-const actionButtonClass =
-  "rounded-2xl bg-[#7f1d1d] px-5 text-white hover:bg-[#991b1b]";
+const fieldClass = dashboardClass.input;
+const actionButtonClass = dashboardClass.buttonPrimary;
 
 const Panel = ({ title, action, children }) => (
-  <Card className="rounded-[32px] border border-red-500/12 bg-black/30 p-6 shadow-[0_18px_60px_rgba(20,2,6,0.45)]">
+  <Card className={`${dashboardTheme.panel} p-6`}>
     {(title || action) && (
       <div className="mb-5 flex items-center justify-between gap-3">
         {title ? <h3 className="text-[18px] font-semibold text-white">{title}</h3> : <span />}
@@ -31,7 +30,7 @@ const Panel = ({ title, action, children }) => (
 );
 
 const EmptyState = ({ icon: Icon, title, description }) => (
-  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-red-500/12 bg-black/20 px-6 py-10 text-center">
+  <div className={`flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-red-500/12 bg-black/20 px-6 py-10 text-center`}>
     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-200">
       <Icon className="h-7 w-7" />
     </div>
@@ -41,7 +40,7 @@ const EmptyState = ({ icon: Icon, title, description }) => (
 );
 
 const InfoRow = ({ title, subtitle, value }) => (
-  <div className="flex items-center justify-between gap-4 rounded-[24px] border border-red-500/10 bg-black/20 px-4 py-4">
+  <div className={`flex items-center justify-between gap-4 ${dashboardTheme.panelSecondary} px-4 py-4`}>
     <div>
       <p className="font-semibold text-white">{title}</p>
       <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
@@ -51,7 +50,7 @@ const InfoRow = ({ title, subtitle, value }) => (
 );
 
 const MiniStat = ({ label, value }) => (
-  <div className="rounded-[24px] border border-red-500/12 bg-black/25 p-4">
+  <div className={`${dashboardTheme.panelSecondary} p-4`}>
     <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
     <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
   </div>
