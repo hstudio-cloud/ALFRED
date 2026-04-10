@@ -1,3 +1,6 @@
+import re
+from datetime import datetime, timedelta
+
 from .types import ExecutionPlan, IntentClassification, PlanStep
 
 
@@ -30,6 +33,28 @@ class Planner:
                             "section": intent.entities.get("section"),
                             "label": intent.entities.get("section"),
                         },
+                    )
+                )
+                return plan
+
+            parsed_reminder = self._extract_reminder_payload(message)
+            if parsed_reminder:
+                plan.steps.append(
+                    PlanStep(
+                        name="create_reminder",
+                        tool="orchestrator_tools.create_reminder",
+                        tool_input=parsed_reminder,
+                    )
+                )
+                return plan
+
+            parsed_transaction = self._extract_transaction_payload(message, intent)
+            if parsed_transaction:
+                plan.steps.append(
+                    PlanStep(
+                        name="create_transaction",
+                        tool="orchestrator_tools.create_transaction",
+                        tool_input=parsed_transaction,
                     )
                 )
                 return plan
@@ -97,3 +122,77 @@ class Planner:
 
         plan.steps.append(PlanStep(name="direct_response"))
         return plan
+
+    def _extract_transaction_payload(self, message: str, intent: IntentClassification) -> dict:
+        text = (message or "").lower()
+        amount = intent.entities.get("amount")
+        if amount is None:
+            return {}
+
+        tx_type = "expense"
+        if any(token in text for token in ("receita", "ganhei", "ganho", "recebi", "lucro")):
+            tx_type = "income"
+
+        category = intent.entities.get("category") or "Geral"
+        payment_method = "pix" if "pix" in text else "other"
+
+        return {
+            "amount": float(amount),
+            "category": category,
+            "transaction_type": tx_type,
+            "payment_method": payment_method,
+            "account_scope": intent.entities.get("scope") or "personal",
+            "description": message.strip()[:140],
+        }
+
+    def _extract_reminder_payload(self, message: str) -> dict:
+        text = (message or "").lower()
+        if not any(
+            token in text
+            for token in ("lembrete", "agenda", "agende", "agendar", "reuniao", "reunião", "marque")
+        ):
+            return {}
+
+        title = "Lembrete financeiro"
+        if "reuniao" in text or "reunião" in text:
+            title = "Reunião"
+        elif "pagar" in text:
+            title = "Pagar conta"
+
+        now = datetime.utcnow()
+        day = now
+        if "amanha" in text or "amanhã" in text:
+            day = now + timedelta(days=1)
+        elif "hoje" in text:
+            day = now
+
+        date_match = re.search(r"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?", text)
+        if date_match:
+            d = int(date_match.group(1))
+            m = int(date_match.group(2))
+            y = int(date_match.group(3)) if date_match.group(3) else now.year
+            if y < 100:
+                y += 2000
+            try:
+                day = day.replace(year=y, month=m, day=d)
+            except ValueError:
+                pass
+
+        hour = 9
+        minute = 0
+        time_match = re.search(r"\b(?:as|às)\s*(\d{1,2})(?::(\d{2}))?\s*h?\b", text)
+        if not time_match:
+            time_match = re.search(r"\b(\d{1,2}):(\d{2})\b", text)
+        if time_match:
+            h = int(time_match.group(1))
+            mm = int(time_match.group(2) or 0)
+            if 0 <= h <= 23 and 0 <= mm <= 59:
+                hour = h
+                minute = mm
+
+        remind_at = day.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
+        return {
+            "title": title,
+            "remind_at": remind_at,
+            "description": message.strip()[:200],
+        }

@@ -9,9 +9,11 @@ from tools import (
     current_date_time,
     get_account_balances,
     get_agenda_today,
+    create_transaction,
     get_cashflow,
     get_month_expenses,
     get_open_bills,
+    orchestrator_create_reminder,
     get_payroll_summary,
     get_recent_transactions,
     get_workspace_summary,
@@ -116,6 +118,13 @@ class AgentOrchestrator:
             executed_actions=normalized_executed_actions,
             fallback_response=fallback_response,
         )
+        response_text = self._enforce_grounded_response(
+            text=response_text,
+            intent_label=intent.label,
+            tool_results=tool_results,
+            executed_actions=normalized_executed_actions,
+            fallback_response=fallback_response,
+        )
 
         await self.memory.remember(
             user_id=user["id"],
@@ -155,6 +164,29 @@ class AgentOrchestrator:
 
         if step.tool == "assistant_action_service.execute_from_text":
             return await self.actions.detect_actions_from_text(user_id=user_id, message=message)
+
+        if step.tool == "orchestrator_tools.create_transaction":
+            payload = step.tool_input or {}
+            return await create_transaction(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                amount=float(payload.get("amount", 0) or 0),
+                category=payload.get("category", "Geral"),
+                transaction_type=payload.get("transaction_type", "expense"),
+                description=payload.get("description"),
+                payment_method=payload.get("payment_method", "other"),
+                account_scope=payload.get("account_scope", "personal"),
+            )
+
+        if step.tool == "orchestrator_tools.create_reminder":
+            payload = step.tool_input or {}
+            return await orchestrator_create_reminder(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                title=payload.get("title", "Lembrete"),
+                remind_at=payload.get("remind_at", ""),
+                description=payload.get("description"),
+            )
 
         if step.tool == "reminder_tools.get_agenda_today":
             return await get_agenda_today(workspace_id=workspace_id, user_id=user_id)
@@ -208,6 +240,105 @@ class AgentOrchestrator:
             )
 
         return {"error": "tool_not_implemented", "tool": step.tool}
+
+    def _enforce_grounded_response(
+        self,
+        *,
+        text: str,
+        intent_label: str,
+        tool_results: Dict[str, Any],
+        executed_actions: List[Dict[str, Any]],
+        fallback_response: str,
+    ) -> str:
+        candidate = (text or "").strip()
+        lower = candidate.lower()
+
+        # Guardrail: never let empty/generic placeholders leak to UI.
+        if (
+            not candidate
+            or "resultado: {}" in lower
+            or "conclui o pedido. resultado" in lower
+            or candidate in {"Conclui o pedido.", "Conclui o pedido. Resultado: {}"}
+        ):
+            return self._build_grounded_summary(
+                intent_label=intent_label,
+                tool_results=tool_results,
+                executed_actions=executed_actions,
+                fallback_response=fallback_response,
+            )
+
+        if intent_label in {"system_action", "system_query", "web_research", "financial_analysis"}:
+            if "posso registrar" in lower and tool_results:
+                return self._build_grounded_summary(
+                    intent_label=intent_label,
+                    tool_results=tool_results,
+                    executed_actions=executed_actions,
+                    fallback_response=fallback_response,
+                )
+        return candidate
+
+    def _build_grounded_summary(
+        self,
+        *,
+        intent_label: str,
+        tool_results: Dict[str, Any],
+        executed_actions: List[Dict[str, Any]],
+        fallback_response: str,
+    ) -> str:
+        if executed_actions:
+            messages = [item.get("message") for item in executed_actions if item.get("message")]
+            if messages:
+                return "\n".join(messages)
+
+        if "create_reminder" in tool_results:
+            item = tool_results.get("create_reminder") or {}
+            title = item.get("title", "Lembrete")
+            remind_at = item.get("remind_at", "")
+            when = remind_at[0:16].replace("T", " ") if isinstance(remind_at, str) else "horario informado"
+            return f"Perfeito. Lembrete criado: {title} para {when}."
+
+        if "create_transaction" in tool_results:
+            tx = tool_results.get("create_transaction") or {}
+            tx_type = "receita" if tx.get("type") == "income" else "despesa"
+            amount = float(tx.get("amount", 0) or 0)
+            category = tx.get("category", "Geral")
+            return f"Perfeito. Registrei uma {tx_type} de R$ {amount:,.2f} em {category}."
+
+        if "fetch_agenda" in tool_results:
+            agenda = tool_results.get("fetch_agenda") or {}
+            items = agenda.get("items") or []
+            if not items:
+                return "Olhei sua agenda de hoje e nao encontrei lembretes pendentes."
+            lines = ["Hoje voce tem estes lembretes:"]
+            for idx, item in enumerate(items[:5], start=1):
+                remind_at = str(item.get("remind_at") or "")
+                hour = remind_at[11:16] if len(remind_at) >= 16 else "sem horario"
+                lines.append(f"{idx}. {item.get('title', 'Lembrete')} - {hour}")
+            return "\n".join(lines)
+
+        if "web_search" in tool_results:
+            data = tool_results.get("web_search") or {}
+            items = data.get("items") or []
+            if not items:
+                return "Fiz a busca, mas nao encontrei resultados confiaveis agora. Posso tentar com termos mais especificos."
+            lines = ["Pesquisei na web e encontrei:"]
+            for idx, item in enumerate(items[:4], start=1):
+                title = item.get("title") or "Resultado"
+                snippet = item.get("snippet") or item.get("description") or "Sem descricao."
+                url = item.get("url") or item.get("link") or ""
+                lines.append(f"{idx}. {title} - {snippet} ({url})")
+            return "\n".join(lines)
+
+        if "month_expenses" in tool_results:
+            data = tool_results.get("month_expenses") or {}
+            total = float(data.get("total_expenses", 0) or 0)
+            count = int(data.get("count", 0) or 0)
+            return f"Neste mes, suas despesas somam R$ {total:,.2f} em {count} movimentacoes."
+
+        if intent_label == "general_chat":
+            return "Perfeito. Me diga o que voce quer resolver e eu executo por aqui."
+
+        return fallback_response or "Conclui seu pedido com os dados disponiveis no sistema."
 
     def _plan_debug(self, plan: ExecutionPlan) -> Dict[str, Any]:
         return {

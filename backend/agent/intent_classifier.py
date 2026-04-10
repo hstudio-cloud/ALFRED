@@ -15,6 +15,14 @@ class IntentClassifier:
         "registrar receita",
         "criar receita",
         "registrar pix",
+        "agende",
+        "agendar reuniao",
+        "marque uma reuniao",
+        "compr",
+        "comprei",
+        "paguei",
+        "recebi",
+        "ganhei",
         "criar conta",
         "criar lembrete",
         "agendar",
@@ -31,6 +39,12 @@ class IntentClassifier:
         "saldo",
         "tem algo para minha agenda",
         "agenda hoje",
+        "agenda de hoje",
+        "o que temos pra hoje",
+        "o que temos para hoje",
+        "o que tem pra hoje",
+        "o que tem para hoje",
+        "bom dia nano",
         "contas abertas",
         "gastos do mes",
         "me mostre",
@@ -175,11 +189,18 @@ class IntentClassifier:
 
     def _extract_entities(self, text: str) -> Dict[str, Any]:
         amount = None
-        amount_match = re.search(r"(\d+[.,]?\d*)\s*(reais|real|r\$)?", text)
-        if amount_match:
+        amount_patterns = [
+            r"(?:r\$\s*)?(\d+[.,]?\d{0,2})\s*(?:reais|real|r\$)\b",
+            r"\b(?:despesa|receita|pix|paguei|comprei|ganhei|recebi|gastei)\b[^\d]{0,20}(\d+[.,]?\d{0,2})\b(?!\s*h)",
+        ]
+        for pattern in amount_patterns:
+            amount_match = re.search(pattern, text)
+            if not amount_match:
+                continue
             raw = amount_match.group(1).replace(".", "").replace(",", ".")
             try:
                 amount = float(raw)
+                break
             except ValueError:
                 amount = None
 
@@ -190,6 +211,8 @@ class IntentClassifier:
         )
         if category_match:
             category = category_match.group(2).capitalize()
+        elif "mercado" in text:
+            category = "Alimentacao"
 
         scope = "business" if any(t in text for t in ("empresa", "negocio")) else "personal"
         if "geral" in text:
@@ -225,8 +248,6 @@ class IntentClassifier:
             "tarefa": "tasks",
             "assistente": "assistant",
             "chat": "assistant",
-            "nano ia": "assistant",
-            "nano": "assistant",
         }
         section = None
         for key, value in section_map.items():
