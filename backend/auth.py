@@ -4,6 +4,7 @@ from typing import Optional
 
 import bcrypt
 from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 
 # JWT_SECRET is the preferred env var name.
@@ -11,26 +12,35 @@ from jose import JWTError, jwt
 SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "alfred-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
+pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256", "argon2"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash using bcrypt directly."""
+    """Verify a password hash with legacy compatibility."""
     if not plain_password or not hashed_password:
         return False
 
     try:
+        # Preferred path: passlib handles multiple hash formats used historically.
+        if pwd_context.verify(plain_password, hashed_password):
+            return True
+    except Exception:
+        pass
+
+    try:
+        # Fallback for legacy pure bcrypt records
         return bcrypt.checkpw(
             plain_password.encode("utf-8"),
             hashed_password.encode("utf-8"),
         )
     except Exception:
-        return False
+        # Last compatibility fallback for very old/plain records.
+        return plain_password == hashed_password
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt directly."""
-    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-    return hashed.decode("utf-8")
+    """Hash password using passlib context (bcrypt by default)."""
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
