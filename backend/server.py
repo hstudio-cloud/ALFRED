@@ -165,6 +165,7 @@ app.include_router(whatsapp_routes.router)
 # CORS configuration:
 # - Keep explicit allowlist via CORS_ORIGINS for fixed domains.
 # - Support Vercel preview deployments for this frontend project via regex.
+cors_allow_all = os.environ.get("CORS_ALLOW_ALL", "true").strip().lower() == "true"
 cors_origins = [
     origin.strip()
     for origin in os.environ.get("CORS_ORIGINS", "").split(",")
@@ -176,16 +177,31 @@ if not cors_origins:
         "https://frontend-six-woad-fz102b0vy8.vercel.app",
     ]
 
-cors_origin_regex = os.environ.get(
-    "CORS_ORIGIN_REGEX",
-    r"^https://frontend-[a-z0-9-]+-hstudio-clouds-projects\.vercel\.app$",
-).strip() or None
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=cors_origins,
-    allow_origin_regex=cors_origin_regex,
-    allow_methods=["*"],
-    allow_headers=["*"],
+cors_origin_regex = (
+    os.environ.get(
+        "CORS_ORIGIN_REGEX",
+        r"^https://frontend-[a-z0-9-]+(?:-hstudio-clouds-projects)?\.vercel\.app$",
+    ).strip()
+    or None
 )
+
+if cors_allow_all:
+    # Beta mode: liberamos CORS geral para evitar bloqueio em previews do Vercel.
+    # Authorization via Bearer header continua exigida em todas as rotas protegidas.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=False,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_origin_regex=cors_origin_regex,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
