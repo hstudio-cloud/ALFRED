@@ -265,6 +265,15 @@ const pageFieldClass = dashboardClass.input;
 const textAreaClass =
   "min-h-[120px] rounded-[24px] border border-red-500/12 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
 const actionButtonClass = dashboardClass.buttonPrimary;
+const REQUEST_TIMEOUT_MS = 15000;
+
+const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs),
+    ),
+  ]);
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -347,77 +356,107 @@ const Dashboard = () => {
         setLoading(true);
       }
       try {
-        const [
-          statsRes,
-          financeOverview,
-          transactionRes,
-          billRes,
-          categoryRes,
-          reminderRes,
-          accountRes,
-          cardRes,
-          reportOverviewRes,
-          monthlyReportRes,
-          categoryReportRes,
-          accountReportRes,
-          cashflowRes,
-          statementImportsRes,
-          dashboardInsightsRes,
-        ] = await Promise.all([
-          axios.get(
-            `${API}/dashboard/stats?workspace_id=${workspaceId}&account_scope=${financialView}`,
+        const tasks = [
+          withTimeout(
+            axios.get(
+              `${API}/dashboard/stats?workspace_id=${workspaceId}&account_scope=${financialView}`,
+            ),
           ),
-          financeService.getOverview(workspaceId, {
-            account_scope: financialView,
-            period: reportPeriod,
-          }),
-          financeService.getTransactions(workspaceId, {
-            account_scope: financialView,
-            period: reportPeriod,
-          }),
-          financeService.getBills(workspaceId, {
-            account_scope: financialView,
-          }),
-          financeService.getCategories(workspaceId, {
-            account_scope: financialView,
-          }),
-          financeService.getReminders(workspaceId),
-          financeService.getAccounts(workspaceId, {
-            account_scope: financialView,
-          }),
-          financeService.getCards(workspaceId, {
-            account_scope: financialView,
-          }),
-          reportService.getOverview(workspaceId, {
-            account_scope: financialView,
-            period: reportPeriod,
-          }),
-          reportService.getMonthly(workspaceId, {
-            account_scope: financialView,
-            months: 6,
-          }),
-          reportService.getByCategory(workspaceId, {
-            account_scope: financialView,
-            period: reportPeriod,
-          }),
-          reportService.getByAccount(workspaceId, {
-            account_scope: financialView,
-            period: reportPeriod,
-          }),
-          reportService.getCashflow(workspaceId, {
-            account_scope: financialView,
-          }),
-          axios.get(`${API}/finances/imports?workspace_id=${workspaceId}`),
-          axios.get(
-            `${API}/dashboard/insights?workspace_id=${workspaceId}&account_scope=${financialView}`,
+          withTimeout(
+            financeService.getOverview(workspaceId, {
+              account_scope: financialView,
+              period: reportPeriod,
+            }),
           ),
-        ]);
+          withTimeout(
+            financeService.getTransactions(workspaceId, {
+              account_scope: financialView,
+              period: reportPeriod,
+            }),
+          ),
+          withTimeout(
+            financeService.getBills(workspaceId, {
+              account_scope: financialView,
+            }),
+          ),
+          withTimeout(
+            financeService.getCategories(workspaceId, {
+              account_scope: financialView,
+            }),
+          ),
+          withTimeout(financeService.getReminders(workspaceId)),
+          withTimeout(
+            financeService.getAccounts(workspaceId, {
+              account_scope: financialView,
+            }),
+          ),
+          withTimeout(
+            financeService.getCards(workspaceId, {
+              account_scope: financialView,
+            }),
+          ),
+          withTimeout(
+            reportService.getOverview(workspaceId, {
+              account_scope: financialView,
+              period: reportPeriod,
+            }),
+          ),
+          withTimeout(
+            reportService.getMonthly(workspaceId, {
+              account_scope: financialView,
+              months: 6,
+            }),
+          ),
+          withTimeout(
+            reportService.getByCategory(workspaceId, {
+              account_scope: financialView,
+              period: reportPeriod,
+            }),
+          ),
+          withTimeout(
+            reportService.getByAccount(workspaceId, {
+              account_scope: financialView,
+              period: reportPeriod,
+            }),
+          ),
+          withTimeout(
+            reportService.getCashflow(workspaceId, {
+              account_scope: financialView,
+            }),
+          ),
+          withTimeout(axios.get(`${API}/finances/imports?workspace_id=${workspaceId}`)),
+          withTimeout(
+            axios.get(
+              `${API}/dashboard/insights?workspace_id=${workspaceId}&account_scope=${financialView}`,
+            ),
+          ),
+        ];
 
-        setStats(statsRes.data);
-        setSummary(financeOverview.summary || null);
-        setReport(financeOverview.report || null);
-        setForecast(financeOverview.forecast || null);
-        setAutomationInsights(financeOverview.alerts?.insights || []);
+        const results = await Promise.allSettled(tasks);
+        const getValue = (index, fallback) =>
+          results[index]?.status === "fulfilled" ? results[index].value : fallback;
+
+        const statsRes = getValue(0, { data: {} });
+        const financeOverview = getValue(1, {});
+        const transactionRes = getValue(2, []);
+        const billRes = getValue(3, []);
+        const categoryRes = getValue(4, []);
+        const reminderRes = getValue(5, []);
+        const accountRes = getValue(6, []);
+        const cardRes = getValue(7, []);
+        const reportOverviewRes = getValue(8, null);
+        const monthlyReportRes = getValue(9, { months: [] });
+        const categoryReportRes = getValue(10, { categories: [] });
+        const accountReportRes = getValue(11, { accounts: [] });
+        const cashflowRes = getValue(12, null);
+        const statementImportsRes = getValue(13, { data: [] });
+        const dashboardInsightsRes = getValue(14, { data: { insights: [] } });
+
+        setStats(statsRes?.data || {});
+        setSummary(financeOverview?.summary || null);
+        setReport(financeOverview?.report || null);
+        setForecast(financeOverview?.forecast || null);
+        setAutomationInsights(financeOverview?.alerts?.insights || []);
         setTransactions(transactionRes || []);
         setBills(billRes || []);
         setCategories(categoryRes || []);
@@ -429,8 +468,18 @@ const Dashboard = () => {
         setCategoryReport(categoryReportRes?.categories || []);
         setAccountReport(accountReportRes?.accounts || []);
         setCashflowReport(cashflowRes || null);
-        setStatementImports(statementImportsRes.data || []);
-        setInsights(dashboardInsightsRes.data.insights || []);
+        setStatementImports(statementImportsRes?.data || []);
+        setInsights(dashboardInsightsRes?.data?.insights || []);
+
+        const failedRequests = results.filter((item) => item.status === "rejected");
+        if (failedRequests.length > 0) {
+          toast({
+            title: "Painel carregado parcialmente",
+            description:
+              "Alguns blocos nao responderam a tempo. O Nano abriu o dashboard com os dados disponiveis.",
+            variant: "destructive",
+          });
+        }
       } catch (error) {
         console.error(error);
         toast({
