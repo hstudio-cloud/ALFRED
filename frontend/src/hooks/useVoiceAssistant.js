@@ -379,17 +379,16 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         : 'Processando seu pedido financeiro...'
     );
 
+    const optimisticUserMessage = {
+      id: `temp-user-${Date.now()}`,
+      role: 'user',
+      content: trimmed,
+      created_at: new Date().toISOString()
+    };
+    setChatHistory((prev) => [...prev, optimisticUserMessage]);
+
     if (options.source === 'voice') {
       setLastVoiceCommand(trimmed);
-    } else {
-      const optimisticUserMessage = {
-        id: `temp-user-${Date.now()}`,
-        role: 'user',
-        content: trimmed,
-        created_at: new Date().toISOString()
-      };
-
-      setChatHistory((prev) => [...prev, optimisticUserMessage]);
     }
 
     try {

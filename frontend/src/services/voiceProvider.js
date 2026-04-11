@@ -206,9 +206,9 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       }
 
       const threshold = options.threshold ?? 0.018;
-      const maxDuration = options.maxDurationMs ?? 14000;
-      const silenceDuration = options.silenceDurationMs ?? 1800;
-      const minSpeechMs = options.minSpeechMs ?? 350;
+      const maxDuration = options.maxDurationMs ?? 9000;
+      const silenceDuration = options.silenceDurationMs ?? 950;
+      const minSpeechMs = options.minSpeechMs ?? 220;
       const dataArray = new Uint8Array(analyser.fftSize);
 
       let rafId = null;

@@ -55,6 +55,10 @@ class IntentClassifier:
         "me mostre",
         "qual",
         "quais",
+        "quanto tenho no total",
+        "quanto entrou esta semana",
+        "contas conectadas",
+        "maiores despesas",
     )
     _ANALYSIS_HINTS = (
         "analise",
@@ -119,6 +123,19 @@ class IntentClassifier:
                 entities=entities,
                 requires_tool=True,
                 suggested_tool="search_internal_knowledge",
+            )
+
+        # Frases naturais de agenda devem virar acao real (nao chat generico).
+        if any(token in text for token in ("tenho", "marque", "agenda", "compromisso", "reuniao")) and (
+            re.search(r"\bhoje\b|\bamanha\b|\b\d{1,2}[:h]\d{0,2}\b|\bas\b\s*\d{1,2}\b", text)
+            or "reuniao" in text
+        ):
+            return IntentClassification(
+                label="system_action",
+                confidence=0.9,
+                entities=entities,
+                requires_tool=True,
+                suggested_tool="create_reminder",
             )
 
         # Navigation commands like "abra bancos" should be actions even if no other hint matched.
@@ -281,15 +298,3 @@ class IntentClassifier:
         base = unicodedata.normalize("NFKD", text or "")
         without_accents = "".join(ch for ch in base if not unicodedata.combining(ch))
         return without_accents.lower().strip()
-        # Frases naturais de agenda devem virar acao real (nao chat generico).
-        if any(token in text for token in ("tenho", "marque", "agenda", "compromisso", "reuniao")) and (
-            re.search(r"\bhoje\b|\bamanha\b|\b\d{1,2}[:h]\d{0,2}\b|\bas\b\s*\d{1,2}\b", text)
-            or "reuniao" in text
-        ):
-            return IntentClassification(
-                label="system_action",
-                confidence=0.9,
-                entities=entities,
-                requires_tool=True,
-                suggested_tool="create_reminder",
-            )
