@@ -80,6 +80,11 @@ export const BanksSection = ({
   accountForm,
   setAccountForm,
   submitAccount,
+  openFinanceConnections = [],
+  openFinanceAccounts = [],
+  openFinanceSyncingId = null,
+  onOpenFinanceConnect,
+  onOpenFinanceSync,
 }) => (
   <div className="space-y-6">
     {pageHeader(
@@ -171,6 +176,57 @@ export const BanksSection = ({
       </Panel>
 
       <div className="space-y-6">
+        <Panel
+          title="Open Finance"
+          action={
+            <Button
+              type="button"
+              onClick={onOpenFinanceConnect}
+              className={`h-11 ${actionButtonClass}`}
+            >
+              <Landmark className="mr-2 h-4.5 w-4.5" />
+              Conectar banco
+            </Button>
+          }
+        >
+          {openFinanceConnections.length ? (
+            <div className="space-y-3">
+              {openFinanceConnections.map((connection) => (
+                <div
+                  key={connection.id}
+                  className={`flex items-center justify-between gap-3 ${dashboardTheme.panelSecondary} px-4 py-3`}
+                >
+                  <div>
+                    <p className="font-semibold text-white">
+                      {connection.institution_name || "Instituicao conectada"}
+                    </p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-zinc-500">
+                      {connection.provider} • {connection.status}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => onOpenFinanceSync?.(connection.id)}
+                    className="h-9 rounded-full border border-white/12 bg-white/[0.04] px-3 text-xs text-zinc-200 hover:bg-white/[0.08]"
+                    disabled={openFinanceSyncingId === connection.id}
+                  >
+                    {openFinanceSyncingId === connection.id ? "Sincronizando..." : "Sincronizar"}
+                  </Button>
+                </div>
+              ))}
+              <p className="text-xs text-zinc-500">
+                Contas importadas: {openFinanceAccounts.length}
+              </p>
+            </div>
+          ) : (
+            <EmptyState
+              icon={Landmark}
+              title="Nenhuma conexão Open Finance"
+              description="Conecte seu banco via agregador (Pluggy/Belvo) para sincronizar contas e transações automaticamente."
+            />
+          )}
+        </Panel>
+
         <div className="grid gap-4 md:grid-cols-3">
           <MiniStat label="Contas ativas" value={String(activeAccounts.length)} />
           <MiniStat

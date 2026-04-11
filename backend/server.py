@@ -26,6 +26,7 @@ from routes import (
     finance_routes,
     reports_routes,
     transactions_routes,
+    open_finance_routes,
     whatsapp_routes,
     workspace_routes,
     client_routes,
@@ -161,6 +162,7 @@ app.include_router(finance_hub_routes.router)
 app.include_router(accounts_routes.router)
 app.include_router(transactions_routes.router)
 app.include_router(reports_routes.router)
+app.include_router(open_finance_routes.router)
 app.include_router(whatsapp_routes.router)
 
 # CORS configuration:

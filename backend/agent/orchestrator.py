@@ -17,6 +17,9 @@ from tools import (
     get_payroll_summary,
     get_recent_transactions,
     get_workspace_summary,
+    get_open_finance_summary,
+    get_open_finance_week_income,
+    get_open_finance_top_expenses,
     search_internal_knowledge,
     get_top_categories,
     navigate_to_section,
@@ -222,6 +225,15 @@ class AgentOrchestrator:
         if step.tool == "system_tools.get_workspace_summary":
             return await get_workspace_summary(workspace_id=workspace_id, user_id=user_id)
 
+        if step.tool == "open_finance_tools.get_open_finance_summary":
+            return await get_open_finance_summary(workspace_id=workspace_id)
+
+        if step.tool == "open_finance_tools.get_open_finance_week_income":
+            return await get_open_finance_week_income(workspace_id=workspace_id)
+
+        if step.tool == "open_finance_tools.get_open_finance_top_expenses":
+            return await get_open_finance_top_expenses(workspace_id=workspace_id)
+
         if step.tool == "account_tools.get_account_balances":
             return await get_account_balances(
                 workspace_id=workspace_id,
@@ -344,6 +356,18 @@ class AgentOrchestrator:
             total = float(data.get("total_expenses", 0) or 0)
             count = int(data.get("count", 0) or 0)
             return f"Neste mes, suas despesas somam R$ {total:,.2f} em {count} movimentacoes."
+
+        if "open_finance_summary" in tool_results:
+            data = tool_results.get("open_finance_summary") or {}
+            connections = int(data.get("connections_count", 0) or 0)
+            accounts = int(data.get("accounts_count", 0) or 0)
+            balance = float(data.get("balance_total", 0) or 0)
+            institutions = data.get("institutions") or []
+            institutions_text = ", ".join(institutions[:3]) if institutions else "nenhuma instituicao"
+            return (
+                f"Open Finance conectado em {connections} conexoes e {accounts} contas. "
+                f"Saldo consolidado importado: R$ {balance:,.2f}. Instituicoes: {institutions_text}."
+            )
 
         if intent_label == "general_chat":
             return "Perfeito. Me diga o que voce quer resolver e eu executo por aqui."

@@ -12,6 +12,7 @@ import {
   ReportsSection,
 } from "../components/DashboardFinanceSections";
 import financeService from "../services/financeService";
+import openFinanceService from "../services/openFinanceService";
 import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
 import { API_BASE_URL } from "../config/env";
@@ -309,6 +310,9 @@ const Dashboard = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [payrollReport, setPayrollReport] = useState(null);
   const [payrollLoading, setPayrollLoading] = useState(false);
+  const [openFinanceConnections, setOpenFinanceConnections] = useState([]);
+  const [openFinanceAccounts, setOpenFinanceAccounts] = useState([]);
+  const [openFinanceSyncingId, setOpenFinanceSyncingId] = useState(null);
 
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
@@ -430,6 +434,8 @@ const Dashboard = () => {
               `${API}/dashboard/insights?workspace_id=${workspaceId}&account_scope=${financialView}`,
             ),
           ),
+          withTimeout(openFinanceService.getConnections(workspaceId)),
+          withTimeout(openFinanceService.getAccounts(workspaceId)),
         ];
 
         const results = await Promise.allSettled(tasks);
@@ -468,6 +474,16 @@ const Dashboard = () => {
         const cashflowRes = getValue(12, null);
         const statementImportsRes = getValue(13, { data: [] });
         const dashboardInsightsRes = getValue(14, { data: { insights: [] } });
+        const openFinanceConnectionsRes = getValue(15, { items: [] });
+        const openFinanceAccountsRes = getValue(16, { items: [] });
+
+        const normalizeCollection = (value) => {
+          if (Array.isArray(value)) return value;
+          if (Array.isArray(value?.items)) return value.items;
+          if (Array.isArray(value?.connections)) return value.connections;
+          if (Array.isArray(value?.accounts)) return value.accounts;
+          return [];
+        };
 
         setStats(statsRes?.data || {});
         setSummary(financeOverview?.summary || null);
@@ -487,6 +503,8 @@ const Dashboard = () => {
         setCashflowReport(cashflowRes || null);
         setStatementImports(statementImportsRes?.data || []);
         setInsights(dashboardInsightsRes?.data?.insights || []);
+        setOpenFinanceConnections(normalizeCollection(openFinanceConnectionsRes));
+        setOpenFinanceAccounts(normalizeCollection(openFinanceAccountsRes));
 
         const failedRequests = results.filter((item) => item.status === "rejected");
         if (failedRequests.length > 0) {
@@ -905,6 +923,71 @@ const Dashboard = () => {
         description: "Nao consegui salvar esse cartao agora.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleOpenFinanceConnect = async () => {
+    if (!currentWorkspace?.id) return;
+    try {
+      const payload = await openFinanceService.createConnectToken(
+        currentWorkspace.id,
+      );
+      const connectUrl =
+        payload?.connect_url || payload?.connectUrl || payload?.url || null;
+      const linkToken =
+        payload?.link_token || payload?.linkToken || payload?.token || null;
+
+      if (connectUrl) {
+        window.open(connectUrl, "_blank", "noopener,noreferrer");
+        toast({
+          title: "Conexao iniciada",
+          description:
+            "A janela do agregador foi aberta. Depois de concluir, clique em sincronizar.",
+        });
+      } else if (linkToken) {
+        toast({
+          title: "Token de conexao gerado",
+          description:
+            "Recebi o token do agregador. A interface de vinculacao pode ser conectada em seguida.",
+        });
+      } else {
+        toast({
+          title: "Conexao preparada",
+          description:
+            "O endpoint respondeu, mas sem URL publica. Verifique a configuracao do provider.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro ao conectar Open Finance",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui iniciar a conexao bancaria agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenFinanceSync = async (connectionId) => {
+    if (!currentWorkspace?.id || !connectionId) return;
+    setOpenFinanceSyncingId(connectionId);
+    try {
+      await openFinanceService.syncConnection(currentWorkspace.id, connectionId);
+      await loadAll(currentWorkspace.id);
+      toast({
+        title: "Sincronizacao concluida",
+        description: "Contas e transacoes da conexao foram atualizadas.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao sincronizar Open Finance",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui sincronizar essa conexao agora.",
+        variant: "destructive",
+      });
+    } finally {
+      setOpenFinanceSyncingId(null);
     }
   };
 
@@ -3224,6 +3307,11 @@ const Dashboard = () => {
         accountForm={accountForm}
         setAccountForm={setAccountForm}
         submitAccount={submitAccount}
+        openFinanceConnections={openFinanceConnections}
+        openFinanceAccounts={openFinanceAccounts}
+        openFinanceSyncingId={openFinanceSyncingId}
+        onOpenFinanceConnect={handleOpenFinanceConnect}
+        onOpenFinanceSync={handleOpenFinanceSync}
       />
     ),
     cards: (

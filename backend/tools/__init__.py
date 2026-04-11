@@ -18,6 +18,11 @@ from .orchestrator_tools import (
     create_reminder as orchestrator_create_reminder,
     create_transaction,
 )
+from .open_finance_tools import (
+    get_open_finance_summary,
+    get_open_finance_top_expenses,
+    get_open_finance_week_income,
+)
 
 __all__ = [
     "get_account_balances",
@@ -41,4 +46,7 @@ __all__ = [
     "orchestrator_create_reminder",
     "navigate_to_section",
     "workspace_context",
+    "get_open_finance_summary",
+    "get_open_finance_week_income",
+    "get_open_finance_top_expenses",
 ]

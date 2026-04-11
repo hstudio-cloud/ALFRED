@@ -75,6 +75,9 @@ class Planner:
                     PlanStep(name="fetch_agenda", tool="reminder_tools.get_agenda_today"),
                     PlanStep(name="fetch_open_bills", tool="finance_tools.get_open_bills"),
                     PlanStep(name="fetch_recent_transactions", tool="finance_tools.get_recent_transactions"),
+                    PlanStep(name="open_finance_summary", tool="open_finance_tools.get_open_finance_summary"),
+                    PlanStep(name="open_finance_week_income", tool="open_finance_tools.get_open_finance_week_income"),
+                    PlanStep(name="open_finance_top_expenses", tool="open_finance_tools.get_open_finance_top_expenses"),
                 ]
             )
             return plan
@@ -86,6 +89,9 @@ class Planner:
                     PlanStep(name="cashflow_forecast", tool="finance_tools.get_cashflow"),
                     PlanStep(name="top_categories", tool="report_tools.get_top_categories"),
                     PlanStep(name="workspace_summary", tool="system_tools.get_workspace_summary"),
+                    PlanStep(name="open_finance_summary", tool="open_finance_tools.get_open_finance_summary"),
+                    PlanStep(name="open_finance_week_income", tool="open_finance_tools.get_open_finance_week_income"),
+                    PlanStep(name="open_finance_top_expenses", tool="open_finance_tools.get_open_finance_top_expenses"),
                 ]
             )
             return plan

@@ -29,3 +29,6 @@ statement_imports_collection = db.statement_imports
 employees_collection = db.employees
 attendance_collection = db.attendance_records
 payroll_runs_collection = db.payroll_runs
+open_finance_connections_collection = db.open_finance_connections
+open_finance_accounts_collection = db.open_finance_accounts
+open_finance_transactions_collection = db.open_finance_transactions
