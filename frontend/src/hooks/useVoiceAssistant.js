@@ -44,6 +44,12 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   const keepListeningRef = useRef(false);
   const pausedForAssistantRef = useRef(false);
   const transcriptClearTimerRef = useRef(null);
+  const listeningActivationTimerRef = useRef(null);
+  const listeningHealthTimerRef = useRef(null);
+  const isListeningRef = useRef(false);
+  const isProcessingRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const lastSpeechActivityRef = useRef(0);
   const lastInputLevelRef = useRef(0.08);
   const lastInputLevelPushRef = useRef(0);
 
@@ -60,6 +66,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       setPartialTranscript('');
       setFinalTranscript('');
     }, delayMs);
+  }, []);
+
+  const markSpeechActivity = useCallback(() => {
+    lastSpeechActivityRef.current = Date.now();
   }, []);
 
   const looksLikeWakeWord = useCallback((text) => {
@@ -153,8 +163,26 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       if (transcriptClearTimerRef.current) {
         clearTimeout(transcriptClearTimerRef.current);
       }
+      if (listeningActivationTimerRef.current) {
+        clearTimeout(listeningActivationTimerRef.current);
+      }
+      if (listeningHealthTimerRef.current) {
+        clearInterval(listeningHealthTimerRef.current);
+      }
     };
   }, [updateVoiceState]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
 
   const pauseRecognitionForAssistant = useCallback(() => {
     if (!keepListeningRef.current) return;
@@ -236,11 +264,20 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       onStart: () => {
         setError(null);
         setIsListening(true);
+        markSpeechActivity();
+        if (listeningActivationTimerRef.current) {
+          clearTimeout(listeningActivationTimerRef.current);
+          listeningActivationTimerRef.current = null;
+        }
       },
       onPartialTranscript: (transcript) => {
         setPartialTranscript(transcript);
+        if (transcript?.trim()) {
+          markSpeechActivity();
+        }
       },
       onFinalTranscript: async (transcript) => {
+        markSpeechActivity();
         await transcriptProcessorRef.current?.(transcript);
       },
       onError: (event) => {
@@ -296,7 +333,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     return () => {
       recognizer?.destroy?.();
     };
-  }, [isWakeArmed, updateVoiceState, wakeWord]);
+  }, [isWakeArmed, markSpeechActivity, updateVoiceState, wakeWord]);
 
   useEffect(() => {
     if (voiceState === 'speaking') {
@@ -535,6 +572,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         onStart: () => {
           setError(null);
           setIsListening(true);
+          markSpeechActivity();
+          if (listeningActivationTimerRef.current) {
+            clearTimeout(listeningActivationTimerRef.current);
+            listeningActivationTimerRef.current = null;
+          }
           updateVoiceState(
             'listening',
             awaitingCommandRef.current
@@ -544,6 +586,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         },
         onAudioLevel: (level) => {
           const normalizedLevel = Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0.08;
+          if (normalizedLevel > 0.035) {
+            markSpeechActivity();
+          }
           const now = Date.now();
           const levelDelta = Math.abs(normalizedLevel - lastInputLevelRef.current);
           if (levelDelta < 0.02 && now - lastInputLevelPushRef.current < 80) {
@@ -595,7 +640,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       setError(captureError);
       updateVoiceState('error', 'Nao consegui abrir a captura de audio para transcricao do Nano.');
     }
-  }, [isWakeArmed, updateVoiceState, wakeWord]);
+  }, [isWakeArmed, markSpeechActivity, updateVoiceState, wakeWord]);
 
   useEffect(() => {
     backendCaptureStarterRef.current = startBackendCaptureSession;
@@ -610,6 +655,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   }, [handleRealtimeTurn, message]);
 
   const startListening = useCallback(() => {
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      updateVoiceState('error', 'A voz precisa de conexao segura (HTTPS) para acessar o microfone.');
+      return;
+    }
+
     if (!voiceSupported) {
       updateVoiceState('error', 'Reconhecimento de voz indisponivel neste navegador.');
       return;
@@ -622,17 +672,37 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     setIsWakeArmed(true);
     setPartialTranscript('');
     setFinalTranscript('');
-    updateVoiceState('listening', `Escuta continua ativada. Diga ${wakeWord} quando quiser.`);
+    updateVoiceState('processing', 'Ativando microfone do Nano...');
 
-    if (providerRef.current?.isRecognitionSupported?.() && recognizerRef.current) {
-      try {
-        preferBackendTranscriptionRef.current = false;
-        recognizerRef.current.start();
-        return;
-      } catch (startError) {
-        preferBackendTranscriptionRef.current = backendTranscriptionAvailableRef.current;
-        void startError;
-      }
+      if (providerRef.current?.isRecognitionSupported?.() && recognizerRef.current) {
+        try {
+          preferBackendTranscriptionRef.current = false;
+          recognizerRef.current.start();
+          if (listeningActivationTimerRef.current) {
+            clearTimeout(listeningActivationTimerRef.current);
+          }
+          listeningActivationTimerRef.current = setTimeout(() => {
+            if (!isListeningRef.current && keepListeningRef.current) {
+              if (backendTranscriptionAvailableRef.current) {
+                preferBackendTranscriptionRef.current = true;
+                backendCaptureStarterRef.current?.();
+                updateVoiceState('listening', 'Ativei o modo alternativo de escuta do Nano.');
+                return;
+              }
+
+              updateVoiceState(
+                'error',
+                'Nao consegui ativar o microfone. Verifique a permissao do navegador e tente novamente.'
+              );
+              keepListeningRef.current = false;
+              setIsWakeArmed(false);
+            }
+          }, 4500);
+          return;
+        } catch (startError) {
+          preferBackendTranscriptionRef.current = backendTranscriptionAvailableRef.current;
+          void startError;
+        }
     }
 
     if (backendTranscriptionAvailableRef.current) {
@@ -641,7 +711,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     }
 
     updateVoiceState('error', 'Nao consegui iniciar o reconhecimento de voz neste navegador.');
-  }, [updateVoiceState, voiceSupported, wakeWord]);
+  }, [updateVoiceState, voiceSupported]);
 
   const stopListening = useCallback(() => {
     keepListeningRef.current = false;
@@ -664,10 +734,58 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
     providerRef.current?.cancelBackendCapture?.();
     backendCaptureRef.current = null;
+    if (listeningActivationTimerRef.current) {
+      clearTimeout(listeningActivationTimerRef.current);
+      listeningActivationTimerRef.current = null;
+    }
+    if (listeningHealthTimerRef.current) {
+      clearInterval(listeningHealthTimerRef.current);
+      listeningHealthTimerRef.current = null;
+    }
 
     pausedForAssistantRef.current = false;
     updateVoiceState('idle', 'Escuta de voz desativada.');
   }, [updateVoiceState]);
+
+  useEffect(() => {
+    if (!isWakeArmed) {
+      if (listeningHealthTimerRef.current) {
+        clearInterval(listeningHealthTimerRef.current);
+        listeningHealthTimerRef.current = null;
+      }
+      return undefined;
+    }
+
+    if (!lastSpeechActivityRef.current) {
+      lastSpeechActivityRef.current = Date.now();
+    }
+
+    if (listeningHealthTimerRef.current) {
+      clearInterval(listeningHealthTimerRef.current);
+    }
+
+    listeningHealthTimerRef.current = setInterval(() => {
+      if (!keepListeningRef.current) return;
+      if (!isListeningRef.current) return;
+      if (isProcessingRef.current || isSpeakingRef.current) return;
+
+      const idleForMs = Date.now() - lastSpeechActivityRef.current;
+      if (idleForMs < 16000) return;
+
+      updateVoiceState(
+        'listening',
+        `Nao detectei sua voz ainda. Fale mais perto do microfone ou diga ${wakeWord} novamente.`
+      );
+      lastSpeechActivityRef.current = Date.now();
+    }, 4000);
+
+    return () => {
+      if (listeningHealthTimerRef.current) {
+        clearInterval(listeningHealthTimerRef.current);
+        listeningHealthTimerRef.current = null;
+      }
+    };
+  }, [isWakeArmed, updateVoiceState, wakeWord]);
 
   return {
     apiBase: API,
