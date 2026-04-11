@@ -110,14 +110,24 @@ class AgentOrchestrator:
         normalized_actions = normalize_declared_actions(actions)
         normalized_executed_actions = normalize_executed_actions(executed_actions)
 
-        response_text = await self.llm.generate_response(
-            message=message,
-            context=base_context,
-            tool_results=tool_results,
-            intent=intent,
-            executed_actions=normalized_executed_actions,
-            fallback_response=fallback_response,
-        )
+        # Fast-path: when we already executed real actions/tools, prefer a deterministic
+        # grounded response to reduce latency and avoid generic replies.
+        if normalized_executed_actions or tool_results:
+            response_text = self._build_grounded_summary(
+                intent_label=intent.label,
+                tool_results=tool_results,
+                executed_actions=normalized_executed_actions,
+                fallback_response=fallback_response,
+            )
+        else:
+            response_text = await self.llm.generate_response(
+                message=message,
+                context=base_context,
+                tool_results=tool_results,
+                intent=intent,
+                executed_actions=normalized_executed_actions,
+                fallback_response=fallback_response,
+            )
         response_text = self._enforce_grounded_response(
             text=response_text,
             intent_label=intent.label,

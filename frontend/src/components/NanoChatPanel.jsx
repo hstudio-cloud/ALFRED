@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Mic, MicOff, Send, Square } from "lucide-react";
+import { AlertCircle, Mic, MicOff, Send, Square, X } from "lucide-react";
 
 import { nanoQuickPromptMap, nanoQuickPrompts } from "../lib/nanoTheme";
 import AIVoiceVisualizer from "./AIVoiceVisualizer";
@@ -54,6 +54,7 @@ const NanoChatPanel = ({
   error,
   onStartVoice,
   onStopVoice,
+  onCancelVoiceCommand,
   onInterrupt,
 }) => {
   const scrollRef = useRef(null);
@@ -118,6 +119,8 @@ const NanoChatPanel = ({
     voiceState === "processing" ||
     voiceState === "speaking" ||
     responsePulseActive;
+
+  const liveTranscript = (partialTranscript || finalTranscript || "").trim();
 
   return (
     <section className="relative flex h-full min-h-0 flex-col overflow-hidden">
@@ -298,6 +301,14 @@ const NanoChatPanel = ({
 
         <div className="absolute bottom-6 left-1/2 z-20 w-[min(980px,calc(100%-6rem))] -translate-x-1/2">
           <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-4 py-3 shadow-[0_20px_60px_rgba(2,6,23,0.28)] backdrop-blur-xl">
+            {isWakeArmed && liveTranscript && (
+              <div className="mb-2 rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-xs text-zinc-300">
+                <span className="mr-2 font-medium uppercase tracking-[0.14em] text-zinc-400">
+                  Transcricao
+                </span>
+                {liveTranscript}
+              </div>
+            )}
             <div className="flex items-end gap-3">
               <Textarea
                 value={message}
@@ -332,6 +343,17 @@ const NanoChatPanel = ({
                     className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06]"
                   >
                     <Square className="h-4 w-4" />
+                  </button>
+                )}
+
+                {(isWakeArmed || isProcessing) && (
+                  <button
+                    type="button"
+                    onClick={onCancelVoiceCommand}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06]"
+                    title="Cancelar comando de voz"
+                  >
+                    <X className="h-4 w-4" />
                   </button>
                 )}
 

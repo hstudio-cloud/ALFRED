@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from datetime import datetime, timedelta
 
 from .types import ExecutionPlan, IntentClassification, PlanStep
@@ -124,7 +125,7 @@ class Planner:
         return plan
 
     def _extract_transaction_payload(self, message: str, intent: IntentClassification) -> dict:
-        text = (message or "").lower()
+        text = self._normalize_text(message)
         amount = intent.entities.get("amount")
         if amount is None:
             return {}
@@ -146,22 +147,22 @@ class Planner:
         }
 
     def _extract_reminder_payload(self, message: str) -> dict:
-        text = (message or "").lower()
+        text = self._normalize_text(message)
         if not any(
             token in text
-            for token in ("lembrete", "agenda", "agende", "agendar", "reuniao", "reunião", "marque")
+            for token in ("lembrete", "agenda", "agende", "agendar", "reuniao", "marque", "compromisso")
         ):
             return {}
 
         title = "Lembrete financeiro"
-        if "reuniao" in text or "reunião" in text:
-            title = "Reunião"
+        if "reuniao" in text or "compromisso" in text:
+            title = "Reuniao"
         elif "pagar" in text:
             title = "Pagar conta"
 
         now = datetime.utcnow()
         day = now
-        if "amanha" in text or "amanhã" in text:
+        if "amanha" in text:
             day = now + timedelta(days=1)
         elif "hoje" in text:
             day = now
@@ -180,9 +181,11 @@ class Planner:
 
         hour = 9
         minute = 0
-        time_match = re.search(r"\b(?:as|às)\s*(\d{1,2})(?::(\d{2}))?\s*h?\b", text)
+        time_match = re.search(r"\b(?:as)\s*(\d{1,2})(?::(\d{2}))?\s*h?\b", text)
         if not time_match:
             time_match = re.search(r"\b(\d{1,2}):(\d{2})\b", text)
+        if not time_match:
+            time_match = re.search(r"\b(\d{1,2})h\b", text)
         if time_match:
             h = int(time_match.group(1))
             mm = int(time_match.group(2) or 0)
@@ -196,3 +199,9 @@ class Planner:
             "remind_at": remind_at,
             "description": message.strip()[:200],
         }
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        base = unicodedata.normalize("NFKD", text or "")
+        without_accents = "".join(ch for ch in base if not unicodedata.combining(ch))
+        return without_accents.lower().strip()

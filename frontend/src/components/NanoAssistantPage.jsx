@@ -29,9 +29,11 @@ const NanoAssistantPage = ({
     assistantRuntime,
     voiceSupported,
     isWakeArmed,
+    isAwaitingVoiceCommand,
     error,
     startListening,
     stopListening,
+    cancelVoiceCommand,
     interruptSpeaking,
     sendMessage,
   } = useVoiceAssistant({
@@ -76,10 +78,12 @@ const NanoAssistantPage = ({
         voiceProviderType={voiceProviderType}
         assistantRuntime={assistantRuntime}
         isWakeArmed={isWakeArmed}
+        isAwaitingVoiceCommand={isAwaitingVoiceCommand}
         voiceSupported={voiceSupported}
         error={error}
         onStartVoice={startListening}
         onStopVoice={stopListening}
+        onCancelVoiceCommand={cancelVoiceCommand}
         onInterrupt={interruptSpeaking}
       />
     </div>

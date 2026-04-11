@@ -747,6 +747,43 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     updateVoiceState('idle', 'Escuta de voz desativada.');
   }, [updateVoiceState]);
 
+  const cancelVoiceCommand = useCallback(() => {
+    keepListeningRef.current = false;
+    awaitingCommandRef.current = false;
+    pausedForAssistantRef.current = false;
+    setIsAwaitingVoiceCommand(false);
+    setIsWakeArmed(false);
+    setIsListening(false);
+    setPartialTranscript('');
+    setFinalTranscript('');
+    setError(null);
+    lastInputLevelRef.current = 0.08;
+    lastInputLevelPushRef.current = Date.now();
+    setInputLevel(0.08);
+
+    try {
+      recognizerRef.current?.abort?.();
+    } catch (abortError) {
+      void abortError;
+    }
+
+    providerRef.current?.cancelBackendCapture?.();
+    backendCaptureRef.current = null;
+    providerRef.current?.stopSpeaking?.();
+    setIsSpeaking(false);
+
+    if (listeningActivationTimerRef.current) {
+      clearTimeout(listeningActivationTimerRef.current);
+      listeningActivationTimerRef.current = null;
+    }
+    if (listeningHealthTimerRef.current) {
+      clearInterval(listeningHealthTimerRef.current);
+      listeningHealthTimerRef.current = null;
+    }
+
+    updateVoiceState('idle', 'Comando de voz cancelado.');
+  }, [updateVoiceState]);
+
   useEffect(() => {
     if (!isWakeArmed) {
       if (listeningHealthTimerRef.current) {
@@ -810,6 +847,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     error,
     startListening,
     stopListening,
+    cancelVoiceCommand,
     interruptSpeaking,
     sendMessage,
     handleRealtimeTurn
