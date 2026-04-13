@@ -935,7 +935,12 @@ const Dashboard = () => {
       const connectUrl =
         payload?.connect_url || payload?.connectUrl || payload?.url || null;
       const linkToken =
-        payload?.link_token || payload?.linkToken || payload?.token || null;
+        payload?.connect_token ||
+        payload?.connectToken ||
+        payload?.link_token ||
+        payload?.linkToken ||
+        payload?.token ||
+        null;
 
       if (connectUrl) {
         window.open(connectUrl, "_blank", "noopener,noreferrer");
@@ -948,7 +953,7 @@ const Dashboard = () => {
         toast({
           title: "Token de conexao gerado",
           description:
-            "Recebi o token do agregador. A interface de vinculacao pode ser conectada em seguida.",
+            "Recebi o token do agregador. O proximo passo e abrir o widget de vinculacao do provider.",
         });
       } else {
         toast({

@@ -27,6 +27,7 @@ class OpenFinanceService:
         self.base_url = os.getenv("OPEN_FINANCE_BASE_URL", "").strip()
         self.client_id = os.getenv("OPEN_FINANCE_CLIENT_ID", "").strip()
         self.client_secret = os.getenv("OPEN_FINANCE_CLIENT_SECRET", "").strip()
+        self.api_key = os.getenv("OPEN_FINANCE_API_KEY", "").strip()
         self.webhook_secret = os.getenv("OPEN_FINANCE_WEBHOOK_SECRET", "").strip()
 
     async def create_connect_token(self, *, user_id: str, workspace_id: str, callback_url: str | None = None) -> Dict[str, Any]:
@@ -155,13 +156,19 @@ class OpenFinanceService:
             "products": ["ACCOUNTS", "TRANSACTIONS"],
             "webhookUrl": payload["callback_url"],
         }
+        api_key = await self._pluggy_get_api_key()
+        if not api_key:
+            return {
+                "provider": "pluggy",
+                "connect_token": None,
+                "connect_url": None,
+                "configured": False,
+                "message": "Pluggy nao retornou uma API key valida para abrir o fluxo de conexao.",
+            }
         response = await self._http_post_json(
             endpoint,
             request_body,
-            headers={
-                "X-API-KEY": self.client_id,
-                "X-API-SECRET": self.client_secret,
-            },
+            headers={"X-API-KEY": api_key},
         )
         return {
             "provider": "pluggy",
@@ -170,6 +177,23 @@ class OpenFinanceService:
             "configured": True,
             "raw": response,
         }
+
+    async def _pluggy_get_api_key(self) -> str:
+        if self.api_key:
+            return self.api_key
+
+        endpoint = f"{self.base_url.rstrip('/')}/auth"
+        response = await self._http_post_json(
+            endpoint,
+            {"clientId": self.client_id, "clientSecret": self.client_secret},
+            headers={},
+        )
+        return (
+            response.get("apiKey")
+            or response.get("accessToken")
+            or response.get("access_token")
+            or ""
+        )
 
     async def _belvo_create_connect_token(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         endpoint = f"{self.base_url.rstrip('/')}/token"
@@ -208,4 +232,3 @@ class OpenFinanceService:
                 return {"error": str(exc)}
 
         return await asyncio.to_thread(_request)
-
