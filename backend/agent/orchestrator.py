@@ -370,7 +370,10 @@ class AgentOrchestrator:
             )
 
         if intent_label == "general_chat":
-            return "Perfeito. Me diga o que voce quer resolver e eu executo por aqui."
+            return (
+                fallback_response
+                or "Estou com voce. Posso responder, analisar seus dados e executar a proxima etapa por aqui."
+            )
 
         return fallback_response or "Conclui seu pedido com os dados disponiveis no sistema."
 

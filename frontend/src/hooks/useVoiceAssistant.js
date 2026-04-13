@@ -116,7 +116,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
   const looksLikeNaturalVoiceQuestion = useCallback((text) => {
     const lowered = (text || '').toLowerCase().trim();
-    if (!lowered || lowered.length < 8) return false;
+    if (!lowered || lowered.length < 4) return false;
 
     const hints = [
       'tem ',
@@ -124,6 +124,14 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       'qual ',
       'quanto ',
       'como ',
+      'por que',
+      'porque',
+      'quem ',
+      'quando ',
+      'onde ',
+      'me explica',
+      'explique',
+      'quero saber',
       'me mostra',
       'mostrar ',
       'agenda',
@@ -134,9 +142,14 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       'preciso',
       'quero',
       'pode',
+      'alguma sugest',
+      'alguma recomend',
+      'o que voce acha',
+      'o que acha',
+      'me recomenda',
     ];
 
-    return hints.some((hint) => lowered.includes(hint));
+    return hints.some((hint) => lowered.includes(hint)) || /\?$/.test(lowered);
   }, []);
 
   useEffect(() => {
@@ -225,8 +238,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       .then((status) => {
         setVoiceProviderType(status?.provider || provider.type);
         backendTranscriptionAvailableRef.current = Boolean(status?.transcription_available);
-        // Browser-first strategy. Backend transcription enters only as fallback.
-        preferBackendTranscriptionRef.current = false;
+        preferBackendTranscriptionRef.current = Boolean(status?.transcription_available);
         setAssistantRuntime({
           runtimeMode: status?.runtime_mode || 'browser_fallback',
           llmProvider: status?.llm_provider || 'rule_based',
@@ -672,6 +684,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     setPartialTranscript('');
     setFinalTranscript('');
     updateVoiceState('processing', 'Ativando microfone do Nano...');
+
+      if (preferBackendTranscriptionRef.current && backendTranscriptionAvailableRef.current) {
+        backendCaptureStarterRef.current?.();
+        return;
+      }
 
       if (providerRef.current?.isRecognitionSupported?.() && recognizerRef.current) {
         try {

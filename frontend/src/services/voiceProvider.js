@@ -205,10 +205,10 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
         await audioContext.resume();
       }
 
-      const threshold = options.threshold ?? 0.018;
-      const maxDuration = options.maxDurationMs ?? 9000;
-      const silenceDuration = options.silenceDurationMs ?? 950;
-      const minSpeechMs = options.minSpeechMs ?? 220;
+      const threshold = options.threshold ?? 0.015;
+      const maxDuration = options.maxDurationMs ?? 7000;
+      const silenceDuration = options.silenceDurationMs ?? 700;
+      const minSpeechMs = options.minSpeechMs ?? 140;
       const dataArray = new Uint8Array(analyser.fftSize);
 
       let rafId = null;
@@ -333,7 +333,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
 
       startedAt = Date.now();
       handlers.onStart?.();
-      recorder.start(250);
+      recorder.start(180);
       stopTimer = setTimeout(stopRecorder, maxDuration + 500);
       rafId = requestAnimationFrame(monitor);
 

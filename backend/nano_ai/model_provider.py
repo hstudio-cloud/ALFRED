@@ -113,10 +113,14 @@ class SelfHostedModelProvider(ModelProviderBase):
 
 def resolve_model_provider(api_key: str = "") -> Optional[ModelProviderBase]:
     provider_name = os.getenv("NANO_LLM_PROVIDER", "auto").strip().lower() or "auto"
+    force_rule_based = os.getenv("NANO_FORCE_RULE_BASED", "").strip().lower() in {"1", "true", "yes", "on"}
     llm_url = os.getenv("NANO_LLM_URL", "").strip()
     llm_auth_token = os.getenv("NANO_LLM_AUTH_TOKEN", "").strip()
     llm_timeout = int(os.getenv("NANO_LLM_TIMEOUT", "60"))
     openai_base_url = os.getenv("OPENAI_BASE_URL", "").strip()
+
+    if force_rule_based:
+        return None
 
     resolved = provider_name
     if provider_name == "auto":
@@ -126,6 +130,9 @@ def resolve_model_provider(api_key: str = "") -> Optional[ModelProviderBase]:
             resolved = "openai"
         else:
             resolved = "none"
+    elif provider_name in {"none", "disabled", "off"} and api_key:
+        # Prefer hosted recovery over silently degrading to canned replies.
+        resolved = "openai"
 
     if resolved == "self_hosted" and llm_url:
         return SelfHostedModelProvider(

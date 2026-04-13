@@ -53,9 +53,11 @@ class LLMService:
             return self._fallback_answer(message, intent, tool_results, executed_actions, fallback_response)
 
         system_prompt = (
-            "Voce e Nano, copiloto financeiro e assistente geral. "
-            "Responda em portugues-br, curto, claro, proativo. "
-            "Se houver acoes executadas, confirme o resultado objetivo."
+            "Voce e Nano, um assistente de alto nivel para financas, operacao e perguntas gerais. "
+            "Responda em portugues do Brasil, com clareza, iniciativa e inteligencia pratica. "
+            "Se a pergunta for aberta, entregue uma resposta util de verdade em vez de redirecionar o usuario de volta. "
+            "Se houver acoes executadas, confirme o resultado objetivo. "
+            "Quando fizer sentido, proponha 1 proximo passo curto."
         )
         user_prompt = (
             f"Mensagem do usuario:\n{message}\n\n"
@@ -138,6 +140,11 @@ class LLMService:
             return f"Entendi. Aqui esta o que encontrei: {tool_results}"
         if intent.label == "web_research":
             return f"Pesquisei isso para voce. {tool_results.get('web_summary', '')}".strip()
+        if intent.label == "general_chat":
+            return (
+                "Estou com voce. Posso responder perguntas gerais, analisar seu financeiro, "
+                "organizar sua agenda e executar tarefas no sistema. Me diga o objetivo ou a duvida."
+            )
         return fallback_response or (
             "Entendi seu pedido. Posso registrar movimentacoes, analisar seu financeiro, "
             "consultar agenda e pesquisar na web quando voce pedir."
@@ -228,8 +235,8 @@ class LLMService:
     def _fallback_tool_response(self, *, intent: str, tool_results: Dict[str, Any]) -> str:
         if intent == "general_chat":
             return (
-                "Perfeito. Estou com voce. Se quiser, posso ver sua agenda de hoje, "
-                "registrar movimentacoes e te ajudar a organizar o financeiro agora."
+                "Estou com voce. Posso responder perguntas, analisar seu financeiro, "
+                "consultar sua agenda e executar tarefas no sistema agora."
             )
         if not tool_results:
             if intent in {"system_action", "system_query", "financial_analysis"}:

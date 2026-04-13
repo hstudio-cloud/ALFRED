@@ -59,6 +59,14 @@ class IntentClassifier:
         "quanto entrou esta semana",
         "contas conectadas",
         "maiores despesas",
+        "alguma sugestao",
+        "alguma recomendacao",
+        "o que voce recomenda",
+        "o que me recomenda",
+        "me da uma sugestao",
+        "me de uma sugestao",
+        "como melhorar",
+        "como posso melhorar",
     )
     _ANALYSIS_HINTS = (
         "analise",
@@ -81,6 +89,11 @@ class IntentClassifier:
         "restaurantes em",
         "cotacao",
         "tempo em",
+        "quem e",
+        "quem foi",
+        "o que e",
+        "explique",
+        "me fale sobre",
     )
     _KNOWLEDGE_HINTS = (
         "como funciona o nano",
@@ -168,6 +181,15 @@ class IntentClassifier:
             return IntentClassification(
                 label="financial_analysis",
                 confidence=0.82,
+                entities=entities,
+                requires_tool=True,
+                suggested_tool="get_cashflow",
+            )
+
+        if any(h in text for h in ("sugestao", "sugestoes", "recomendacao", "recomendacoes")):
+            return IntentClassification(
+                label="financial_analysis",
+                confidence=0.8,
                 entities=entities,
                 requires_tool=True,
                 suggested_tool="get_cashflow",
