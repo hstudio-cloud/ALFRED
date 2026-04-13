@@ -32,6 +32,7 @@ async def create_connect_token(
         user_id=current_user["id"],
         workspace_id=workspace_id,
         callback_url=payload.callback_url,
+        item_id=payload.item_id,
     )
 
 

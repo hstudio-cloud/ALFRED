@@ -206,7 +206,7 @@ export const BanksSection = ({
                   </div>
                   <Button
                     type="button"
-                    onClick={() => onOpenFinanceSync?.(connection.id)}
+                    onClick={() => onOpenFinanceSync?.(connection)}
                     className="h-9 rounded-full border border-white/12 bg-white/[0.04] px-3 text-xs text-zinc-200 hover:bg-white/[0.08]"
                     disabled={openFinanceSyncingId === connection.id}
                   >

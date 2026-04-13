@@ -61,6 +61,7 @@ class ExternalTransaction(BaseModel):
 class OpenFinanceConnectTokenRequest(BaseModel):
     provider: str = "pluggy"
     callback_url: Optional[str] = None
+    item_id: Optional[str] = None
 
 
 class OpenFinanceConnectCallbackRequest(BaseModel):
@@ -70,4 +71,3 @@ class OpenFinanceConnectCallbackRequest(BaseModel):
     institution_name: Optional[str] = None
     status: str = "connected"
     metadata: Dict[str, Any] = Field(default_factory=dict)
-

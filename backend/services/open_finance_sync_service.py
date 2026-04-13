@@ -10,6 +10,7 @@ from database import (
     open_finance_transactions_collection,
 )
 from services.open_finance_normalizer import OpenFinanceNormalizer
+from services.open_finance_service import OpenFinanceService
 
 
 class OpenFinanceSyncService:
@@ -19,6 +20,9 @@ class OpenFinanceSyncService:
     - real provider payload (future)
     - manual payload from callback/sandbox for quick validation
     """
+
+    def __init__(self) -> None:
+        self.open_finance_service = OpenFinanceService()
 
     async def sync_connection(
         self,
@@ -34,6 +38,23 @@ class OpenFinanceSyncService:
             return {"ok": False, "error": "connection_not_found"}
 
         normalized_payload = self._normalize_provider_payload(provider_payload or {})
+        if (
+            not normalized_payload.get("accounts")
+            and not normalized_payload.get("transactions")
+            and connection.get("item_id")
+        ):
+            provider_snapshot = await self.open_finance_service.fetch_connection_snapshot(
+                provider=connection.get("provider") or "pluggy",
+                item_id=connection["item_id"],
+            )
+            if provider_snapshot.get("error"):
+                return {
+                    "ok": False,
+                    "error": provider_snapshot.get("error"),
+                    "details": provider_snapshot.get("body"),
+                }
+            normalized_payload = self._normalize_provider_payload(provider_snapshot)
+
         accounts = normalized_payload.get("accounts", [])
         transactions = normalized_payload.get("transactions", [])
 
@@ -157,4 +178,3 @@ class OpenFinanceSyncService:
             "accounts": data.get("accounts") or [],
             "transactions": data.get("transactions") or [],
         }
-

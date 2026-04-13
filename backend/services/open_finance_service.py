@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlencode
 
 from database import (
     open_finance_connections_collection,
@@ -30,13 +31,21 @@ class OpenFinanceService:
         self.api_key = os.getenv("OPEN_FINANCE_API_KEY", "").strip()
         self.webhook_secret = os.getenv("OPEN_FINANCE_WEBHOOK_SECRET", "").strip()
 
-    async def create_connect_token(self, *, user_id: str, workspace_id: str, callback_url: str | None = None) -> Dict[str, Any]:
+    async def create_connect_token(
+        self,
+        *,
+        user_id: str,
+        workspace_id: str,
+        callback_url: str | None = None,
+        item_id: str | None = None,
+    ) -> Dict[str, Any]:
         payload = {
             "provider": self.provider,
             "mode": "sandbox" if os.getenv("OPEN_FINANCE_SANDBOX", "true").lower() == "true" else "production",
             "callback_url": callback_url or os.getenv("OPEN_FINANCE_CALLBACK_URL", "").strip(),
             "workspace_id": workspace_id,
             "user_id": user_id,
+            "item_id": item_id,
         }
 
         # If no credentials configured yet, still return an integration-friendly payload.
@@ -149,13 +158,27 @@ class OpenFinanceService:
         )
         return rows
 
+    async def fetch_connection_snapshot(
+        self,
+        *,
+        provider: str,
+        item_id: str,
+    ) -> Dict[str, Any]:
+        provider_name = (provider or self.provider or "pluggy").strip().lower()
+        if provider_name == "pluggy":
+            return await self._pluggy_fetch_connection_snapshot(item_id=item_id)
+        return {"accounts": [], "transactions": []}
+
     async def _pluggy_create_connect_token(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         endpoint = f"{self.base_url.rstrip('/')}/connect_token"
         request_body = {
             "clientUserId": payload["user_id"],
             "products": ["ACCOUNTS", "TRANSACTIONS"],
-            "webhookUrl": payload["callback_url"],
         }
+        if payload.get("callback_url"):
+            request_body["webhookUrl"] = payload["callback_url"]
+        if payload.get("item_id"):
+            request_body["itemId"] = payload["item_id"]
         api_key = await self._pluggy_get_api_key()
         if not api_key:
             return {
@@ -176,6 +199,88 @@ class OpenFinanceService:
             "connect_url": response.get("connectUrl"),
             "configured": True,
             "raw": response,
+        }
+
+    async def _pluggy_fetch_connection_snapshot(self, *, item_id: str) -> Dict[str, Any]:
+        api_key = await self._pluggy_get_api_key()
+        if not api_key:
+            return {"accounts": [], "transactions": [], "item": {}}
+
+        item = await self._http_get_json(
+            f"{self.base_url.rstrip('/')}/items/{item_id}",
+            headers={"X-API-KEY": api_key},
+        )
+        if item.get("error"):
+            return item
+        accounts_response = await self._http_get_json(
+            f"{self.base_url.rstrip('/')}/accounts?{urlencode({'itemId': item_id, 'pageSize': 500})}",
+            headers={"X-API-KEY": api_key},
+        )
+        if accounts_response.get("error"):
+            return accounts_response
+        raw_accounts = accounts_response.get("results") or accounts_response.get("accounts") or []
+
+        transactions: List[Dict[str, Any]] = []
+        for account in raw_accounts:
+            account_id = account.get("id")
+            if not account_id:
+                continue
+            page = 1
+            total_pages = 1
+            while page <= total_pages:
+                transaction_response = await self._http_get_json(
+                    f"{self.base_url.rstrip('/')}/transactions?{urlencode({'accountId': account_id, 'pageSize': 500, 'page': page})}",
+                    headers={"X-API-KEY": api_key},
+                )
+                if transaction_response.get("error"):
+                    return transaction_response
+                results = transaction_response.get("results") or transaction_response.get("transactions") or []
+                transactions.extend(results)
+                total_pages = int(transaction_response.get("totalPages") or 1)
+                page += 1
+
+        return {
+            "item": item,
+            "accounts": [self._normalize_pluggy_account(account) for account in raw_accounts],
+            "transactions": [
+                self._normalize_pluggy_transaction(transaction)
+                for transaction in transactions
+            ],
+        }
+
+    def _normalize_pluggy_account(self, account: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": account.get("id"),
+            "external_account_id": account.get("id"),
+            "type": (account.get("type") or "BANK").lower(),
+            "subtype": account.get("subtype"),
+            "name": account.get("name") or account.get("marketingName") or "Conta externa",
+            "number_masked": account.get("number"),
+            "balance_current": account.get("balance") or 0,
+            "balance_available": (
+                account.get("creditData", {}).get("availableCreditLimit")
+                if (account.get("type") or "").upper() == "CREDIT"
+                else account.get("bankData", {}).get("closingBalance", account.get("balance") or 0)
+            ),
+            "currency": account.get("currencyCode") or "BRL",
+            "metadata": account,
+        }
+
+    def _normalize_pluggy_transaction(self, transaction: Dict[str, Any]) -> Dict[str, Any]:
+        tx_type = (transaction.get("type") or "").lower()
+        if tx_type not in {"credit", "debit"}:
+            tx_type = "credit" if float(transaction.get("amount") or 0) >= 0 else "debit"
+
+        return {
+            "id": transaction.get("id"),
+            "external_transaction_id": transaction.get("id"),
+            "external_account_id": transaction.get("accountId"),
+            "description": transaction.get("description") or transaction.get("descriptionRaw") or "Transacao externa",
+            "amount": transaction.get("amount") or 0,
+            "type": tx_type,
+            "category_raw": transaction.get("category"),
+            "date": transaction.get("date"),
+            "metadata": transaction,
         }
 
     async def _pluggy_get_api_key(self) -> str:
@@ -220,6 +325,25 @@ class OpenFinanceService:
                 data=json.dumps(payload).encode("utf-8"),
                 headers={"Content-Type": "application/json", **headers},
                 method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    body = response.read().decode("utf-8")
+                    return json.loads(body) if body else {}
+            except urllib.error.HTTPError as exc:
+                body = exc.read().decode("utf-8", errors="ignore")
+                return {"error": f"http_{exc.code}", "body": body}
+            except Exception as exc:
+                return {"error": str(exc)}
+
+        return await asyncio.to_thread(_request)
+
+    async def _http_get_json(self, url: str, headers: Dict[str, str]) -> Dict[str, Any]:
+        def _request() -> Dict[str, Any]:
+            req = urllib.request.Request(
+                url,
+                headers=headers,
+                method="GET",
             )
             try:
                 with urllib.request.urlopen(req, timeout=20) as response:

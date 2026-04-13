@@ -6,6 +6,7 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { useToast } from "../hooks/use-toast";
 import Sidebar from "../components/Sidebar";
 import NanoAssistantPage from "../components/NanoAssistantPage";
+import PluggyConnectDialog from "../components/PluggyConnectDialog";
 import {
   BanksSection,
   CardsSection,
@@ -313,6 +314,7 @@ const Dashboard = () => {
   const [openFinanceConnections, setOpenFinanceConnections] = useState([]);
   const [openFinanceAccounts, setOpenFinanceAccounts] = useState([]);
   const [openFinanceSyncingId, setOpenFinanceSyncingId] = useState(null);
+  const [pluggyWidgetSession, setPluggyWidgetSession] = useState(null);
 
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
@@ -926,12 +928,93 @@ const Dashboard = () => {
     }
   };
 
+  const closePluggyWidget = useCallback(() => {
+    setOpenFinanceSyncingId(null);
+    setPluggyWidgetSession(null);
+  }, []);
+
+  const handlePluggySuccess = useCallback(
+    async ({ item }) => {
+      if (!currentWorkspace?.id || !item?.id) {
+        closePluggyWidget();
+        return;
+      }
+
+      try {
+        const result = await openFinanceService.connectCallback(currentWorkspace.id, {
+          provider: "pluggy",
+          item_id: item.id,
+          consent_id: item.consentId || item.consent?.id || null,
+          institution_name:
+            item.connector?.name ||
+            item.connector?.institutionName ||
+            item.connector?.displayName ||
+            "Instituicao conectada",
+          status:
+            item.status?.toLowerCase?.() === "updated"
+              ? "connected"
+              : (item.status || "connected").toLowerCase(),
+          metadata: { item },
+        });
+        if (result?.sync?.ok === false) {
+          throw new Error(
+            result?.sync?.details ||
+              result?.sync?.error ||
+              "Nao foi possivel sincronizar a conexao da Pluggy.",
+          );
+        }
+        closePluggyWidget();
+        await loadAll(currentWorkspace.id);
+        toast({
+          title: "Conexao concluida",
+          description:
+            "A conta foi vinculada e os dados do Open Finance foram sincronizados.",
+        });
+      } catch (error) {
+        closePluggyWidget();
+        toast({
+          title: "Erro ao salvar conexao Pluggy",
+          description:
+            error?.response?.data?.detail ||
+            "O widget concluiu, mas nao consegui persistir a conexao no backend.",
+          variant: "destructive",
+        });
+      }
+    },
+    [closePluggyWidget, currentWorkspace?.id, loadAll, toast],
+  );
+
+  const handlePluggyError = useCallback(
+    (error) => {
+      const executionStatus = error?.data?.item?.executionStatus;
+      toast({
+        title: "Falha no widget da Pluggy",
+        description:
+          executionStatus ||
+          error?.message ||
+          "A Pluggy nao concluiu a autenticacao dessa conta.",
+        variant: "destructive",
+      });
+    },
+    [toast],
+  );
+
   const handleOpenFinanceConnect = async () => {
     if (!currentWorkspace?.id) return;
     try {
       const payload = await openFinanceService.createConnectToken(
         currentWorkspace.id,
       );
+      if (payload?.configured === false) {
+        toast({
+          title: "Provider ainda nao configurado",
+          description:
+            payload?.message ||
+            "Configure as credenciais do Open Finance no backend antes de abrir o widget.",
+          variant: "destructive",
+        });
+        return;
+      }
       const connectUrl =
         payload?.connect_url || payload?.connectUrl || payload?.url || null;
       const linkToken =
@@ -949,11 +1032,11 @@ const Dashboard = () => {
           description:
             "A janela do agregador foi aberta. Depois de concluir, clique em sincronizar.",
         });
-      } else if (linkToken) {
-        toast({
-          title: "Token de conexao gerado",
-          description:
-            "Recebi o token do agregador. O proximo passo e abrir o widget de vinculacao do provider.",
+      } else if ((payload?.provider || "").toLowerCase() === "pluggy" && linkToken) {
+        setPluggyWidgetSession({
+          connectToken: linkToken,
+          updateItem: payload?.item_id || null,
+          includeSandbox: Boolean(payload?.sandbox),
         });
       } else {
         toast({
@@ -973,11 +1056,59 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenFinanceSync = async (connectionId) => {
-    if (!currentWorkspace?.id || !connectionId) return;
-    setOpenFinanceSyncingId(connectionId);
+  const handleOpenFinanceSync = async (connection) => {
+    if (!currentWorkspace?.id || !connection?.id) return;
+
+    if (
+      (connection.provider || "").toLowerCase() === "pluggy" &&
+      connection.item_id
+    ) {
+      setOpenFinanceSyncingId(connection.id);
+      try {
+        const payload = await openFinanceService.createConnectToken(
+          currentWorkspace.id,
+          { item_id: connection.item_id },
+        );
+        if (payload?.configured === false) {
+          throw new Error(
+            payload?.message ||
+              "Provider de Open Finance ainda nao configurado no backend.",
+          );
+        }
+        const linkToken =
+          payload?.connect_token ||
+          payload?.connectToken ||
+          payload?.link_token ||
+          payload?.linkToken ||
+          payload?.token ||
+          null;
+
+        if (!linkToken) {
+          throw new Error("Pluggy nao retornou token para atualizar o item.");
+        }
+
+        setPluggyWidgetSession({
+          connectToken: linkToken,
+          updateItem: connection.item_id,
+          includeSandbox: Boolean(payload?.sandbox),
+        });
+      } catch (error) {
+        toast({
+          title: "Erro ao abrir atualizacao da Pluggy",
+          description:
+            error?.response?.data?.detail ||
+            error?.message ||
+            "Nao consegui iniciar a atualizacao dessa conexao agora.",
+          variant: "destructive",
+        });
+        setOpenFinanceSyncingId(null);
+      }
+      return;
+    }
+
+    setOpenFinanceSyncingId(connection.id);
     try {
-      await openFinanceService.syncConnection(currentWorkspace.id, connectionId);
+      await openFinanceService.syncConnection(currentWorkspace.id, connection.id);
       await loadAll(currentWorkspace.id);
       toast({
         title: "Sincronizacao concluida",
@@ -3513,6 +3644,16 @@ const Dashboard = () => {
           )}
         </div>
       </main>
+
+      <PluggyConnectDialog
+        open={Boolean(pluggyWidgetSession?.connectToken)}
+        connectToken={pluggyWidgetSession?.connectToken}
+        updateItem={pluggyWidgetSession?.updateItem || undefined}
+        includeSandbox={Boolean(pluggyWidgetSession?.includeSandbox)}
+        onClose={closePluggyWidget}
+        onSuccess={handlePluggySuccess}
+        onError={handlePluggyError}
+      />
     </div>
   );
 };
