@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, Request, Response
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -231,7 +232,15 @@ async def ensure_cors_headers(request: Request, call_next):
         # Return explicit preflight response for browser CORS checks.
         return _attach_cors_headers(Response(status_code=200), origin)
 
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        logger.exception("Unhandled request error: %s", exc)
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": "Erro interno no servidor"},
+        )
+
     return _attach_cors_headers(response, origin)
 
 if cors_allow_all:

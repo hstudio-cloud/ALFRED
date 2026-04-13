@@ -27,7 +27,7 @@ async def create_connect_token(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.create_connect_token(
         user_id=current_user["id"],
         workspace_id=workspace_id,
@@ -41,7 +41,7 @@ async def connect_callback(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     connection = await open_finance_service.save_connection(
         user_id=current_user["id"],
         workspace_id=workspace_id,
@@ -64,7 +64,7 @@ async def list_connections(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_connections(workspace_id=workspace_id)
 
 
@@ -75,7 +75,7 @@ async def sync_connection(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     result = await open_finance_sync_service.sync_connection(
         workspace_id=workspace_id,
         connection_id=connection_id,
@@ -91,7 +91,7 @@ async def list_external_accounts(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_accounts(workspace_id=workspace_id)
 
 
@@ -102,7 +102,7 @@ async def list_external_transactions(
     limit: int = Query(200, ge=1, le=5000),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_transactions(
         workspace_id=workspace_id,
         account_id=account_id,
@@ -116,7 +116,7 @@ async def delete_connection(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
-    await verify_workspace_access(workspace_id, current_user["id"])
+    await verify_workspace_access(workspace_id, current_user)
     deleted = await open_finance_service.delete_connection(
         workspace_id=workspace_id,
         connection_id=connection_id,
@@ -124,4 +124,3 @@ async def delete_connection(
     if not deleted:
         raise HTTPException(status_code=404, detail="Conexao nao encontrada.")
     return {"ok": True}
-
