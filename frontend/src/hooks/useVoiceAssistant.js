@@ -229,22 +229,28 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       apiBase: API,
       mode: VOICE_PROVIDER === 'realtime' ? 'realtime' : 'browser-fallback'
     });
+    const recognitionSupported = provider.isRecognitionSupported();
+    const backendFallbackSupported = provider.supportsBackendTranscription?.() || false;
     providerRef.current = provider;
     setVoiceSupported(
-      provider.isRecognitionSupported() || provider.supportsBackendTranscription?.()
+      recognitionSupported || backendFallbackSupported
     );
 
     provider.getVoiceStatus?.()
       .then((status) => {
+        const backendTranscriptionAvailable = Boolean(status?.transcription_available) && backendFallbackSupported;
         setVoiceProviderType(status?.provider || provider.type);
-        backendTranscriptionAvailableRef.current = Boolean(status?.transcription_available);
-        preferBackendTranscriptionRef.current = Boolean(status?.transcription_available);
+        backendTranscriptionAvailableRef.current = backendTranscriptionAvailable;
+        // Mantem a escuta continua do navegador como caminho principal.
+        // A captura com transcricao backend fica como fallback quando o SpeechRecognition falha
+        // ou quando o navegador nao oferece suporte nativo.
+        preferBackendTranscriptionRef.current = backendTranscriptionAvailable && !recognitionSupported;
         setAssistantRuntime({
           runtimeMode: status?.runtime_mode || 'browser_fallback',
           llmProvider: status?.llm_provider || 'rule_based',
           llmModel: status?.llm_model || 'nano_rules',
           voiceProvider: status?.voice_provider || status?.provider || provider.type,
-          transcriptionAvailable: Boolean(status?.transcription_available),
+          transcriptionAvailable: backendTranscriptionAvailable,
           premiumAvailable: Boolean(status?.premium_available)
         });
       })
