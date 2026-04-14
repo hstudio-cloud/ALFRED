@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { VOICE_BACKEND_URL } from '../config/env';
+import { VOICE_BACKEND_URL, VOICE_PROVIDER } from '../config/env';
 
 let currentAudio = null;
 let currentObjectUrl = null;
@@ -72,7 +72,10 @@ const stopMiniMaxSpeech = () => {
   cleanupCurrentAudio();
 };
 
-const isMiniMaxConfigured = () => Boolean(getVoiceApiBase()) && minimaxRouteAvailable !== false;
+const isMiniMaxConfigured = () =>
+  VOICE_PROVIDER === 'minimax'
+  && Boolean(getVoiceApiBase())
+  && minimaxRouteAvailable !== false;
 
 const voiceService = {
   isMiniMaxConfigured,

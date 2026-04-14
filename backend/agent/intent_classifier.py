@@ -177,6 +177,25 @@ class IntentClassifier:
                 suggested_tool="create_transaction" if "despesa" in text or "receita" in text else "create_reminder",
             )
 
+        # Comandos financeiros em linguagem natural como
+        # "preciso que voce gere uma despesa de 500 em alimentacao"
+        # devem virar acao mesmo sem bater exatamente nos gatilhos acima.
+        if (
+            any(token in text for token in ("despesa", "receita", "gasto", "gastei", "paguei", "recebi", "ganhei"))
+            and entities.get("amount") is not None
+        ):
+            missing = []
+            if ("despesa" in text or "receita" in text) and not entities.get("category"):
+                missing.append("category")
+            return IntentClassification(
+                label="followup_missing_data" if missing else "system_action",
+                confidence=0.9 if not missing else 0.92,
+                entities=entities,
+                requires_tool=True,
+                missing_fields=missing,
+                suggested_tool="create_transaction",
+            )
+
         if any(h in text for h in self._ANALYSIS_HINTS):
             return IntentClassification(
                 label="financial_analysis",
