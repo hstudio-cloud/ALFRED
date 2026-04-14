@@ -49,6 +49,8 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   const isListeningRef = useRef(false);
   const isProcessingRef = useRef(false);
   const isSpeakingRef = useRef(false);
+  const isWakeArmedRef = useRef(false);
+  const wakeWordRef = useRef(wakeWord);
   const lastSpeechActivityRef = useRef(0);
   const lastInputLevelRef = useRef(0.08);
   const lastInputLevelPushRef = useRef(0);
@@ -197,6 +199,14 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     isSpeakingRef.current = isSpeaking;
   }, [isSpeaking]);
 
+  useEffect(() => {
+    isWakeArmedRef.current = isWakeArmed;
+  }, [isWakeArmed]);
+
+  useEffect(() => {
+    wakeWordRef.current = wakeWord;
+  }, [wakeWord]);
+
   const pauseRecognitionForAssistant = useCallback(() => {
     if (!keepListeningRef.current) return;
     pausedForAssistantRef.current = true;
@@ -301,7 +311,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       onError: (event) => {
         if (event?.error === 'no-speech') {
           setError(null);
-          updateVoiceState(isWakeArmed ? 'listening' : 'idle', `Diga ${wakeWord} para comecar.`);
+          updateVoiceState(
+            isWakeArmedRef.current ? 'listening' : 'idle',
+            `Diga ${wakeWordRef.current} para comecar.`
+          );
           return;
         }
 
@@ -350,8 +363,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
     return () => {
       recognizer?.destroy?.();
+      if (recognizerRef.current === recognizer) {
+        recognizerRef.current = null;
+      }
     };
-  }, [isWakeArmed, markSpeechActivity, updateVoiceState, wakeWord]);
+  }, [markSpeechActivity, updateVoiceState]);
 
   useEffect(() => {
     if (voiceState === 'speaking') {
