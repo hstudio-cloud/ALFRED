@@ -230,9 +230,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     try {
       recognizerRef.current.start?.();
     } catch (resumeError) {
-      void resumeError;
+      setError(resumeError);
+      updateVoiceState('error', 'Nao consegui retomar o microfone do navegador.');
     }
-  }, []);
+  }, [updateVoiceState]);
 
   useEffect(() => {
     const provider = createVoiceProvider({
@@ -324,14 +325,6 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
           setIsListening(false);
           setError(event);
           updateVoiceState('error', 'Permissao do microfone negada. Libere o acesso para usar a voz.');
-          return;
-        }
-
-        if (backendTranscriptionAvailableRef.current && providerRef.current?.supportsBackendTranscription?.()) {
-          preferBackendTranscriptionRef.current = true;
-          setError(null);
-          updateVoiceState('listening', 'SpeechRecognition falhou. Vou continuar com transcricao pelo Nano.');
-          backendCaptureStarterRef.current?.();
           return;
         }
 
@@ -738,8 +731,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
           }, 4500);
           return;
         } catch (startError) {
-          preferBackendTranscriptionRef.current = backendTranscriptionAvailableRef.current;
-          void startError;
+          setError(startError);
+          updateVoiceState('error', 'Nao consegui iniciar o microfone do navegador.');
+          keepListeningRef.current = false;
+          setIsWakeArmed(false);
+          return;
         }
     }
 
