@@ -3590,13 +3590,13 @@ const Dashboard = () => {
           }`}
         >
           {activeSection !== "assistant" && (
-            <div className={`${dashboardTheme.panel} mb-6 px-5 py-4`}>
+            <div className={`${dashboardTheme.panel} ${dashboardTheme.glow} mb-6 px-5 py-4`}>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
+                  <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
                     {activeSectionMeta.label}
                   </p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">
+                  <h2 className="mt-2 text-[1.9rem] font-semibold tracking-[-0.03em] text-white">
                     {activeSectionMeta.description}
                   </h2>
                 </div>
@@ -3668,14 +3668,14 @@ const SectionLayout = ({ children, rail }) => (
 const PageHeader = ({ eyebrow, title, description, action }) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
+      <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
         {eyebrow}
       </p>
       <div>
-        <h1 className="text-4xl font-semibold leading-tight text-white">
+        <h1 className="text-4xl font-semibold leading-tight tracking-[-0.03em] text-white md:text-[2.9rem]">
           {title}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
           {description}
         </p>
       </div>
@@ -3685,12 +3685,12 @@ const PageHeader = ({ eyebrow, title, description, action }) => (
 );
 
 const SurfacePanel = ({ title, action, children }) => (
-  <Card className={`${dashboardTheme.panel} p-6`}>
+  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-6`}>
     {(title || action) && (
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           {title && (
-            <h3 className="text-[18px] font-semibold text-white">{title}</h3>
+            <h3 className="text-[18px] font-semibold tracking-tight text-white">{title}</h3>
           )}
         </div>
         {action}
@@ -3703,14 +3703,14 @@ const SurfacePanel = ({ title, action, children }) => (
 const TopIconButton = ({ icon: Icon }) => (
   <button
     type="button"
-    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-red-500/12 bg-black/30 text-zinc-400 transition hover:bg-white/[0.05] hover:text-red-200"
+    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/30 bg-slate-950/55 text-slate-400 transition hover:-translate-y-0.5 hover:bg-white/[0.05] hover:text-red-200"
   >
     <Icon className="h-4.5 w-4.5" />
   </button>
 );
 
 const ScopeSwitcher = ({ options, value, onChange }) => (
-  <div className="flex items-center rounded-2xl border border-red-500/12 bg-black/30 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+  <div className="flex items-center rounded-2xl border border-slate-700/30 bg-slate-950/55 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
     {options.map((option) => (
       <button
         key={option.id}
@@ -3718,8 +3718,8 @@ const ScopeSwitcher = ({ options, value, onChange }) => (
         onClick={() => onChange(option.id)}
         className={`rounded-[14px] px-4 py-2 text-sm font-medium transition ${
           value === option.id
-            ? "bg-red-500/14 text-red-100"
-            : "text-zinc-400 hover:bg-white/[0.05]"
+            ? "bg-[linear-gradient(135deg,rgba(127,29,29,0.42),rgba(15,23,42,0.88))] text-red-50 shadow-[0_8px_20px_rgba(127,29,29,0.18)]"
+            : "text-slate-400 hover:bg-white/[0.05]"
         }`}
       >
         {option.label}
@@ -3731,11 +3731,11 @@ const ScopeSwitcher = ({ options, value, onChange }) => (
 const StatCard = ({ title, value, direction, trendData = [] }) => {
   const icon =
     direction === "up" ? (
-      <ArrowUpRight className="h-4.5 w-4.5 text-[#166534]" />
+      <ArrowUpRight className="h-4.5 w-4.5 text-emerald-300" />
     ) : direction === "down" ? (
-      <ArrowDownRight className="h-4.5 w-4.5 text-[#b91c1c]" />
+      <ArrowDownRight className="h-4.5 w-4.5 text-rose-300" />
     ) : (
-      <Wallet className="h-4.5 w-4.5 text-[#7f1d1d]" />
+      <Wallet className="h-4.5 w-4.5 text-amber-300" />
     );
 
   const sparkline = trendData.slice(-6).map((item) =>
@@ -3743,15 +3743,15 @@ const StatCard = ({ title, value, direction, trendData = [] }) => {
   );
   const maxSpark = Math.max(...sparkline, 1);
   return (
-    <Card className={`${dashboardTheme.panel} p-5`}>
+    <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-5 transition duration-300 hover:-translate-y-1`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-zinc-400">{title}</p>
+          <p className="text-sm font-medium text-slate-400">{title}</p>
           <p className="mt-4 text-3xl font-semibold tracking-tight text-white">
             {value}
           </p>
         </div>
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(239,68,68,0.14),rgba(251,191,36,0.08))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           {icon}
         </span>
       </div>
@@ -3776,8 +3776,8 @@ const StatCard = ({ title, value, direction, trendData = [] }) => {
 };
 
 const StatMiniCard = ({ label, value }) => (
-  <div className={`${dashboardTheme.panelSecondary} p-4`}>
-    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+  <div className={`${dashboardTheme.panelSecondary} ${dashboardTheme.glow} p-4`}>
+    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
     <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
   </div>
 );
@@ -3804,14 +3804,15 @@ const TrendChart = ({ data }) => {
                 <stop offset="95%" stopColor="#fb7185" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
-            <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-            <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
+            <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
             <RechartsTooltip
               contentStyle={{
-                background: "rgba(8,2,4,0.95)",
-                border: "1px solid rgba(239,68,68,0.18)",
+                background: "rgba(2,6,23,0.82)",
+                border: "1px solid rgba(148,163,184,0.18)",
                 borderRadius: "14px",
+                backdropFilter: "blur(16px)",
               }}
               labelStyle={{ color: "#f4f4f5" }}
             />
@@ -3857,14 +3858,15 @@ const CategoryChart = ({ data }) => (
   <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
-        <XAxis dataKey="category" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-        <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
+        <XAxis dataKey="category" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
         <RechartsTooltip
           contentStyle={{
-            background: "rgba(8,2,4,0.95)",
-            border: "1px solid rgba(239,68,68,0.18)",
+            background: "rgba(2,6,23,0.82)",
+            border: "1px solid rgba(148,163,184,0.18)",
             borderRadius: "14px",
+            backdropFilter: "blur(16px)",
           }}
           labelStyle={{ color: "#f4f4f5" }}
         />
@@ -3878,14 +3880,15 @@ const CashflowChart = ({ data }) => (
   <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#2c1116" />
-        <XAxis dataKey="label" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-        <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
+        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
+        <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
         <RechartsTooltip
           contentStyle={{
-            background: "rgba(8,2,4,0.95)",
-            border: "1px solid rgba(239,68,68,0.18)",
+            background: "rgba(2,6,23,0.82)",
+            border: "1px solid rgba(148,163,184,0.18)",
             borderRadius: "14px",
+            backdropFilter: "blur(16px)",
           }}
           labelStyle={{ color: "#f4f4f5" }}
         />
@@ -3904,24 +3907,24 @@ const CashflowChart = ({ data }) => (
 
 const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
   <div>
-    <div className="mb-3 grid grid-cols-7 gap-2 text-center text-xs font-medium uppercase tracking-[0.12em] text-[#9b8d84]">
+    <div className="mb-4 grid grid-cols-7 gap-3 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
       {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((day) => (
         <span key={day}>{day}</span>
       ))}
     </div>
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-7 gap-3">
       {days.map((day, index) => (
         <div
           key={index}
           onClick={() => onDaySelect(day.date)}
-          className={`min-h-[96px] cursor-pointer rounded-[18px] border p-2 text-sm transition ${
+          className={`min-h-[110px] cursor-pointer rounded-[20px] border p-3 text-sm transition ${
             day.isCurrentMonth
-              ? "border-red-500/10 bg-black/20 text-zinc-200"
-              : "border-white/5 bg-black/10 text-zinc-600"
-          } ${day.isToday ? "shadow-[inset_0_0_0_1px_rgba(185,28,28,0.2)]" : ""} ${selectedDate === day.date ? "ring-1 ring-red-300/40" : ""}`}
+              ? "border-slate-700/30 bg-slate-950/55 text-zinc-200 backdrop-blur-sm"
+              : "border-slate-800/60 bg-slate-950/25 text-slate-600"
+          } ${day.isToday ? "bg-[linear-gradient(180deg,rgba(127,29,29,0.34),rgba(15,23,42,0.7))] shadow-[0_18px_36px_rgba(127,29,29,0.14),inset_0_1px_0_rgba(255,255,255,0.05)]" : ""} ${selectedDate === day.date ? "ring-1 ring-red-300/40" : ""}`}
         >
           <div className="flex items-center justify-between">
-            <span className={day.isToday ? "font-semibold text-[#7f1d1d]" : ""}>
+            <span className={day.isToday ? "font-semibold text-red-100" : "text-slate-200"}>
               {day.label}
             </span>
             {day.dueCount > 0 && (
@@ -3930,7 +3933,7 @@ const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
               </span>
             )}
           </div>
-          <div className="mt-1 space-y-1 text-[10px] leading-none">
+          <div className="mt-3 space-y-1.5 text-[10px] leading-none">
             <div className="flex items-center justify-between text-emerald-300">
               <span>Entradas</span>
               <span>{formatter.format(day.income || 0)}</span>
@@ -3939,12 +3942,12 @@ const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
               <span>Saidas</span>
               <span>{formatter.format(day.expense || 0)}</span>
             </div>
-            <div className="flex items-center justify-between text-zinc-400">
+            <div className="flex items-center justify-between text-slate-400">
               <span>Liq.</span>
               <span>{formatter.format(day.net || 0)}</span>
             </div>
           </div>
-          <div className="mt-1 flex items-center gap-1 text-[10px]">
+          <div className="mt-3 flex items-center gap-1.5 text-[10px]">
             {day.hasReminder && <span className="rounded-full bg-amber-500/25 px-1 text-amber-300">L</span>}
             {day.hasActivity && <span className="rounded-full bg-emerald-500/25 px-1 text-emerald-300">A</span>}
             {day.hasDue && <span className="rounded-full bg-rose-500/25 px-1 text-rose-300">V</span>}
@@ -4008,7 +4011,7 @@ const SummaryRow = ({
   valueClass = "text-white",
   strong = false,
 }) => (
-  <div className="flex items-center justify-between gap-4 border-b border-white/6 py-4 last:border-b-0">
+  <div className="flex items-center justify-between gap-4 border-b border-slate-800/80 py-4 last:border-b-0">
     <span className="text-sm font-medium text-zinc-300">{label}</span>
     <span
       className={`${strong ? "text-3xl" : "text-lg"} font-semibold ${valueClass}`}
@@ -4031,10 +4034,10 @@ const InfoRow = ({ title, subtitle, value }) => (
 const AlertRow = ({ title, message, tone }) => {
   const toneClass =
     tone === "positive"
-      ? "border-emerald-500/25 bg-emerald-500/8 text-emerald-200"
+      ? "border-emerald-500/22 bg-[linear-gradient(135deg,rgba(6,78,59,0.32),rgba(2,6,23,0.72))] text-emerald-200"
       : tone === "warning"
-        ? "border-amber-500/25 bg-amber-500/8 text-amber-200"
-        : "border-red-500/10 bg-black/20 text-zinc-200";
+        ? "border-amber-500/22 bg-[linear-gradient(135deg,rgba(120,53,15,0.3),rgba(2,6,23,0.72))] text-amber-200"
+        : "border-slate-700/30 bg-[linear-gradient(135deg,rgba(69,10,10,0.28),rgba(2,6,23,0.72))] text-zinc-200";
 
   return (
     <div className={`rounded-[24px] border px-4 py-4 ${toneClass}`}>
@@ -4045,12 +4048,12 @@ const AlertRow = ({ title, message, tone }) => {
 };
 
 const CenteredEmptyState = ({ icon: Icon, title, description }) => (
-  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-red-500/12 bg-black/20 px-6 py-10 text-center">
-    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-200">
+  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-700/30 bg-[linear-gradient(180deg,rgba(2,6,23,0.56),rgba(9,9,11,0.38))] px-6 py-10 text-center backdrop-blur-sm">
+    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,68,68,0.16),rgba(251,191,36,0.08))] text-red-200">
       <Icon className="h-7 w-7" />
     </div>
     <h4 className="mt-5 text-[28px] font-semibold text-white">{title}</h4>
-    <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-400">
+    <p className="mt-3 max-w-xl text-sm leading-7 text-slate-400">
       {description}
     </p>
   </div>
@@ -4063,15 +4066,15 @@ const LargeEmptyState = ({
   bullets,
   primaryActionLabel,
 }) => (
-  <div className="rounded-[28px] border border-dashed border-red-500/12 bg-black/20 px-6 py-14 text-center">
-    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-200">
+  <div className="rounded-[28px] border border-dashed border-slate-700/30 bg-[linear-gradient(180deg,rgba(2,6,23,0.56),rgba(9,9,11,0.38))] px-6 py-14 text-center backdrop-blur-sm">
+    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,68,68,0.16),rgba(251,191,36,0.08))] text-red-200">
       <Icon className="h-7 w-7" />
     </div>
     <h4 className="mt-6 text-[34px] font-semibold text-white">{title}</h4>
-    <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+    <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-slate-400">
       {description}
     </p>
-    <div className="mx-auto mt-6 max-w-lg rounded-[24px] border border-white/6 bg-black/20 p-5">
+    <div className="mx-auto mt-6 max-w-lg rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-5 backdrop-blur-sm">
       {bullets.map((item) => (
         <div
           key={item}
@@ -4091,7 +4094,7 @@ const LargeEmptyState = ({
 );
 
 const OnboardingRail = ({ steps, percent, completedSteps }) => (
-  <Card className="sticky top-4 rounded-[28px] border border-red-500/12 bg-black/30 p-5 shadow-[0_18px_60px_rgba(20,2,6,0.45)]">
+  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} sticky top-4 p-5`}>
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-200">
@@ -4099,7 +4102,7 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
         </div>
         <div>
           <p className="font-semibold text-white">Primeiros passos</p>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-slate-400">
             O que falta para o Nano ler seu financeiro melhor.
           </p>
         </div>
@@ -4111,16 +4114,13 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
 
     <div className="mt-5 space-y-3">
       {steps.map((step) => (
-        <div
-          key={step.label}
-          className="rounded-[22px] border border-white/6 bg-black/20 p-4"
-        >
+        <div key={step.label} className="rounded-[22px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
           <div className="flex items-start gap-3">
             <span
               className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
                 step.done
                   ? "border-red-400/20 bg-red-500/10 text-red-200"
-                  : "border-white/10 bg-black/10 text-zinc-600"
+                  : "border-slate-700/30 bg-slate-950/60 text-slate-600"
               }`}
             >
               {step.done ? "✓" : ""}
@@ -4128,7 +4128,7 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
             <div>
               <p className="font-medium text-white">{step.label}</p>
               {!step.done && (
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-sm text-slate-400">
                   Esse ponto ainda esta pendente.
                 </p>
               )}
@@ -4139,13 +4139,13 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
     </div>
 
     <div className="mt-5">
-      <div className="mb-2 flex items-center justify-between text-sm text-zinc-500">
+      <div className="mb-2 flex items-center justify-between text-sm text-slate-400">
         <span>Navegue entre as etapas</span>
         <span>
           {completedSteps} de {steps.length}
         </span>
       </div>
-      <div className="h-2 rounded-full bg-white/8">
+      <div className="h-2 rounded-full bg-slate-800/80">
         <div
           className="h-2 rounded-full bg-gradient-to-r from-[#f59e9e] to-[#b91c1c]"
           style={{ width: `${percent}%` }}
@@ -4177,11 +4177,11 @@ const DreRow = ({ label, income, expense, balance, negative = false }) => (
 );
 
 const SecurityCard = ({ title, description, actionLabel }) => (
-  <div className="rounded-[24px] border border-red-500/12 bg-black/20 p-4">
+  <div className="rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="font-semibold text-white">{title}</p>
-        <p className="mt-2 text-sm leading-7 text-zinc-500">{description}</p>
+        <p className="mt-2 text-sm leading-7 text-slate-400">{description}</p>
       </div>
       <Button type="button" className={`h-10 ${actionButtonClass}`}>
         <ShieldCheck className="mr-2 h-4 w-4" />
@@ -4192,10 +4192,10 @@ const SecurityCard = ({ title, description, actionLabel }) => (
 );
 
 const ToggleRow = ({ label, helper, checked, onChange }) => (
-  <div className="flex items-center justify-between gap-4 rounded-[24px] border border-red-500/12 bg-black/20 p-4">
+  <div className="flex items-center justify-between gap-4 rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
     <div>
       <p className="font-semibold text-white">{label}</p>
-      <p className="mt-1 text-sm text-zinc-500">{helper}</p>
+      <p className="mt-1 text-sm text-slate-400">{helper}</p>
     </div>
     <button
       type="button"

@@ -18,10 +18,10 @@ const fieldClass = dashboardClass.input;
 const actionButtonClass = dashboardClass.buttonPrimary;
 
 const Panel = ({ title, action, children }) => (
-  <Card className={`${dashboardTheme.panel} p-6`}>
+  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-6`}>
     {(title || action) && (
       <div className="mb-5 flex items-center justify-between gap-3">
-        {title ? <h3 className="text-[18px] font-semibold text-white">{title}</h3> : <span />}
+        {title ? <h3 className="text-[18px] font-semibold tracking-tight text-white">{title}</h3> : <span />}
         {action}
       </div>
     )}
@@ -30,12 +30,12 @@ const Panel = ({ title, action, children }) => (
 );
 
 const EmptyState = ({ icon: Icon, title, description }) => (
-  <div className={`flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-red-500/12 bg-black/20 px-6 py-10 text-center`}>
-    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-200">
+  <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[28px] border border-dashed border-slate-700/30 bg-[linear-gradient(180deg,rgba(2,6,23,0.56),rgba(9,9,11,0.38))] px-6 py-10 text-center backdrop-blur-sm">
+    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(239,68,68,0.16),rgba(251,191,36,0.08))] text-red-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
       <Icon className="h-7 w-7" />
     </div>
     <h4 className="mt-5 text-[28px] font-semibold text-white">{title}</h4>
-    <p className="mt-3 max-w-xl text-sm leading-7 text-zinc-400">{description}</p>
+    <p className="mt-3 max-w-xl text-sm leading-7 text-slate-400">{description}</p>
   </div>
 );
 
@@ -43,15 +43,15 @@ const InfoRow = ({ title, subtitle, value }) => (
   <div className={`flex items-center justify-between gap-4 ${dashboardTheme.panelSecondary} px-4 py-4`}>
     <div>
       <p className="font-semibold text-white">{title}</p>
-      <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+      <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
     </div>
     <span className="text-right text-sm font-semibold text-white">{value}</span>
   </div>
 );
 
 const MiniStat = ({ label, value }) => (
-  <div className={`${dashboardTheme.panelSecondary} p-4`}>
-    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+  <div className={`${dashboardTheme.panelSecondary} ${dashboardTheme.glow} p-4`}>
+    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
     <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
   </div>
 );
@@ -59,12 +59,12 @@ const MiniStat = ({ label, value }) => (
 const pageHeader = (eyebrow, title, description, action) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
+      <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
         {eyebrow}
       </p>
       <div>
-        <h1 className="text-4xl font-semibold leading-tight text-white">{title}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-zinc-400">{description}</p>
+        <h1 className="text-4xl font-semibold leading-tight tracking-[-0.03em] text-white md:text-[2.9rem]">{title}</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">{description}</p>
       </div>
     </div>
     {action}
@@ -106,7 +106,7 @@ export const BanksSection = ({
     )}
 
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <Panel title="Nova conta" action={<span className="text-sm text-zinc-400">{scopeLabel}</span>}>
+      <Panel title="Nova conta" action={<span className="text-sm text-slate-400">{scopeLabel}</span>}>
         <form id="nano-account-form" onSubmit={submitAccount} className="grid gap-3">
           <Input
             placeholder="Nome da conta"
@@ -167,7 +167,7 @@ export const BanksSection = ({
             onChange={(event) =>
               setAccountForm({ ...accountForm, color: event.target.value })
             }
-            className="h-12 rounded-2xl border border-red-500/12 bg-black/30 px-2"
+            className="h-12 rounded-2xl border border-slate-700/30 bg-slate-950/60 px-2"
           />
           <Button type="submit" className={`h-12 ${actionButtonClass}`}>
             Salvar conta
@@ -200,21 +200,21 @@ export const BanksSection = ({
                     <p className="font-semibold text-white">
                       {connection.institution_name || "Instituicao conectada"}
                     </p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-zinc-500">
+                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-400">
                       {connection.provider} • {connection.status}
                     </p>
                   </div>
                   <Button
                     type="button"
                     onClick={() => onOpenFinanceSync?.(connection)}
-                    className="h-9 rounded-full border border-white/12 bg-white/[0.04] px-3 text-xs text-zinc-200 hover:bg-white/[0.08]"
+                    className="h-9 rounded-full border border-slate-700/30 bg-slate-950/60 px-3 text-xs text-zinc-200 transition hover:bg-white/[0.08]"
                     disabled={openFinanceSyncingId === connection.id}
                   >
                     {openFinanceSyncingId === connection.id ? "Sincronizando..." : "Sincronizar"}
                   </Button>
                 </div>
               ))}
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-slate-400">
                 Contas importadas: {openFinanceAccounts.length}
               </p>
             </div>
@@ -320,7 +320,7 @@ export const CardsSection = ({
     )}
 
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <Panel title="Novo cartao" action={<span className="text-sm text-zinc-400">{scopeLabel}</span>}>
+      <Panel title="Novo cartao" action={<span className="text-sm text-slate-400">{scopeLabel}</span>}>
         <form id="nano-card-form" onSubmit={submitCard} className="grid gap-3">
           <Input
             placeholder="Nome do cartao"
@@ -417,7 +417,7 @@ export const CardsSection = ({
             onChange={(event) =>
               setCardForm({ ...cardForm, color: event.target.value })
             }
-            className="h-12 rounded-2xl border border-red-500/12 bg-black/30 px-2"
+            className="h-12 rounded-2xl border border-slate-700/30 bg-slate-950/60 px-2"
           />
           <Button type="submit" className={`h-12 ${actionButtonClass}`}>
             Salvar cartao
@@ -515,7 +515,7 @@ export const ReportsSection = ({
       <Button
         type="button"
         variant="outline"
-        className="h-12 rounded-2xl border-[#eadfd6] bg-white px-5 text-[#4b4039] hover:bg-[#fbf4ef]"
+        className={`h-12 ${dashboardClass.buttonGhost}`}
       >
         Exportar PDF
       </Button>,
@@ -530,14 +530,14 @@ export const ReportsSection = ({
             onClick={() => refreshReport(period)}
             className={`h-12 rounded-2xl border px-4 text-sm font-medium transition ${
               reportPeriod === period
-                ? "border-[#f0cfd1] bg-[#f9e8e8] text-[#991b1b]"
-                : "border-[#eadfd6] bg-white text-[#4b4039] hover:bg-[#fbf4ef]"
+                ? "border-red-400/18 bg-[linear-gradient(135deg,rgba(127,29,29,0.42),rgba(15,23,42,0.86))] text-red-50 shadow-[0_12px_28px_rgba(127,29,29,0.18)]"
+                : "border-slate-700/30 bg-slate-950/55 text-slate-300 hover:bg-white/[0.05]"
             }`}
           >
             {period}
           </button>
         ))}
-        <label className="flex h-12 items-center justify-center rounded-2xl border border-dashed border-[#e2d4cb] bg-[#fffaf6] px-4 text-sm text-[#85776e]">
+        <label className="flex h-12 items-center justify-center rounded-2xl border border-dashed border-slate-700/30 bg-slate-950/55 px-4 text-sm text-slate-400">
           <input
             type="file"
             accept=".csv,.xls,.xlsx,.pdf"
@@ -557,7 +557,7 @@ export const ReportsSection = ({
         >
           {uploadingStatement ? "Lendo arquivo..." : "Importar extrato"}
         </Button>
-        <span className="inline-flex h-11 items-center rounded-2xl border border-red-500/12 bg-black/25 px-4 text-sm font-medium text-zinc-300">
+        <span className="inline-flex h-11 items-center rounded-2xl border border-slate-700/30 bg-slate-950/55 px-4 text-sm font-medium text-zinc-300">
           {scopeLabel}
         </span>
       </div>
@@ -585,7 +585,7 @@ export const ReportsSection = ({
     <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
       <Panel title="Receitas x despesas">
         <div className="space-y-5">
-          <div className="h-[280px] rounded-[24px] border border-red-500/10 bg-black/20 p-4">
+          <div className="h-[280px] rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
               {Array.from({ length: 5 }).map((_, index) => (
                 <line
@@ -594,7 +594,7 @@ export const ReportsSection = ({
                   y1={index * 25}
                   x2="100"
                   y2={index * 25}
-                  stroke="#2a1014"
+                  stroke="rgba(148,163,184,0.14)"
                   strokeDasharray="1.5 2"
                   strokeWidth="0.4"
                 />
@@ -635,12 +635,12 @@ export const ReportsSection = ({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex gap-5 text-sm">
-              <span className="flex items-center gap-2 text-[#166534]">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#16a34a]" />
-                Receitas
-              </span>
-              <span className="flex items-center gap-2 text-[#b91c1c]">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#dc2626]" />
+                <span className="flex items-center gap-2 text-emerald-300">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                  Receitas
+                </span>
+              <span className="flex items-center gap-2 text-rose-300">
+                <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
                 Despesas
               </span>
             </div>
@@ -656,16 +656,13 @@ export const ReportsSection = ({
       <Panel title="Fluxo de caixa futuro">
         <div className="space-y-4">
           {cashflowItems.map((item) => (
-            <div
-              key={item.days}
-              className="rounded-[24px] border border-red-500/10 bg-black/20 p-4"
-            >
+            <div key={item.days} className="rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-white">
                     Projecao em {item.days} dias
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500">
+                  <p className="mt-1 text-sm text-slate-400">
                     Entradas {currencyFormatter.format(item.projected_income || item.incomes || 0)} •
                     Saidas {currencyFormatter.format(item.projected_expenses || item.expenses || 0)}
                   </p>
@@ -735,12 +732,12 @@ export const ReportsSection = ({
             {statementImportResult.preview_rows.slice(0, 4).map((row, index) => (
               <div
                 key={index}
-                className="rounded-[24px] border border-red-500/10 bg-black/20 p-4"
+                className="rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm"
               >
                 {Object.entries(row)
                   .slice(0, 4)
                   .map(([key, value]) => (
-                    <div key={key} className="text-xs leading-6 text-zinc-400">
+                    <div key={key} className="text-xs leading-6 text-slate-400">
                       <span className="font-semibold text-zinc-200">{key}:</span>{" "}
                       {String(value || "-")}
                     </div>
@@ -772,7 +769,7 @@ export const ReportsSection = ({
     <Panel title="Leitura do Nano">
       <div className="space-y-4 text-sm leading-7 text-zinc-300">
         <p>{reportMessage}</p>
-        <div className="rounded-[24px] border border-red-500/10 bg-black/20 p-4 text-zinc-300">
+        <div className="rounded-[24px] border border-slate-700/30 bg-slate-950/55 p-4 text-zinc-300 backdrop-blur-sm">
           Transacoes no periodo: {reportKpis.transactions_count || 0}. Contas a
           pagar abertas: {openBills.filter((bill) => bill.type !== "receivable").length}. Contas
           a receber abertas: {openBills.filter((bill) => bill.type === "receivable").length}.
