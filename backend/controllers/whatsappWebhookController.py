@@ -1,7 +1,11 @@
 from fastapi import Header, HTTPException
 
 from services.whatsappMessageRouter import route_whatsapp_message
-from services.whatsappService import send_whatsapp_message, verify_whatsapp_signature
+from services.whatsappService import (
+    extract_whatsapp_message,
+    send_whatsapp_message,
+    verify_whatsapp_signature,
+)
 from services.whatsappUserResolver import resolve_user_workspace_by_phone
 
 
@@ -9,10 +13,11 @@ async def handle_incoming_whatsapp(payload: dict, signature: str | None = None) 
     if not verify_whatsapp_signature(signature):
         raise HTTPException(status_code=401, detail="Assinatura de webhook invalida")
 
-    sender = payload.get("from") or payload.get("phone") or ""
-    message_text = payload.get("text") or payload.get("message") or ""
+    incoming = extract_whatsapp_message(payload)
+    sender = incoming.get("from") or ""
+    message_text = incoming.get("text") or ""
     if not sender or not message_text:
-        raise HTTPException(status_code=400, detail="Webhook sem campos obrigatorios")
+        return {"ok": True, "ignored": True, "reason": "no_supported_message"}
 
     resolved = await resolve_user_workspace_by_phone(sender)
     if not resolved:
@@ -29,4 +34,10 @@ async def handle_incoming_whatsapp(payload: dict, signature: str | None = None) 
     )
     await send_whatsapp_message(to=sender, text=routed["reply"])
 
-    return {"ok": True, "resolved": True, "intent": routed.get("intent"), "used_tools": routed.get("used_tools", [])}
+    return {
+        "ok": True,
+        "resolved": True,
+        "provider": incoming.get("provider"),
+        "intent": routed.get("intent"),
+        "used_tools": routed.get("used_tools", []),
+    }

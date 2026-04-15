@@ -38,8 +38,24 @@ class OpenAIVoiceProvider(VoiceProviderBase):
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.voice_model = os.getenv("OPENAI_VOICE_MODEL", "gpt-4o-mini-tts")
-        self.voice_name = os.getenv("OPENAI_VOICE_NAME", "alloy")
+        self.voice_name = os.getenv("OPENAI_VOICE_NAME", "marin")
         self.transcribe_model = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
+        self.voice_instructions = os.getenv(
+            "OPENAI_VOICE_INSTRUCTIONS",
+            (
+                "Fale em portugues do Brasil, com diccao clara, pausas naturais, tom confiante e amigavel. "
+                "Leia valores monetarios de forma natural e sem soletrar digitos desnecessariamente."
+            ),
+        ).strip()
+        self.transcribe_prompt = os.getenv(
+            "OPENAI_TRANSCRIBE_PROMPT",
+            (
+                "Transcreva em portugues do Brasil com ortografia correta. "
+                "Contexto: assistente financeiro Nano IA. "
+                "Preserve termos como Nano, Pix, Open Finance, categoria, farmacia, remedios, "
+                "alimentacao, combustivel, despesas, receitas, lembretes, cartao, boleto e fluxo de caixa."
+            ),
+        ).strip()
 
     async def synthesize(self, request: NanoVoiceRequest) -> Optional[bytes]:
         cleaned = (request.text or "").strip()
@@ -52,6 +68,8 @@ class OpenAIVoiceProvider(VoiceProviderBase):
             "input": cleaned[:4000],
             "format": "mp3",
         }
+        if self.voice_instructions:
+            payload["instructions"] = self.voice_instructions[:1000]
 
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
@@ -75,6 +93,8 @@ class OpenAIVoiceProvider(VoiceProviderBase):
             "model": (None, self.transcribe_model),
             "language": (None, locale.split("-")[0]),
         }
+        if self.transcribe_prompt:
+            files["prompt"] = (None, self.transcribe_prompt[:1000])
 
         async with httpx.AsyncClient(timeout=90) as client:
             response = await client.post(
