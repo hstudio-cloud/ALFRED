@@ -30,11 +30,155 @@ const filenameForMimeType = (mimeType) => {
   return 'nano-recording.webm';
 };
 
+const PT_BR_UNITS = [
+  'zero',
+  'um',
+  'dois',
+  'tres',
+  'quatro',
+  'cinco',
+  'seis',
+  'sete',
+  'oito',
+  'nove',
+  'dez',
+  'onze',
+  'doze',
+  'treze',
+  'quatorze',
+  'quinze',
+  'dezesseis',
+  'dezessete',
+  'dezoito',
+  'dezenove',
+];
+
+const PT_BR_TENS = [
+  '',
+  '',
+  'vinte',
+  'trinta',
+  'quarenta',
+  'cinquenta',
+  'sessenta',
+  'setenta',
+  'oitenta',
+  'noventa',
+];
+
+const PT_BR_HUNDREDS = [
+  '',
+  'cento',
+  'duzentos',
+  'trezentos',
+  'quatrocentos',
+  'quinhentos',
+  'seiscentos',
+  'setecentos',
+  'oitocentos',
+  'novecentos',
+];
+
+const joinWords = (parts) => parts.filter(Boolean).join(' e ');
+
+const parseCurrencyNumber = (rawValue = '') => {
+  const raw = String(rawValue || '')
+    .replace(/[^\d.,-]/g, '')
+    .trim();
+
+  if (!raw) return null;
+
+  const lastDot = raw.lastIndexOf('.');
+  const lastComma = raw.lastIndexOf(',');
+  let normalized = raw;
+
+  if (lastDot >= 0 && lastComma >= 0) {
+    normalized = lastDot > lastComma
+      ? raw.replace(/,/g, '')
+      : raw.replace(/\./g, '').replace(',', '.');
+  } else if (lastComma >= 0) {
+    const decimals = raw.length - lastComma - 1;
+    normalized = decimals === 3
+      ? raw.replace(/,/g, '')
+      : raw.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot >= 0) {
+    const dotCount = (raw.match(/\./g) || []).length;
+    const decimals = raw.length - lastDot - 1;
+    if (dotCount > 1) {
+      const integerPart = raw.slice(0, lastDot).replace(/\./g, '');
+      const decimalPart = raw.slice(lastDot + 1);
+      normalized = `${integerPart}.${decimalPart}`;
+    } else if (decimals === 3) {
+      normalized = raw.replace(/\./g, '');
+    }
+  }
+
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) ? value : null;
+};
+
+const integerToPtBrWords = (value) => {
+  const number = Math.trunc(Math.abs(value));
+  if (number < 20) return PT_BR_UNITS[number];
+  if (number < 100) {
+    const tens = Math.trunc(number / 10);
+    const unit = number % 10;
+    return joinWords([PT_BR_TENS[tens], unit ? PT_BR_UNITS[unit] : '']);
+  }
+  if (number === 100) return 'cem';
+  if (number < 1000) {
+    const hundreds = Math.trunc(number / 100);
+    const rest = number % 100;
+    return joinWords([PT_BR_HUNDREDS[hundreds], rest ? integerToPtBrWords(rest) : '']);
+  }
+  if (number < 1000000) {
+    const thousands = Math.trunc(number / 1000);
+    const rest = number % 1000;
+    const thousandLabel = thousands === 1 ? 'mil' : `${integerToPtBrWords(thousands)} mil`;
+    if (!rest) return thousandLabel;
+    const connector = rest < 100 || rest % 100 === 0 ? ' e ' : ' ';
+    return `${thousandLabel}${connector}${integerToPtBrWords(rest)}`;
+  }
+  if (number < 1000000000) {
+    const millions = Math.trunc(number / 1000000);
+    const rest = number % 1000000;
+    const millionLabel = millions === 1 ? 'um milhao' : `${integerToPtBrWords(millions)} milhoes`;
+    if (!rest) return millionLabel;
+    const connector = rest < 100 || rest % 100 === 0 ? ' e ' : ' ';
+    return `${millionLabel}${connector}${integerToPtBrWords(rest)}`;
+  }
+
+  const billions = Math.trunc(number / 1000000000);
+  const rest = number % 1000000000;
+  const billionLabel = billions === 1 ? 'um bilhao' : `${integerToPtBrWords(billions)} bilhoes`;
+  if (!rest) return billionLabel;
+  const connector = rest < 100 || rest % 100 === 0 ? ' e ' : ' ';
+  return `${billionLabel}${connector}${integerToPtBrWords(rest)}`;
+};
+
+const currencyToSpeech = (rawValue) => {
+  const amount = parseCurrencyNumber(rawValue);
+  if (amount === null) return rawValue;
+
+  const integerPart = Math.trunc(amount);
+  const cents = Math.round((amount - integerPart) * 100);
+  const major = integerPart === 1
+    ? 'um real'
+    : `${integerToPtBrWords(integerPart)} reais`;
+
+  if (!cents) return major;
+
+  const centsLabel = cents === 1
+    ? 'um centavo'
+    : `${integerToPtBrWords(cents)} centavos`;
+  return `${major} e ${centsLabel}`;
+};
+
 const sanitizeSpeechText = (text = '') => {
   let cleaned = String(text || '').trim();
   if (!cleaned) return '';
 
-  cleaned = cleaned.replace(/R\$\s*([0-9]+(?:[.,][0-9]{1,2})?)/g, '$1 reais');
+  cleaned = cleaned.replace(/R\$\s*([0-9][0-9.,]*)/gi, (_, rawAmount) => currencyToSpeech(rawAmount));
   cleaned = cleaned.replace(/^\s*[-*]\s*/gm, '');
   cleaned = cleaned.replace(/[*_`#>[\]]/g, '');
 

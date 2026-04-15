@@ -15,6 +15,7 @@ from .utility_tools import calculator, current_date_time
 from .web_tools import search_web, web_fetch, web_search
 from .workspace_tools import navigate_to_section, workspace_context
 from .orchestrator_tools import (
+    create_category,
     create_reminder as orchestrator_create_reminder,
     create_transaction,
 )
@@ -42,6 +43,7 @@ __all__ = [
     "search_web",
     "web_fetch",
     "web_search",
+    "create_category",
     "create_transaction",
     "orchestrator_create_reminder",
     "navigate_to_section",

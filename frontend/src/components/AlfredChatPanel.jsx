@@ -48,6 +48,12 @@ const actionMeta = {
     tint: 'bg-rose-500/[0.08] border-rose-400/12',
     detailTint: 'text-rose-200'
   },
+  create_category: {
+    label: 'Categorias',
+    icon: AlertCircle,
+    tint: 'bg-blue-500/[0.08] border-blue-400/12',
+    detailTint: 'text-blue-200'
+  },
   create_bill: {
     label: 'Contas',
     icon: CircleDollarSign,
@@ -72,6 +78,13 @@ const describeAction = (action) => {
       details: [payload.account_scope === 'business' ? 'Empresa' : 'Pessoal', payload.payment_method, amount]
         .filter(Boolean)
         .join('  |  ')
+    };
+  }
+
+  if (action.type === 'create_category') {
+    return {
+      title: payload.name || 'Nova categoria',
+      details: [payload.kind, payload.account_scope].filter(Boolean).join('  |  ')
     };
   }
 

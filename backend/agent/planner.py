@@ -38,6 +38,7 @@ class Planner:
                 )
                 return plan
 
+            parsed_category = self._extract_category_payload(message, intent)
             parsed_reminder = self._extract_reminder_payload(message)
             if parsed_reminder:
                 plan.steps.append(
@@ -50,6 +51,16 @@ class Planner:
                 return plan
 
             parsed_transaction = self._extract_transaction_payload(message, intent)
+            if parsed_category:
+                plan.steps.append(
+                    PlanStep(
+                        name="create_category",
+                        tool="orchestrator_tools.create_category",
+                        tool_input=parsed_category,
+                    )
+                )
+                if parsed_transaction and parsed_transaction.get("category") in {None, "", "Geral"}:
+                    parsed_transaction["category"] = parsed_category["name"]
             if parsed_transaction:
                 plan.steps.append(
                     PlanStep(
@@ -58,6 +69,9 @@ class Planner:
                         tool_input=parsed_transaction,
                     )
                 )
+                return plan
+
+            if parsed_category:
                 return plan
 
             plan.steps.append(
@@ -150,6 +164,27 @@ class Planner:
             "payment_method": payment_method,
             "account_scope": intent.entities.get("scope") or "personal",
             "description": message.strip()[:140],
+        }
+
+    def _extract_category_payload(self, message: str, intent: IntentClassification) -> dict:
+        text = self._normalize_text(message)
+        name = intent.entities.get("create_category_name")
+        if not name or "categoria" not in text:
+            return {}
+
+        kind = "expense"
+        if any(token in text for token in ("receita", "ganho", "ganhei", "recebi")):
+            kind = "income"
+        elif any(token in text for token in ("ambos", "ambas", "entrada e saida", "receita e despesa", "both")):
+            kind = "both"
+
+        scope = intent.entities.get("scope") or "personal"
+        account_scope = "both" if scope == "general" else scope
+
+        return {
+            "name": name,
+            "kind": kind,
+            "account_scope": account_scope,
         }
 
     def _extract_reminder_payload(self, message: str) -> dict:

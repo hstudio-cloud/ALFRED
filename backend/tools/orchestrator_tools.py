@@ -2,9 +2,9 @@ import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from database import reminders_collection, transactions_collection
+from database import categories_collection, reminders_collection, transactions_collection
 from models import Transaction
-from models_extended import ReminderFinancial
+from models_extended import FinancialCategory, ReminderFinancial
 
 from .finance_tools import get_cashflow_forecast, get_month_expenses
 from .web_tools import web_search
@@ -17,6 +17,13 @@ def _normalize_scope(scope: Optional[str]) -> str:
     if normalized in {"general", "geral", "all"}:
         return "general"
     return "personal"
+
+
+def _normalize_label(value: Optional[str], fallback: str) -> str:
+    text = " ".join((value or "").split()).strip()
+    if not text:
+        return fallback
+    return " ".join(part.capitalize() for part in text.split())
 
 
 async def create_transaction(
@@ -46,6 +53,48 @@ async def create_transaction(
     payload = transaction.dict()
     payload["workspace_id"] = workspace_id
     await transactions_collection.insert_one(payload)
+    return payload
+
+
+async def create_category(
+    *,
+    workspace_id: str,
+    user_id: str,
+    name: str,
+    kind: str = "expense",
+    color: str = "#ef4444",
+    icon: Optional[str] = None,
+    account_scope: str = "both",
+) -> Dict[str, Any]:
+    normalized_name = _normalize_label(name, "Geral")
+    scope = (account_scope or "both").strip().lower()
+    if scope not in {"personal", "business", "both"}:
+        scope = "both"
+    normalized_kind = (kind or "expense").strip().lower()
+    if normalized_kind not in {"income", "expense", "both"}:
+        normalized_kind = "expense"
+
+    existing = await categories_collection.find_one(
+        {
+            "workspace_id": workspace_id,
+            "name": {"$regex": rf"^{re.escape(normalized_name)}$", "$options": "i"},
+        }
+    )
+    if existing:
+        return {"status": "exists", **existing}
+
+    category = FinancialCategory(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        name=normalized_name,
+        kind=normalized_kind,
+        color=color or "#ef4444",
+        icon=icon,
+        account_scope=scope,
+    )
+    payload = category.dict()
+    await categories_collection.insert_one(payload)
+    payload["status"] = "created"
     return payload
 
 

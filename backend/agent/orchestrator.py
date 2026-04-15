@@ -7,6 +7,7 @@ from services.assistant_action_service import AssistantActionService
 from services.llm_service import LLMService
 from tools import (
     current_date_time,
+    create_category,
     get_account_balances,
     get_agenda_today,
     create_transaction,
@@ -191,6 +192,18 @@ class AgentOrchestrator:
                 account_scope=payload.get("account_scope", "personal"),
             )
 
+        if step.tool == "orchestrator_tools.create_category":
+            payload = step.tool_input or {}
+            return await create_category(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                name=payload.get("name", "Geral"),
+                kind=payload.get("kind", "expense"),
+                color=payload.get("color", "#ef4444"),
+                icon=payload.get("icon"),
+                account_scope=payload.get("account_scope", "both"),
+            )
+
         if step.tool == "orchestrator_tools.create_reminder":
             payload = step.tool_input or {}
             return await orchestrator_create_reminder(
@@ -307,10 +320,28 @@ class AgentOrchestrator:
         executed_actions: List[Dict[str, Any]],
         fallback_response: str,
     ) -> str:
+        if "create_category" in tool_results and "create_transaction" in tool_results:
+            category = tool_results.get("create_category") or {}
+            tx = tool_results.get("create_transaction") or {}
+            category_name = category.get("name", "Nova categoria")
+            tx_type = "receita" if tx.get("type") == "income" else "despesa"
+            amount = float(tx.get("amount", 0) or 0)
+            return (
+                f"Perfeito. Deixei a categoria {category_name} pronta e registrei uma "
+                f"{tx_type} de {self._format_brl(amount)} nela."
+            )
+
         if executed_actions:
             messages = [item.get("message") for item in executed_actions if item.get("message")]
             if messages:
                 return "\n".join(messages)
+
+        if "create_category" in tool_results:
+            item = tool_results.get("create_category") or {}
+            category_name = item.get("name", "Nova categoria")
+            if item.get("status") == "exists":
+                return f"A categoria {category_name} ja estava disponivel no seu painel."
+            return f"Perfeito. Criei a categoria {category_name} no seu painel."
 
         if "create_reminder" in tool_results:
             item = tool_results.get("create_reminder") or {}
@@ -324,7 +355,7 @@ class AgentOrchestrator:
             tx_type = "receita" if tx.get("type") == "income" else "despesa"
             amount = float(tx.get("amount", 0) or 0)
             category = tx.get("category", "Geral")
-            return f"Perfeito. Registrei uma {tx_type} de R$ {amount:,.2f} em {category}."
+            return f"Perfeito. Registrei uma {tx_type} de {self._format_brl(amount)} em {category}."
 
         if "fetch_agenda" in tool_results:
             agenda = tool_results.get("fetch_agenda") or {}
@@ -355,7 +386,7 @@ class AgentOrchestrator:
             data = tool_results.get("month_expenses") or {}
             total = float(data.get("total_expenses", 0) or 0)
             count = int(data.get("count", 0) or 0)
-            return f"Neste mes, suas despesas somam R$ {total:,.2f} em {count} movimentacoes."
+            return f"Neste mes, suas despesas somam {self._format_brl(total)} em {count} movimentacoes."
 
         if "open_finance_summary" in tool_results:
             data = tool_results.get("open_finance_summary") or {}
@@ -366,7 +397,7 @@ class AgentOrchestrator:
             institutions_text = ", ".join(institutions[:3]) if institutions else "nenhuma instituicao"
             return (
                 f"Open Finance conectado em {connections} conexoes e {accounts} contas. "
-                f"Saldo consolidado importado: R$ {balance:,.2f}. Instituicoes: {institutions_text}."
+                f"Saldo consolidado importado: {self._format_brl(balance)}. Instituicoes: {institutions_text}."
             )
 
         if intent_label == "general_chat":
@@ -376,6 +407,10 @@ class AgentOrchestrator:
             )
 
         return fallback_response or "Conclui seu pedido com os dados disponiveis no sistema."
+
+    @staticmethod
+    def _format_brl(amount: float) -> str:
+        return f"R$ {float(amount or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     def _plan_debug(self, plan: ExecutionPlan) -> Dict[str, Any]:
         return {

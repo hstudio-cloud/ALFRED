@@ -7,6 +7,7 @@ from .action_schemas import validate_actions
 
 _CANONICAL_TYPES = {
     "navigate",
+    "create_category",
     "create_transaction",
     "create_bill",
     "create_reminder",
@@ -56,6 +57,8 @@ def _normalize_action(action: Dict[str, Any], source: str) -> Dict[str, Any]:
 
     if action_type == "navigate":
         data = _normalize_navigation_data(data)
+    elif action_type == "create_category":
+        data.setdefault("entity", "category")
     elif action_type == "create_transaction":
         data.setdefault("entity", "transaction")
     elif action_type == "create_bill":

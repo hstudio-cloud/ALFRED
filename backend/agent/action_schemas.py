@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 _REQUIRED_FIELDS_BY_ACTION = {
     "navigate": ["section", "route"],
+    "create_category": ["name"],
     "create_transaction": ["type", "amount", "category"],
     "create_bill": ["title", "amount", "due_date", "type"],
     "create_reminder": ["title", "remind_at"],
@@ -36,4 +37,3 @@ def validate_action_payload(action: Dict[str, Any]) -> Dict[str, Any]:
 
 def validate_actions(actions: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
     return [validate_action_payload(dict(action or {})) for action in (actions or [])]
-

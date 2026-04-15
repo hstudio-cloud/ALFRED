@@ -9,6 +9,13 @@ class IntentClassifier:
     """Rule-first intent classifier with deterministic fallbacks."""
 
     _ACTION_HINTS = (
+        "criar categoria",
+        "crie uma categoria",
+        "crie categoria",
+        "nova categoria",
+        "categoria chamada",
+        "categoria com o nome",
+        "adicionar categoria",
         "criar despesa",
         "crie uma despesa",
         "registrar despesa",
@@ -75,7 +82,7 @@ class IntentClassifier:
         "projecao",
         "previsao",
         "fluxo de caixa",
-        "categoria",
+        "por categoria",
         "lucro",
         "faturamento",
     )
@@ -149,6 +156,15 @@ class IntentClassifier:
                 entities=entities,
                 requires_tool=True,
                 suggested_tool="create_reminder",
+            )
+
+        if entities.get("create_category_name"):
+            return IntentClassification(
+                label="system_action",
+                confidence=0.94,
+                entities=entities,
+                requires_tool=True,
+                suggested_tool="create_category",
             )
 
         # Navigation commands like "abra bancos" should be actions even if no other hint matched.
@@ -253,19 +269,21 @@ class IntentClassifier:
     def _extract_entities(self, text: str) -> Dict[str, Any]:
         amount = None
         amount_patterns = [
-            r"(?:r\$\s*)?(\d+[.,]?\d{0,2})\s*(?:reais|real|r\$)\b",
-            r"\b(?:despesa|receita|pix|paguei|comprei|ganhei|recebi|gastei)\b[^\d]{0,20}(\d+[.,]?\d{0,2})\b(?!\s*h)",
+            r"(?:r\$\s*)?(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:reais|real|r\$)\b",
+            r"\b(?:despesa|receita|pix|paguei|comprei|ganhei|recebi|gastei|adiciona|adicione|registrar|registre|lancar|lance)\b[^\d]{0,24}(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)\b(?!\s*h)",
         ]
         for pattern in amount_patterns:
             amount_match = re.search(pattern, text)
             if not amount_match:
                 continue
-            raw = amount_match.group(1).replace(".", "").replace(",", ".")
+            raw = amount_match.group(1)
             try:
-                amount = float(raw)
+                amount = self._parse_amount(raw)
                 break
             except ValueError:
                 amount = None
+
+        create_category_name = self._extract_category_creation_name(text)
 
         category = None
         category_match = re.search(
@@ -276,6 +294,19 @@ class IntentClassifier:
             category = category_match.group(2).capitalize()
         elif "mercado" in text:
             category = "Alimentacao"
+        else:
+            free_category_match = re.search(
+                r"\b(?:em|na|no)\s+([a-z][a-z\s]{2,40}?)(?=\s+(?:de\b|do\b|da\b|com\b|para\b|hoje\b|amanha\b|ontem\b|no financeiro\b|na conta\b)|$)",
+                text,
+            )
+            if free_category_match:
+                category = self._beautify_label(free_category_match.group(1))
+
+        if create_category_name and any(
+            token in text
+            for token in ("despesa", "receita", "gasto", "gastei", "paguei", "recebi", "ganhei", "adiciona", "registre")
+        ):
+            category = create_category_name
 
         scope = "business" if any(t in text for t in ("empresa", "negocio")) else "personal"
         if "geral" in text:
@@ -321,6 +352,7 @@ class IntentClassifier:
         return {
             "amount": amount,
             "category": category,
+            "create_category_name": create_category_name,
             "scope": scope,
             "section": section,
             "compare_with_balance": any(
@@ -333,6 +365,49 @@ class IntentClassifier:
             ),
             "period": "month" if any(token in text for token in ("mes", "meses")) else None,
         }
+
+    @staticmethod
+    def _parse_amount(raw: str) -> float:
+        text = str(raw or "").strip()
+        if not text:
+            raise ValueError("empty amount")
+
+        last_dot = text.rfind(".")
+        last_comma = text.rfind(",")
+        normalized = text
+
+        if last_dot >= 0 and last_comma >= 0:
+            normalized = text.replace(",", "") if last_dot > last_comma else text.replace(".", "").replace(",", ".")
+        elif last_comma >= 0:
+            decimals = len(text) - last_comma - 1
+            normalized = text.replace(",", "") if decimals == 3 else text.replace(".", "").replace(",", ".")
+        elif last_dot >= 0:
+            dot_count = text.count(".")
+            decimals = len(text) - last_dot - 1
+            if dot_count > 1:
+                normalized = text[:last_dot].replace(".", "") + "." + text[last_dot + 1 :]
+            elif decimals == 3:
+                normalized = text.replace(".", "")
+
+        return float(normalized)
+
+    def _extract_category_creation_name(self, text: str) -> str | None:
+        patterns = [
+            r"\b(?:criar|crie|adicionar|adicione)\s+(?:uma\s+)?(?:nova\s+)?categoria(?:\s+chamada|\s+com\s+o\s+nome)?\s+([a-z0-9][a-z0-9\s]{1,50}?)(?=\s+(?:e\s+(?:adicion|registr|lanc|gere)|com\s+r\$|de\s+r\$|r\$)|$)",
+            r"\bcategoria\s+chamada\s+([a-z0-9][a-z0-9\s]{1,50}?)(?=\s+(?:e\s+(?:adicion|registr|lanc|gere)|com\s+r\$|de\s+r\$|r\$)|$)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return self._beautify_label(match.group(1))
+        return None
+
+    @staticmethod
+    def _beautify_label(value: str | None) -> str | None:
+        text = " ".join((value or "").split()).strip()
+        if not text:
+            return None
+        return " ".join(part.capitalize() for part in text.split())
 
     @staticmethod
     def _normalize_text(text: str) -> str:
