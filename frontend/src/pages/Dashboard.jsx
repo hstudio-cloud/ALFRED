@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
@@ -81,77 +87,77 @@ const navigationItems = [
     label: "Nano IA",
     icon: BrainCircuit,
     description: "Chat financeiro e assistente por voz",
-    group: "Negocio",
+    group: "Negócio",
   },
   {
     id: "overview",
     label: "Dashboard",
     icon: LayoutDashboard,
-    description: "Visao geral do financeiro",
-    group: "Negocio",
+    description: "Visão geral do financeiro",
+    group: "Negócio",
   },
   {
     id: "transactions",
-    label: "Movimentacoes",
+    label: "Movimentações",
     icon: ArrowLeftRight,
-    description: "Entradas, saidas e filtros",
-    group: "Negocio",
+    description: "Entradas, saídas e filtros",
+    group: "Negócio",
   },
   {
     id: "banks",
     label: "Bancos",
     icon: Landmark,
-    description: "Contas bancarias e saldo",
-    group: "Negocio",
+    description: "Contas bancárias e saldo",
+    group: "Negócio",
   },
   {
     id: "cards",
-    label: "Cartoes",
+    label: "Cartões",
     icon: CreditCard,
     description: "Faturas, limites e uso",
-    group: "Negocio",
+    group: "Negócio",
   },
   {
     id: "contacts",
     label: "Contatos",
     icon: Users2,
     description: "Clientes e pagadores",
-    group: "Negocio",
+    group: "Negócio",
   },
   {
     id: "employees",
-    label: "Funcionarios",
+    label: "Funcionários",
     icon: CalendarDays,
-    description: "Ponto, presenca, faltas e folha",
-    group: "Negocio",
+    description: "Ponto, presença, faltas e folha",
+    group: "Negócio",
   },
   {
     id: "reports",
-    label: "Relatorios",
+    label: "Relatórios",
     icon: FileBarChart2,
-    description: "Analises e demonstrativos",
-    group: "Negocio",
+    description: "Análises e demonstrativos",
+    group: "Negócio",
   },
   {
     id: "company",
     label: "Empresa",
     icon: Building2,
     description: "Dados do workspace",
-    group: "Configuracoes",
+    group: "Configurações",
   },
   {
     id: "profile",
     label: "Perfil",
     icon: UserRound,
-    description: "Informacoes pessoais",
-    group: "Configuracoes",
+    description: "Informações pessoais",
+    group: "Configurações",
   },
   {
     id: "settings",
-    label: "Configuracoes",
+    label: "Configurações",
     icon: Settings2,
     description: "Categorias, alertas e rotina",
-    group: "Configuracoes",
+    group: "Configurações",
   },
 ];
 
@@ -430,7 +436,9 @@ const Dashboard = () => {
               account_scope: financialView,
             }),
           ),
-          withTimeout(axios.get(`${API}/finances/imports?workspace_id=${workspaceId}`)),
+          withTimeout(
+            axios.get(`${API}/finances/imports?workspace_id=${workspaceId}`),
+          ),
           withTimeout(
             axios.get(
               `${API}/dashboard/insights?workspace_id=${workspaceId}&account_scope=${financialView}`,
@@ -442,7 +450,9 @@ const Dashboard = () => {
 
         const results = await Promise.allSettled(tasks);
         const getValue = (index, fallback) =>
-          results[index]?.status === "fulfilled" ? results[index].value : fallback;
+          results[index]?.status === "fulfilled"
+            ? results[index].value
+            : fallback;
         const hasUnauthorized = results.some(
           (item) =>
             item.status === "rejected" &&
@@ -453,9 +463,9 @@ const Dashboard = () => {
           logout();
           navigate("/login");
           toast({
-            title: "Sessao expirada",
+            title: "Sessão expirada",
             description:
-              "Sua autenticacao expirou no backend. Faça login novamente para carregar o painel.",
+              "Sua autenticação expirou no backend. Faça login novamente para carregar o painel.",
             variant: "destructive",
           });
           return;
@@ -505,22 +515,26 @@ const Dashboard = () => {
         setCashflowReport(cashflowRes || null);
         setStatementImports(statementImportsRes?.data || []);
         setInsights(dashboardInsightsRes?.data?.insights || []);
-        setOpenFinanceConnections(normalizeCollection(openFinanceConnectionsRes));
+        setOpenFinanceConnections(
+          normalizeCollection(openFinanceConnectionsRes),
+        );
         setOpenFinanceAccounts(normalizeCollection(openFinanceAccountsRes));
 
-        const failedRequests = results.filter((item) => item.status === "rejected");
+        const failedRequests = results.filter(
+          (item) => item.status === "rejected",
+        );
         if (failedRequests.length > 0) {
           toast({
             title: "Painel carregado parcialmente",
             description:
-              "Alguns blocos nao responderam a tempo. O Nano abriu o dashboard com os dados disponiveis.",
+              "Alguns blocos não responderam a tempo. O Nano abriu o dashboard com os dados disponíveis.",
             variant: "destructive",
           });
         }
       } catch (error) {
         console.error(error);
         toast({
-          title: "Nao consegui carregar o painel",
+          title: "Não consegui carregar o painel",
           description: "Tente novamente em alguns segundos.",
           variant: "destructive",
         });
@@ -572,8 +586,8 @@ const Dashboard = () => {
         setPayrollReport(reportResponse || null);
       } catch (error) {
         toast({
-          title: "Erro ao carregar funcionarios",
-          description: "Nao consegui carregar os dados de ponto e folha agora.",
+          title: "Erro ao carregar funcionários",
+          description: "Não consegui carregar os dados de ponto e folha agora.",
           variant: "destructive",
         });
       } finally {
@@ -606,7 +620,7 @@ const Dashboard = () => {
       description: currentWorkspace.description || "",
       document_type: profile.document_type || "cnpj",
       document: profile.document || "",
-      business_type: profile.business_type || "servicos",
+      business_type: profile.business_type || "serviços",
       tax_regime: profile.tax_regime || "simples",
       address: profile.address || "",
       complement: profile.complement || "",
@@ -660,12 +674,12 @@ const Dashboard = () => {
       setTransactionForm(initialTransaction);
       loadAll(currentWorkspace.id);
       toast({
-        title: "Movimentacao salva",
-        description: "A nova entrada ja foi adicionada ao painel.",
+        title: "Movimentação salva",
+        description: "A nova entrada já foi adicionada ao painel.",
       });
     } catch (error) {
       toast({
-        title: "Erro ao salvar movimentacao",
+        title: "Erro ao salvar movimentação",
         description: "Revise os dados e tente novamente.",
         variant: "destructive",
       });
@@ -684,12 +698,12 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
       toast({
         title: "Conta registrada",
-        description: "A conta entrou no calendario financeiro.",
+        description: "A conta entrou no calendário financeiro.",
       });
     } catch (error) {
       toast({
         title: "Erro ao registrar conta",
-        description: "Nao foi possivel salvar essa conta agora.",
+        description: "Não foi possível salvar essa conta agora.",
         variant: "destructive",
       });
     }
@@ -703,7 +717,7 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
       toast({
         title: "Categoria criada",
-        description: "A classificacao ja aparece nas telas do Nano.",
+        description: "A classificação já aparece nas telas do Nano.",
       });
     } catch (error) {
       toast({
@@ -727,7 +741,7 @@ const Dashboard = () => {
     } catch (error) {
       toast({
         title: "Erro ao criar lembrete",
-        description: "Nao consegui salvar o lembrete agora.",
+        description: "Não consegui salvar o lembrete agora.",
         variant: "destructive",
       });
     }
@@ -744,7 +758,7 @@ const Dashboard = () => {
       setWorkspaceForm({ name: "", subdomain: "", description: "" });
       toast({
         title: "Workspace criado",
-        description: "Sua nova empresa ja esta pronta para uso.",
+        description: "Sua nova empresa já está pronta para uso.",
       });
     } else {
       toast({
@@ -761,7 +775,7 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
     } catch (error) {
       toast({
-        title: "Nao consegui atualizar a conta",
+        title: "Não consegui atualizar a conta",
         description: "Tente novamente em alguns segundos.",
         variant: "destructive",
       });
@@ -777,7 +791,7 @@ const Dashboard = () => {
     } catch (error) {
       toast({
         title: "Erro ao atualizar lembrete",
-        description: "Nao foi possivel trocar o status desse lembrete.",
+        description: "Não foi possível trocar o status desse lembrete.",
         variant: "destructive",
       });
     }
@@ -818,8 +832,8 @@ const Dashboard = () => {
       setAccountReport(nextAccountReport?.accounts || []);
     } catch (error) {
       toast({
-        title: "Erro ao atualizar relatorio",
-        description: "Nao consegui aplicar esse periodo agora.",
+        title: "Erro ao atualizar relatório",
+        description: "Não consegui aplicar esse período agora.",
         variant: "destructive",
       });
     }
@@ -829,15 +843,15 @@ const Dashboard = () => {
     try {
       await financeService.generateRecurringBills(currentWorkspace.id);
       toast({
-        title: "Recorrencias geradas",
+        title: "Recorrências geradas",
         description:
-          "O Nano criou os proximos vencimentos com base nas regras atuais.",
+          "O Nano criou os próximos vencimentos com base nas regras atuais.",
       });
       loadAll(currentWorkspace.id);
     } catch (error) {
       toast({
-        title: "Erro ao gerar recorrencias",
-        description: "Nao foi possivel montar os proximos vencimentos agora.",
+        title: "Erro ao gerar recorrências",
+        description: "Não foi possível montar os próximos vencimentos agora.",
         variant: "destructive",
       });
     }
@@ -866,14 +880,14 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
       toast({
         title: "Extrato recebido",
-        description: "O arquivo ja entrou na fila de leitura do Nano.",
+        description: "O arquivo já entrou na fila de leitura do Nano.",
       });
     } catch (error) {
       toast({
         title: "Erro ao importar extrato",
         description:
           error?.response?.data?.detail ||
-          "Nao foi possivel processar o arquivo enviado.",
+          "Não foi possível processar o arquivo enviado.",
         variant: "destructive",
       });
     } finally {
@@ -892,12 +906,12 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
       toast({
         title: "Conta criada",
-        description: "A conta ja entrou no resumo financeiro do Nano.",
+        description: "A conta já entrou no resumo financeiro do Nano.",
       });
     } catch (error) {
       toast({
         title: "Erro ao criar conta",
-        description: "Nao consegui salvar essa conta agora.",
+        description: "Não consegui salvar essa conta agora.",
         variant: "destructive",
       });
     }
@@ -916,13 +930,13 @@ const Dashboard = () => {
       setCardForm(initialCard);
       loadAll(currentWorkspace.id);
       toast({
-        title: "Cartao criado",
-        description: "O cartao ja entra na leitura de faturas e limite.",
+        title: "Cartão criado",
+        description: "O cartão já entra na leitura de faturas e limite.",
       });
     } catch (error) {
       toast({
-        title: "Erro ao criar cartao",
-        description: "Nao consegui salvar esse cartao agora.",
+        title: "Erro ao criar cartão",
+        description: "Não consegui salvar esse cartão agora.",
         variant: "destructive",
       });
     }
@@ -941,42 +955,45 @@ const Dashboard = () => {
       }
 
       try {
-        const result = await openFinanceService.connectCallback(currentWorkspace.id, {
-          provider: "pluggy",
-          item_id: item.id,
-          consent_id: item.consentId || item.consent?.id || null,
-          institution_name:
-            item.connector?.name ||
-            item.connector?.institutionName ||
-            item.connector?.displayName ||
-            "Instituicao conectada",
-          status:
-            item.status?.toLowerCase?.() === "updated"
-              ? "connected"
-              : (item.status || "connected").toLowerCase(),
-          metadata: { item },
-        });
+        const result = await openFinanceService.connectCallback(
+          currentWorkspace.id,
+          {
+            provider: "pluggy",
+            item_id: item.id,
+            consent_id: item.consentId || item.consent?.id || null,
+            institution_name:
+              item.connector?.name ||
+              item.connector?.institutionName ||
+              item.connector?.displayName ||
+              "Instituição conectada",
+            status:
+              item.status?.toLowerCase?.() === "updated"
+                ? "connected"
+                : (item.status || "connected").toLowerCase(),
+            metadata: { item },
+          },
+        );
         if (result?.sync?.ok === false) {
           throw new Error(
             result?.sync?.details ||
               result?.sync?.error ||
-              "Nao foi possivel sincronizar a conexao da Pluggy.",
+              "Não foi possível sincronizar a conexão da Pluggy.",
           );
         }
         closePluggyWidget();
         await loadAll(currentWorkspace.id);
         toast({
-          title: "Conexao concluida",
+          title: "Conexão concluída",
           description:
             "A conta foi vinculada e os dados do Open Finance foram sincronizados.",
         });
       } catch (error) {
         closePluggyWidget();
         toast({
-          title: "Erro ao salvar conexao Pluggy",
+          title: "Erro ao salvar conexão Pluggy",
           description:
             error?.response?.data?.detail ||
-            "O widget concluiu, mas nao consegui persistir a conexao no backend.",
+            "O widget concluiu, mas não consegui persistir a conexão no backend.",
           variant: "destructive",
         });
       }
@@ -992,7 +1009,7 @@ const Dashboard = () => {
         description:
           executionStatus ||
           error?.message ||
-          "A Pluggy nao concluiu a autenticacao dessa conta.",
+          "A Pluggy não concluiu a autenticação dessa conta.",
         variant: "destructive",
       });
     },
@@ -1007,7 +1024,7 @@ const Dashboard = () => {
       );
       if (payload?.configured === false) {
         toast({
-          title: "Provider ainda nao configurado",
+          title: "Provider ainda não configurado",
           description:
             payload?.message ||
             "Configure as credenciais do Open Finance no backend antes de abrir o widget.",
@@ -1028,11 +1045,14 @@ const Dashboard = () => {
       if (connectUrl) {
         window.open(connectUrl, "_blank", "noopener,noreferrer");
         toast({
-          title: "Conexao iniciada",
+          title: "Conexão iniciada",
           description:
             "A janela do agregador foi aberta. Depois de concluir, clique em sincronizar.",
         });
-      } else if ((payload?.provider || "").toLowerCase() === "pluggy" && linkToken) {
+      } else if (
+        (payload?.provider || "").toLowerCase() === "pluggy" &&
+        linkToken
+      ) {
         setPluggyWidgetSession({
           connectToken: linkToken,
           updateItem: payload?.item_id || null,
@@ -1040,9 +1060,9 @@ const Dashboard = () => {
         });
       } else {
         toast({
-          title: "Conexao preparada",
+          title: "Conexão preparada",
           description:
-            "O endpoint respondeu, mas sem URL publica. Verifique a configuracao do provider.",
+            "O endpoint respondeu, mas sem URL pública. Verifique a configuração do provider.",
         });
       }
     } catch (error) {
@@ -1050,7 +1070,7 @@ const Dashboard = () => {
         title: "Erro ao conectar Open Finance",
         description:
           error?.response?.data?.detail ||
-          "Nao consegui iniciar a conexao bancaria agora.",
+          "Não consegui iniciar a conexão bancária agora.",
         variant: "destructive",
       });
     }
@@ -1072,7 +1092,7 @@ const Dashboard = () => {
         if (payload?.configured === false) {
           throw new Error(
             payload?.message ||
-              "Provider de Open Finance ainda nao configurado no backend.",
+              "Provider de Open Finance ainda não configurado no backend.",
           );
         }
         const linkToken =
@@ -1084,7 +1104,7 @@ const Dashboard = () => {
           null;
 
         if (!linkToken) {
-          throw new Error("Pluggy nao retornou token para atualizar o item.");
+          throw new Error("Pluggy não retornou token para atualizar o item.");
         }
 
         setPluggyWidgetSession({
@@ -1094,11 +1114,11 @@ const Dashboard = () => {
         });
       } catch (error) {
         toast({
-          title: "Erro ao abrir atualizacao da Pluggy",
+          title: "Erro ao abrir atualização da Pluggy",
           description:
             error?.response?.data?.detail ||
             error?.message ||
-            "Nao consegui iniciar a atualizacao dessa conexao agora.",
+            "Não consegui iniciar a atualização dessa conexão agora.",
           variant: "destructive",
         });
         setOpenFinanceSyncingId(null);
@@ -1108,18 +1128,21 @@ const Dashboard = () => {
 
     setOpenFinanceSyncingId(connection.id);
     try {
-      await openFinanceService.syncConnection(currentWorkspace.id, connection.id);
+      await openFinanceService.syncConnection(
+        currentWorkspace.id,
+        connection.id,
+      );
       await loadAll(currentWorkspace.id);
       toast({
-        title: "Sincronizacao concluida",
-        description: "Contas e transacoes da conexao foram atualizadas.",
+        title: "Sincronização concluída",
+        description: "Contas e transações da conexão foram atualizadas.",
       });
     } catch (error) {
       toast({
         title: "Erro ao sincronizar Open Finance",
         description:
           error?.response?.data?.detail ||
-          "Nao consegui sincronizar essa conexao agora.",
+          "Não consegui sincronizar essa conexão agora.",
         variant: "destructive",
       });
     } finally {
@@ -1142,15 +1165,15 @@ const Dashboard = () => {
       setEmployeeForm(initialEmployeeForm);
       await loadPayrollData(currentWorkspace.id);
       toast({
-        title: "Funcionario cadastrado",
-        description: "O cadastro foi salvo e ja entrou no modulo de folha.",
+        title: "Funcionário cadastrado",
+        description: "O cadastro foi salvo e já entrou no modulo de folha.",
       });
     } catch (error) {
       toast({
-        title: "Erro ao cadastrar funcionario",
+        title: "Erro ao cadastrar funcionário",
         description:
           error?.response?.data?.detail ||
-          "Nao consegui salvar esse funcionario agora.",
+          "Não consegui salvar esse funcionário agora.",
         variant: "destructive",
       });
     }
@@ -1162,7 +1185,7 @@ const Dashboard = () => {
     if (!attendanceForm.employee_id || !attendanceForm.date) {
       toast({
         title: "Dados incompletos",
-        description: "Selecione funcionario e data para registrar o ponto.",
+        description: "Selecione funcionário e data para registrar o ponto.",
         variant: "destructive",
       });
       return;
@@ -1178,14 +1201,14 @@ const Dashboard = () => {
       await loadPayrollData(currentWorkspace.id);
       toast({
         title: "Ponto registrado",
-        description: "Presenca/falta registrada com sucesso.",
+        description: "Presença/falta registrada com sucesso.",
       });
     } catch (error) {
       toast({
         title: "Erro ao registrar ponto",
         description:
           error?.response?.data?.detail ||
-          "Nao consegui registrar este ponto agora.",
+          "Não consegui registrar este ponto agora.",
         variant: "destructive",
       });
     }
@@ -1201,15 +1224,15 @@ const Dashboard = () => {
       );
       await loadPayrollData(currentWorkspace.id);
       toast({
-        title: "Funcionario desativado",
-        description: "Ele nao entra mais nos proximos fechamentos.",
+        title: "Funcionário desativado",
+        description: "Ele não entra mais nos próximos fechamentos.",
       });
     } catch (error) {
       toast({
-        title: "Erro ao desativar funcionario",
+        title: "Erro ao desativar funcionário",
         description:
           error?.response?.data?.detail ||
-          "Nao foi possivel desativar o funcionario.",
+          "Não foi possível desativar o funcionário.",
         variant: "destructive",
       });
     }
@@ -1253,13 +1276,13 @@ const Dashboard = () => {
 
       toast({
         title: "Dados da empresa atualizados",
-        description: "As informacoes do workspace foram salvas.",
+        description: "As informações do workspace foram salvas.",
       });
       loadAll(currentWorkspace.id);
     } catch (error) {
       toast({
         title: "Erro ao salvar empresa",
-        description: "Nao foi possivel atualizar esse workspace agora.",
+        description: "Não foi possível atualizar esse workspace agora.",
         variant: "destructive",
       });
     }
@@ -1270,16 +1293,16 @@ const Dashboard = () => {
     toast({
       title: "Perfil preparado",
       description:
-        "A interface de perfil foi atualizada. O salvamento completo do usuario sera ligado na proxima etapa.",
+        "A interface de perfil foi atualizada. O salvamento completo do usuário será ligado na próxima etapa.",
     });
   };
 
   const savePlatformSettings = (event) => {
     event.preventDefault();
     toast({
-      title: "Preferencias atualizadas",
+      title: "Preferências atualizadas",
       description:
-        "As configuracoes visuais e de automacao ficaram prontas para a proxima rodada de integracao.",
+        "As configurações visuais e de automação ficaram prontas para a próxima rodada de integração.",
     });
   };
 
@@ -1346,11 +1369,11 @@ const Dashboard = () => {
 
   const onboardingSteps = [
     {
-      label: "Cadastrar uma conta bancaria",
+      label: "Cadastrar uma conta bancária",
       done: statementImports.length > 0,
     },
     {
-      label: "Registrar a primeira movimentacao",
+      label: "Registrar a primeira movimentação",
       done: transactions.length > 0,
     },
     {
@@ -1486,17 +1509,17 @@ const Dashboard = () => {
 
   const metrics = [
     {
-      title: "Receitas do mes",
+      title: "Receitas do mês",
       value: currencyFormatter.format(totalIncome),
       direction: "up",
     },
     {
-      title: "Despesas do mes",
+      title: "Despesas do mês",
       value: currencyFormatter.format(totalExpenses),
       direction: "down",
     },
     {
-      title: "Resultado do mes",
+      title: "Resultado do mês",
       value: currencyFormatter.format(monthlyResult),
       direction: monthlyResult >= 0 ? "up" : "down",
     },
@@ -1548,7 +1571,9 @@ const Dashboard = () => {
       calendarDays.find((day) => day.isToday) ||
       calendarDays.find((day) => day.isCurrentMonth) ||
       calendarDays[0];
-    const selected = calendarDays.find((day) => day.date === selectedCalendarDate);
+    const selected = calendarDays.find(
+      (day) => day.date === selectedCalendarDate,
+    );
     return selected || fallbackDay || null;
   }, [calendarDays, selectedCalendarDate]);
   const topNanoInsights = useMemo(() => {
@@ -1558,16 +1583,16 @@ const Dashboard = () => {
     if (insightsSource.length) return insightsSource;
     return [
       {
-        label: "Visao inteligente",
+        label: "Visão inteligente",
         message:
-          "O Nano cruza contas, fluxo e agenda para mostrar o que merece acao hoje.",
+          "O Nano cruza contas, fluxo e agenda para mostrar o que merece ação hoje.",
       },
     ];
   }, [automationInsights, insights]);
   const cashflowItems = cashflowReport?.forecasts || forecastCards;
   const reportMessage =
     report?.savings_suggestion?.message ||
-    "O Nano cruza receitas, despesas, contas e recorrencias para sugerir ajustes de rota no financeiro.";
+    "O Nano cruza receitas, despesas, contas e recorrências para sugerir ajustes de rota no financeiro.";
   const payrollSummary = payrollReport?.summary || {};
   const payrollGroups = payrollReport?.groups || { clt: [], contract: [] };
   const todayDateValue = new Date().toISOString().slice(0, 10);
@@ -1584,8 +1609,8 @@ const Dashboard = () => {
     >
       <PageHeader
         eyebrow="Dashboard"
-        title="Visao geral das suas financas"
-        description="Um cockpit limpo para acompanhar entradas, saidas, contas, agenda financeira e o que merece acao no Nano."
+        title="Visão geral das suas finanças"
+        description="Um cockpit limpo para acompanhar entradas, saídas, contas, agenda financeira e o que merece ação no Nano."
       />
       <div className="grid gap-3 lg:grid-cols-3">
         {topNanoInsights.map((item, index) => (
@@ -1596,7 +1621,9 @@ const Dashboard = () => {
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-red-200/70">
               {item.label || "Insight do Nano"}
             </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-200">{item.message}</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-200">
+              {item.message}
+            </p>
           </div>
         ))}
       </div>
@@ -1610,13 +1637,13 @@ const Dashboard = () => {
       <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
         <SurfacePanel
           title="Receitas x Despesas"
-          action={<GhostChip>Ultimos 6 meses</GhostChip>}
+          action={<GhostChip>Últimos 6 meses</GhostChip>}
         >
           <TrendChart data={reportTrendData} />
         </SurfacePanel>
 
         <SurfacePanel
-          title="Calendario Financeiro"
+          title="Calendário Financeiro"
           action={
             <div className="flex items-center gap-2 text-sm text-[#6e6259]">
               <button
@@ -1625,11 +1652,11 @@ const Dashboard = () => {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-                <span className="min-w-[108px] text-center font-medium">
-                  {new Date().toLocaleDateString("pt-BR", {
-                    month: "long",
-                    year: "numeric",
-                  })}
+              <span className="min-w-[108px] text-center font-medium">
+                {new Date().toLocaleDateString("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                })}
               </span>
               <button
                 type="button"
@@ -1667,7 +1694,10 @@ const Dashboard = () => {
             </GhostChip>
           }
         >
-          <CalendarDaySummary day={activeCalendarDay} formatter={currencyFormatter} />
+          <CalendarDaySummary
+            day={activeCalendarDay}
+            formatter={currencyFormatter}
+          />
         </SurfacePanel>
       </div>
 
@@ -1689,15 +1719,15 @@ const Dashboard = () => {
           </div>
         </SurfacePanel>
 
-        <SurfacePanel title="Cartoes de Credito">
+        <SurfacePanel title="Cartões de Crédito">
           {cardTransactions.length ? (
             <div className="space-y-3">
               <SummaryRow
-                label="Movimentacoes no cartao"
+                label="Movimentações no cartão"
                 value={String(cardTransactions.length)}
               />
               <SummaryRow
-                label="Volume no periodo"
+                label="Volume no período"
                 value={currencyFormatter.format(
                   cardTransactions.reduce(
                     (total, item) => total + item.amount,
@@ -1720,8 +1750,8 @@ const Dashboard = () => {
           ) : (
             <CenteredEmptyState
               icon={CreditCard}
-              title="Nenhum cartao cadastrado"
-              description="Comece adicionando movimentacoes no cartao para acompanhar faturas e limites."
+              title="Nenhum cartão cadastrado"
+              description="Comece adicionando movimentações no cartão para acompanhar faturas e limites."
             />
           )}
         </SurfacePanel>
@@ -1733,7 +1763,7 @@ const Dashboard = () => {
                 <InfoRow
                   key={item.category}
                   title={item.category}
-                  subtitle="Participacao nas saidas"
+                  subtitle="Participação nas saídas"
                   value={currencyFormatter.format(item.amount)}
                 />
               ))}
@@ -1742,13 +1772,13 @@ const Dashboard = () => {
             <CenteredEmptyState
               icon={TrendingDown}
               title="Nenhuma despesa para exibir"
-              description="Assim que novas saidas entrarem, o Nano mostra as categorias mais pesadas."
+              description="Assim que novas saídas entrarem, o Nano mostra as categorias mais pesadas."
             />
           )}
         </SurfacePanel>
       </div>
 
-      <SurfacePanel title="Alertas e Pendencias">
+      <SurfacePanel title="Alertas e Pendências">
         {openBills.length || insights.length || automationInsights.length ? (
           <div className="space-y-3">
             {openBills.slice(0, 4).map((bill) => (
@@ -1773,7 +1803,7 @@ const Dashboard = () => {
         ) : (
           <AlertRow
             title="Tudo certo"
-            message="Nenhuma pendencia critica foi encontrada na visao atual."
+            message="Nenhuma pendência crítica foi encontrada na visão atual."
             tone="positive"
           />
         )}
@@ -1792,9 +1822,9 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Movimentacoes"
-        title="Entradas, saidas e transferencias"
-        description="Copiamos a fluidez operacional do Fingu, mas com o Nano focado na sua logica financeira e no assistente inteligente."
+        eyebrow="Movimentações"
+        title="Entradas, saídas e transferências"
+        description="Copiamos a fluidez operacional do Fingu, mas com o Nano focado na sua lógica financeira e no assistente inteligente."
         action={
           <div className="flex flex-wrap gap-3">
             <Button
@@ -1815,7 +1845,7 @@ const Dashboard = () => {
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <SurfacePanel title="Nova movimentacao">
+        <SurfacePanel title="Nova movimentação">
           <form onSubmit={submitTransaction} className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
               <select
@@ -1847,7 +1877,7 @@ const Dashboard = () => {
             </div>
 
             <Input
-              placeholder="Descricao da movimentacao"
+              placeholder="Descrição da movimentação"
               value={transactionForm.description}
               onChange={(event) =>
                 setTransactionForm({
@@ -1919,7 +1949,7 @@ const Dashboard = () => {
                   })
                 }
               >
-                <option value="">Sem cartao</option>
+                <option value="">Sem cartão</option>
                 {activeCards
                   .filter(
                     (card) =>
@@ -1946,9 +1976,9 @@ const Dashboard = () => {
                 }
               >
                 <option value="pix">Pix</option>
-                <option value="card">Cartao</option>
+                <option value="card">cartão</option>
                 <option value="boleto">Boleto</option>
-                <option value="transfer">Transferencia</option>
+                <option value="transfer">Transferência</option>
                 <option value="cash">Dinheiro</option>
                 <option value="other">Outro</option>
               </select>
@@ -1966,17 +1996,17 @@ const Dashboard = () => {
             </div>
 
             <Button type="submit" className={`h-12 ${actionButtonClass}`}>
-              Salvar movimentacao
+              Salvar movimentação
             </Button>
           </form>
         </SurfacePanel>
 
-        <SurfacePanel title="Historico financeiro">
+        <SurfacePanel title="Histórico financeiro">
           <div className="grid gap-3 md:grid-cols-[1.2fr_0.4fr_0.4fr]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9f9188]" />
               <Input
-                placeholder="Buscar movimentacoes..."
+                placeholder="Buscar movimentações..."
                 value={transactionSearch}
                 onChange={(event) => setTransactionSearch(event.target.value)}
                 className="h-12 rounded-2xl border-[#eadfd6] bg-[#fffdf9] pl-11 text-[#2d241f]"
@@ -1998,21 +2028,21 @@ const Dashboard = () => {
               }
               className={pageFieldClass}
             >
-              <option value="all">Metodo</option>
+              <option value="all">Método</option>
               <option value="pix">Pix</option>
-              <option value="card">Cartao</option>
+              <option value="card">cartão</option>
               <option value="boleto">Boleto</option>
-              <option value="transfer">Transferencia</option>
+              <option value="transfer">Transferência</option>
               <option value="cash">Dinheiro</option>
             </select>
           </div>
 
           <div className="mt-5 overflow-hidden rounded-[24px] border border-[#eadfd6] bg-white">
             <div className="grid grid-cols-[1.2fr_0.8fr_0.7fr_0.6fr_0.7fr] gap-3 border-b border-[#f0e6de] px-4 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#8e7f76]">
-              <span>Descricao</span>
+              <span>Descrição</span>
               <span>Data</span>
               <span>Tipo</span>
-              <span>Metodo</span>
+              <span>Método</span>
               <span className="text-right">Valor</span>
             </div>
             {filteredTransactions.length ? (
@@ -2051,7 +2081,7 @@ const Dashboard = () => {
               ))
             ) : (
               <div className="px-6 py-10 text-center text-sm text-[#9e8f85]">
-                Nenhuma movimentacao encontrada.
+                Nenhuma movimentação encontrada.
               </div>
             )}
           </div>
@@ -2071,9 +2101,9 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Instituicoes Bancarias"
-        title="Gerencie contas bancarias e visualize saldos"
-        description="O Nano ainda nao faz conciliacao bancaria completa, mas ja organiza extratos, entradas e saidas para preparar essa camada."
+        eyebrow="Instituições Bancárias"
+        title="Gerencie contas bancárias e visualize saldos"
+        description="O Nano ainda não faz conciliação bancária completa, mas já organiza extratos, entradas e saídas para preparar essa camada."
         action={
           <Button type="button" className={`h-12 ${actionButtonClass}`}>
             <Plus className="mr-2 h-4.5 w-4.5" />
@@ -2091,7 +2121,7 @@ const Dashboard = () => {
                 value={String(statementImports.length)}
               />
               <StatMiniCard
-                label="Movimentacoes bancarias"
+                label="Movimentações bancárias"
                 value={String(bankTransactions.length)}
               />
               <StatMiniCard
@@ -2115,11 +2145,11 @@ const Dashboard = () => {
           <LargeEmptyState
             icon={Landmark}
             title="Nenhum banco cadastrado"
-            description="Adicione sua primeira conta bancaria para centralizar saldos e acompanhar movimentos."
+            description="Adicione sua primeira conta bancária para centralizar saldos e acompanhar movimentos."
             bullets={[
               "Centralize os saldos de todas as suas contas",
-              "Acompanhe a evolucao do patrimonio",
-              "Classifique e organize suas movimentacoes",
+              "Acompanhe a evolução do patrimônio",
+              "Classifique e organize suas movimentações",
             ]}
             primaryActionLabel="Adicionar Banco"
           />
@@ -2139,13 +2169,13 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Cartoes de Credito"
-        title="Gerencie seus cartoes, limites e faturas"
-        description="A logica do Nano continua moderna: cartoes ajudam a explicar seu fluxo mensal, previsao de fatura e parcelamentos."
+        eyebrow="Cartões de Crédito"
+        title="Gerencie seus cartões, limites e faturas"
+        description="A lógica do Nano continua moderna: cartões ajudam a explicar seu fluxo mensal, previsão de fatura e parcelamentos."
         action={
           <Button type="button" className={`h-12 ${actionButtonClass}`}>
             <Plus className="mr-2 h-4.5 w-4.5" />
-            Adicionar Cartao
+            Adicionar cartão
           </Button>
         }
       />
@@ -2165,11 +2195,11 @@ const Dashboard = () => {
             </div>
             <div className="rounded-[28px] border border-[#eadfd6] bg-[#fff8f4] p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-[#9c8e85]">
-                leitura do cartao
+                leitura do cartão
               </p>
               <div className="mt-5 space-y-4">
                 <SummaryRow
-                  label="Total no cartao"
+                  label="Total no cartão"
                   value={currencyFormatter.format(
                     cardTransactions.reduce(
                       (total, item) => total + item.amount,
@@ -2178,7 +2208,7 @@ const Dashboard = () => {
                   )}
                 />
                 <SummaryRow
-                  label="Lancamentos"
+                  label="Lançamentos"
                   value={String(cardTransactions.length)}
                 />
                 <SummaryRow
@@ -2193,14 +2223,14 @@ const Dashboard = () => {
         ) : (
           <LargeEmptyState
             icon={CreditCard}
-            title="Nenhum cartao cadastrado"
-            description="Comece adicionando seu primeiro cartao de credito para prever proximas faturas."
+            title="Nenhum cartão cadastrado"
+            description="Comece adicionando seu primeiro cartão de crédito para prever próximas faturas."
             bullets={[
-              "Acompanhe o limite disponivel em tempo real",
-              "Preveja o valor das proximas faturas",
+              "Acompanhe o limite disponível em tempo real",
+              "Preveja o valor das próximas faturas",
               "Controle seus parcelamentos de forma inteligente",
             ]}
-            primaryActionLabel="Adicionar Cartao"
+            primaryActionLabel="Adicionar cartão"
           />
         )}
       </SurfacePanel>
@@ -2220,7 +2250,7 @@ const Dashboard = () => {
       <PageHeader
         eyebrow="Contatos"
         title="Pessoas e empresas ligadas ao financeiro"
-        description="O Nano usa quem paga, quem recebe e quem aparece nas contas para formar uma visao mais operacional do seu caixa."
+        description="O Nano usa quem paga, quem recebe e quem aparece nas contas para formar uma visão mais operacional do seu caixa."
       />
 
       <SurfacePanel title="Contatos financeiros">
@@ -2256,7 +2286,7 @@ const Dashboard = () => {
           <CenteredEmptyState
             icon={Users2}
             title="Nenhum contato financeiro encontrado"
-            description="Assim que contas e cobrancas tiverem origem ou cliente, essa lista aparece aqui."
+            description="Assim que contas e cobranças tiverem origem ou cliente, essa lista aparece aqui."
           />
         )}
       </SurfacePanel>
@@ -2274,9 +2304,9 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Funcionarios e Folha"
-        title="Ponto, presenca, faltas e pagamento"
-        description="Cadastre equipe CLT e contrato, registre presenca/falta por dia e feche a estimativa do mes com desconto de faltas e INSS."
+        eyebrow="Funcionários e Folha"
+        title="Ponto, presença, faltas e pagamento"
+        description="Cadastre equipe CLT e contrato, registre presença/falta por dia e feche a estimativa do mês com desconto de faltas e INSS."
         action={
           <Button
             type="button"
@@ -2288,7 +2318,7 @@ const Dashboard = () => {
         }
       />
 
-      <SurfacePanel title="Cadastro de funcionario">
+      <SurfacePanel title="Cadastro de funcionário">
         <form onSubmit={submitEmployee} className="grid gap-3 xl:grid-cols-6">
           <Input
             placeholder="Nome completo"
@@ -2307,7 +2337,7 @@ const Dashboard = () => {
             className={pageFieldClass}
           />
           <Input
-            placeholder="Funcao"
+            placeholder="Função"
             value={employeeForm.role}
             onChange={(event) =>
               setEmployeeForm({ ...employeeForm, role: event.target.value })
@@ -2318,7 +2348,7 @@ const Dashboard = () => {
             type="number"
             min="0"
             step="0.01"
-            placeholder="Salario"
+            placeholder="Salário"
             value={employeeForm.salary}
             onChange={(event) =>
               setEmployeeForm({ ...employeeForm, salary: event.target.value })
@@ -2367,7 +2397,7 @@ const Dashboard = () => {
             className={pageFieldClass}
           />
           <Input
-            placeholder="Observacoes (opcional)"
+            placeholder="Observações (opcional)"
             value={employeeForm.notes}
             onChange={(event) =>
               setEmployeeForm({ ...employeeForm, notes: event.target.value })
@@ -2384,7 +2414,7 @@ const Dashboard = () => {
       </SurfacePanel>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
-        <SurfacePanel title="Registro de presenca/falta">
+        <SurfacePanel title="Registro de presença/falta">
           <form
             onSubmit={submitAttendance}
             className="grid gap-3 md:grid-cols-4"
@@ -2399,7 +2429,7 @@ const Dashboard = () => {
                 })
               }
             >
-              <option value="">Selecione funcionario</option>
+              <option value="">Selecione funcionário</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.name} - {employee.role}
@@ -2428,7 +2458,7 @@ const Dashboard = () => {
                 })
               }
             >
-              <option value="present">Presenca</option>
+              <option value="present">Presença</option>
               <option value="absent">Falta</option>
             </select>
             <Button type="submit" className={`h-12 ${actionButtonClass}`}>
@@ -2437,7 +2467,7 @@ const Dashboard = () => {
           </form>
           <div className="mt-4">
             <Input
-              placeholder="Observacao do ponto (opcional)"
+              placeholder="Observação do ponto (opcional)"
               value={attendanceForm.notes}
               onChange={(event) =>
                 setAttendanceForm({
@@ -2452,8 +2482,8 @@ const Dashboard = () => {
             {attendanceRecords.slice(0, 5).map((record) => (
               <InfoRow
                 key={record.id}
-                title={`${record.employee_name || "Funcionario"} - ${
-                  record.status === "absent" ? "Falta" : "Presenca"
+                title={`${record.employee_name || "Funcionário"} - ${
+                  record.status === "absent" ? "Falta" : "Presença"
                 }`}
                 subtitle={new Date(record.date).toLocaleDateString("pt-BR")}
                 value={record.employee_type === "clt" ? "CLT" : "Contrato"}
@@ -2462,8 +2492,8 @@ const Dashboard = () => {
             {!attendanceRecords.length && (
               <CenteredEmptyState
                 icon={CalendarDays}
-                title="Sem registros no periodo"
-                description="Registre presenca e falta para alimentar o calculo da folha."
+                title="Sem registros no período"
+                description="Registre presença e falta para alimentar o cálculo da folha."
               />
             )}
           </div>
@@ -2477,11 +2507,11 @@ const Dashboard = () => {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <StatMiniCard
-                label="Funcionarios"
+                label="Funcionários"
                 value={String(payrollSummary.employees || 0)}
               />
               <StatMiniCard
-                label="Faltas no mes"
+                label="Faltas no mês"
                 value={String(payrollSummary.absent_days || 0)}
               />
               <StatMiniCard
@@ -2491,7 +2521,7 @@ const Dashboard = () => {
                 )}
               />
               <StatMiniCard
-                label="Liquido estimado"
+                label="Líquido estimado"
                 value={currencyFormatter.format(
                   payrollSummary.net_payable || 0,
                 )}
@@ -2541,7 +2571,7 @@ const Dashboard = () => {
                 setPayrollPaymentCycleFilter(event.target.value)
               }
             >
-              <option value="all">Ciclo: padrao</option>
+              <option value="all">Ciclo: padrão</option>
               <option value="monthly">Mensal</option>
               <option value="biweekly">Quinzenal</option>
             </select>
@@ -2587,21 +2617,21 @@ const Dashboard = () => {
           ) : (
             <CenteredEmptyState
               icon={Users2}
-              title="Nenhum funcionario cadastrado"
-              description="Cadastre os funcionarios para iniciar o controle de ponto e folha."
+              title="Nenhum funcionário cadastrado"
+              description="Cadastre os funcionários para iniciar o controle de ponto e folha."
             />
           )}
         </div>
       </SurfacePanel>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SurfacePanel title="Relatorio CLT">
+        <SurfacePanel title="Relatório CLT">
           {payrollGroups.clt?.length ? (
             <div className="space-y-3">
               {payrollGroups.clt.map((item) => (
                 <InfoRow
                   key={item.employee_id}
-                  title={`${item.name} • Presencas: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  title={`${item.name} • Presenças: ${item.present_days} | Faltas: ${item.absent_days}`}
                   subtitle={`INSS ${item.inss_percent}% • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}
@@ -2614,18 +2644,18 @@ const Dashboard = () => {
           ) : (
             <CenteredEmptyState
               icon={CalendarDays}
-              title="Sem dados CLT neste periodo"
-              description="Nao ha funcionarios CLT ou registros para o mes selecionado."
+              title="Sem dados CLT neste período"
+              description="Não ha funcionários CLT ou registros para o mês selecionado."
             />
           )}
         </SurfacePanel>
-        <SurfacePanel title="Relatorio Contrato/Terceirizado">
+        <SurfacePanel title="Relatório Contrato/Terceirizado">
           {payrollGroups.contract?.length ? (
             <div className="space-y-3">
               {payrollGroups.contract.map((item) => (
                 <InfoRow
                   key={item.employee_id}
-                  title={`${item.name} • Presencas: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  title={`${item.name} • Presenças: ${item.present_days} | Faltas: ${item.absent_days}`}
                   subtitle={`Diaria ${currencyFormatter.format(item.daily_rate || 0)} • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}
@@ -2638,8 +2668,8 @@ const Dashboard = () => {
           ) : (
             <CenteredEmptyState
               icon={CalendarDays}
-              title="Sem dados de contrato neste periodo"
-              description="Nao ha terceirizados ou registros para o mes selecionado."
+              title="Sem dados de contrato neste período"
+              description="Não ha terceirizados ou registros para o mês selecionado."
             />
           )}
         </SurfacePanel>
@@ -2658,9 +2688,9 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Relatorios"
-        title="Analises detalhadas e demonstrativos financeiros"
-        description="A dinamica e mais limpa, mas a leitura segue moderna: relatorios, previsoes, importacao de extrato e economia sugerida."
+        eyebrow="Relatórios"
+        title="Análises detalhadas e demonstrativos financeiros"
+        description="A dinâmica é mais limpa, mas a leitura segue moderna: relatórios, previsões, importação de extrato e economia sugerida."
         action={
           <Button
             type="button"
@@ -2717,7 +2747,7 @@ const Dashboard = () => {
 
       <div className="grid gap-4 xl:grid-cols-4">
         <StatCard
-          title="Balanco do periodo"
+          title="Balanço do período"
           value={currencyFormatter.format(report?.balance || 0)}
           direction={(report?.balance || 0) >= 0 ? "up" : "down"}
         />
@@ -2785,13 +2815,13 @@ const Dashboard = () => {
                 "O Nano cruza receitas, despesas e contas para sugerir ajustes de rota no financeiro."}
             </p>
             <div className="rounded-[24px] border border-[#f0d7d7] bg-[#fff4f4] p-4 text-[#7f1d1d]">
-              Total de transacoes no periodo: {report?.transactions_count || 0}.
+              Total de transações no período: {report?.transactions_count || 0}.
               Total de contas registradas: {report?.bills_count || 0}.
             </div>
           </div>
         </SurfacePanel>
 
-        <SurfacePanel title="Importacoes recentes">
+        <SurfacePanel title="Importações recentes">
           {statementImportResult?.preview_rows?.length ? (
             <div className="space-y-3">
               {statementImportResult.preview_rows
@@ -2848,13 +2878,13 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Configuracoes da Empresa"
-        title="Gerencie as informacoes e preferencias da empresa"
-        description="A tela segue a organizacao do Fingu, mas mantendo a estrutura moderna do Nano e a futura expansao para automacoes."
+        eyebrow="Configurações da Empresa"
+        title="Gerencie as informações e preferências da empresa"
+        description="A tela segue a organização do Fingu, mas mantendo a estrutura moderna do Nano e a futura expansão para automações."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <SurfacePanel title="Informacoes da empresa">
+        <SurfacePanel title="Informações da empresa">
           <form onSubmit={saveCompanySettings} className="grid gap-4">
             <Input
               placeholder="Nome da empresa"
@@ -2866,7 +2896,7 @@ const Dashboard = () => {
             />
             <div className="grid gap-3 md:grid-cols-[1fr_0.8fr_0.8fr]">
               <Input
-                placeholder="Subdominio"
+                placeholder="Subdomínio"
                 value={companyForm.subdomain}
                 onChange={(event) =>
                   setCompanyForm({
@@ -2912,9 +2942,9 @@ const Dashboard = () => {
                   })
                 }
               >
-                <option value="servicos">Servicos</option>
-                <option value="comercio">Comercio</option>
-                <option value="industria">Industria</option>
+                <option value="servicos">Serviços</option>
+                <option value="comercio">Comércio</option>
+                <option value="industria">Indústria</option>
                 <option value="digital">Digital</option>
               </select>
               <select
@@ -2934,7 +2964,7 @@ const Dashboard = () => {
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <Input
-                placeholder="Endereco"
+                placeholder="Endereço"
                 value={companyForm.address}
                 onChange={(event) =>
                   setCompanyForm({
@@ -2996,7 +3026,7 @@ const Dashboard = () => {
               />
             </div>
             <Textarea
-              placeholder="Descricao da empresa"
+              placeholder="Descrição da empresa"
               value={companyForm.description}
               onChange={(event) =>
                 setCompanyForm({
@@ -3008,7 +3038,7 @@ const Dashboard = () => {
             />
             <div className="flex justify-end">
               <Button type="submit" className={`h-12 ${actionButtonClass}`}>
-                Salvar alteracoes
+                Salvar alterações
               </Button>
             </div>
           </form>
@@ -3037,10 +3067,10 @@ const Dashboard = () => {
             </div>
           </SurfacePanel>
 
-          <SurfacePanel title="Registros de acoes">
+          <SurfacePanel title="Registros de ações">
             <div className="space-y-3">
               <InfoRow
-                title="Ultima atualizacao do workspace"
+                title="Ultima atualização do workspace"
                 subtitle="Salve os dados acima para manter a empresa alinhada"
                 value={new Date(
                   currentWorkspace?.created_at || new Date(),
@@ -3069,9 +3099,9 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Perfil do Usuario"
-        title="Gerencie suas informacoes pessoais e seguranca"
-        description="A tela fica mais limpa e clara, no mesmo ritmo do Fingu, mas pronta para evoluir junto com as automacoes do Nano."
+        eyebrow="Perfil do Usuário"
+        title="Gerencie suas informações pessoais e segurança"
+        description="A tela fica mais limpa e clara, no mesmo ritmo do Fingu, mas pronta para evoluir junto com as automações do Nano."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -3098,7 +3128,7 @@ const Dashboard = () => {
 
             <div className="grid gap-3 md:grid-cols-2">
               <Input
-                placeholder="Nome de exibicao"
+                placeholder="Nome de exibição"
                 value={profileForm.name}
                 onChange={(event) =>
                   setProfileForm({ ...profileForm, name: event.target.value })
@@ -3137,17 +3167,17 @@ const Dashboard = () => {
 
             <div className="flex justify-end">
               <Button type="submit" className={`h-12 ${actionButtonClass}`}>
-                Salvar alteracoes
+                Salvar alterações
               </Button>
             </div>
           </form>
         </SurfacePanel>
 
-        <SurfacePanel title="Seguranca">
+        <SurfacePanel title="Segurança">
           <div className="space-y-4">
             <SecurityCard
-              title="Autenticacao em dois fatores"
-              description="Proteja sua conta com uma segunda camada de seguranca."
+              title="Autenticação em dois fatores"
+              description="Proteja sua conta com uma segunda camada de segurança."
               actionLabel="Ativar"
             />
             <SecurityCard
@@ -3172,17 +3202,17 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Configuracoes"
-        title="Rotina, categorias e automacoes do Nano"
-        description="Aqui entra a parte mais moderna da nossa logica: classificacao, alertas, lembretes e preparacao do assistente."
+        eyebrow="Configurações"
+        title="Rotina, categorias e automações do Nano"
+        description="Aqui entra a parte mais moderna da nossa lógica: classificação, alertas, lembretes e preparação do assistente."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-        <SurfacePanel title="Preferencias da plataforma">
+        <SurfacePanel title="Preferências da plataforma">
           <form onSubmit={savePlatformSettings} className="space-y-5">
             <ToggleRow
-              label="Notificacoes do sistema"
-              helper="Avisos de vencimento, extratos e movimentacoes importantes."
+              label="Notificações do sistema"
+              helper="Avisos de vencimento, extratos e movimentações importantes."
               checked={settingsForm.notifications}
               onChange={() =>
                 setSettingsForm((current) => ({
@@ -3204,7 +3234,7 @@ const Dashboard = () => {
             />
             <ToggleRow
               label="Alertas por WhatsApp"
-              helper="Prepara a esteira de cobranca e lembrete automatizado."
+              helper="Prepara a esteira de cobrança e lembrete automatizado."
               checked={settingsForm.whatsapp_alerts}
               onChange={() =>
                 setSettingsForm((current) => ({
@@ -3225,7 +3255,7 @@ const Dashboard = () => {
             </div>
 
             <Button type="submit" className={`h-12 ${actionButtonClass}`}>
-              Salvar preferencias
+              Salvar preferências
             </Button>
           </form>
         </SurfacePanel>
@@ -3317,14 +3347,14 @@ const Dashboard = () => {
                 <CenteredEmptyState
                   icon={Target}
                   title="Nenhuma categoria criada"
-                  description="As categorias ajudam o Nano a destacar onde a margem esta sendo pressionada."
+                  description="As categorias ajudam o Nano a destacar onde a margem está sendo pressionada."
                 />
               )}
             </div>
           </SurfacePanel>
 
           <SurfacePanel
-            title="Lembretes e automacoes"
+            title="Lembretes e automações"
             action={
               <Button
                 type="button"
@@ -3332,7 +3362,7 @@ const Dashboard = () => {
                 onClick={generateRecurringBills}
                 className="h-11 rounded-2xl border-[#eadfd6] bg-white px-4 text-[#4b4039] hover:bg-[#fbf4ef]"
               >
-                Gerar recorrencias
+                Gerar recorrências
               </Button>
             }
           >
@@ -3341,7 +3371,7 @@ const Dashboard = () => {
               className="grid gap-3 md:grid-cols-[1fr_0.8fr_auto]"
             >
               <Input
-                placeholder="Titulo do lembrete"
+                placeholder="Título do lembrete"
                 value={reminderForm.title}
                 onChange={(event) =>
                   setReminderForm({
@@ -3396,14 +3426,14 @@ const Dashboard = () => {
                 <CenteredEmptyState
                   icon={Bell}
                   title="Nenhum lembrete criado"
-                  description="Use esta area para estruturar a agenda financeira do Nano."
+                  description="Use esta área para estruturar a agenda financeira do Nano."
                 />
               )}
 
               {[...automationInsights].slice(0, 2).map((item, index) => (
                 <AlertRow
                   key={`${item.type || "auto"}-${index}`}
-                  title={item.label || "Automacao sugerida"}
+                  title={item.label || "Automação sugerida"}
                   message={item.message}
                   tone="neutral"
                 />
@@ -3496,19 +3526,21 @@ const Dashboard = () => {
 
   if (!currentWorkspace) {
     return (
-      <div className={`min-h-screen ${dashboardTheme.layout} px-6 py-10 text-zinc-100`}>
+      <div
+        className={`min-h-screen ${dashboardTheme.layout} px-6 py-10 text-zinc-100`}
+      >
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="space-y-3">
             <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500">
               Workspace
             </p>
             <h1 className="text-4xl font-semibold text-white">
-              Crie ou selecione uma empresa para comecar
+              Crie ou selecione uma empresa para começar
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-zinc-400">
-              O novo layout do Nano fica muito melhor quando o workspace ja esta
-              criado, porque ai o painel monta dashboard, movimentacoes e
-              relatorios com base no seu contexto.
+              O novo layout do Nano fica muito melhor quando o workspace já está
+              criado, porque aí o painel monta dashboard, movimentações e
+              relatórios com base no seu contexto.
             </p>
           </div>
 
@@ -3526,7 +3558,7 @@ const Dashboard = () => {
                 className={pageFieldClass}
               />
               <Input
-                placeholder="Subdominio"
+                placeholder="Subdomínio"
                 value={workspaceForm.subdomain}
                 onChange={(event) =>
                   setWorkspaceForm({
@@ -3537,7 +3569,7 @@ const Dashboard = () => {
                 className={pageFieldClass}
               />
               <Textarea
-                placeholder="Descricao"
+                placeholder="Descrição"
                 value={workspaceForm.description}
                 onChange={(event) =>
                   setWorkspaceForm({
@@ -3590,7 +3622,9 @@ const Dashboard = () => {
           }`}
         >
           {activeSection !== "assistant" && (
-            <div className={`${dashboardTheme.panel} ${dashboardTheme.glow} mb-6 px-5 py-4`}>
+            <div
+              className={`${dashboardTheme.panel} ${dashboardTheme.glow} mb-6 px-5 py-4`}
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
@@ -3632,7 +3666,9 @@ const Dashboard = () => {
           )}
 
           {loading ? (
-            <div className={`${dashboardTheme.panel} px-6 py-16 text-center text-zinc-400`}>
+            <div
+              className={`${dashboardTheme.panel} px-6 py-16 text-center text-zinc-400`}
+            >
               Carregando o novo cockpit financeiro do Nano...
             </div>
           ) : activeSection === "assistant" ? (
@@ -3690,7 +3726,9 @@ const SurfacePanel = ({ title, action, children }) => (
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           {title && (
-            <h3 className="text-[18px] font-semibold tracking-tight text-white">{title}</h3>
+            <h3 className="text-[18px] font-semibold tracking-tight text-white">
+              {title}
+            </h3>
           )}
         </div>
         {action}
@@ -3738,12 +3776,14 @@ const StatCard = ({ title, value, direction, trendData = [] }) => {
       <Wallet className="h-4.5 w-4.5 text-amber-300" />
     );
 
-  const sparkline = trendData.slice(-6).map((item) =>
-    direction === "down" ? item.expense : item.income,
-  );
+  const sparkline = trendData
+    .slice(-6)
+    .map((item) => (direction === "down" ? item.expense : item.income));
   const maxSpark = Math.max(...sparkline, 1);
   return (
-    <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-5 transition duration-300 hover:-translate-y-1`}>
+    <Card
+      className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-5 transition duration-300 hover:-translate-y-1`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-400">{title}</p>
@@ -3776,14 +3816,20 @@ const StatCard = ({ title, value, direction, trendData = [] }) => {
 };
 
 const StatMiniCard = ({ label, value }) => (
-  <div className={`${dashboardTheme.panelSecondary} ${dashboardTheme.glow} p-4`}>
-    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
+  <div
+    className={`${dashboardTheme.panelSecondary} ${dashboardTheme.glow} p-4`}
+  >
+    <p className="text-xs uppercase tracking-[0.16em] text-slate-400">
+      {label}
+    </p>
     <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
   </div>
 );
 
 const GhostChip = ({ children }) => (
-  <span className={`inline-flex h-11 items-center ${dashboardTheme.panelSecondary} px-4 text-sm font-medium text-zinc-300`}>
+  <span
+    className={`inline-flex h-11 items-center ${dashboardTheme.panelSecondary} px-4 text-sm font-medium text-zinc-300`}
+  >
     {children}
   </span>
 );
@@ -3804,9 +3850,22 @@ const TrendChart = ({ data }) => {
                 <stop offset="95%" stopColor="#fb7185" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
-            <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
-            <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              stroke="rgba(148,163,184,0.10)"
+            />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: "#94a3b8", fontSize: 12 }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              tick={{ fill: "#64748b", fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+            />
             <RechartsTooltip
               contentStyle={{
                 background: "rgba(2,6,23,0.82)",
@@ -3858,9 +3917,22 @@ const CategoryChart = ({ data }) => (
   <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
-        <XAxis dataKey="category" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
-        <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="3 3"
+          stroke="rgba(148,163,184,0.10)"
+        />
+        <XAxis
+          dataKey="category"
+          tick={{ fill: "#94a3b8", fontSize: 12 }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          tick={{ fill: "#64748b", fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+        />
         <RechartsTooltip
           contentStyle={{
             background: "rgba(2,6,23,0.82)",
@@ -3880,9 +3952,22 @@ const CashflowChart = ({ data }) => (
   <div className={`${dashboardTheme.panelSecondary} h-[300px] p-4`}>
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(148,163,184,0.10)" />
-        <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 12 }} tickLine={false} axisLine={false} />
-        <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickLine={false} axisLine={false} />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="3 3"
+          stroke="rgba(148,163,184,0.10)"
+        />
+        <XAxis
+          dataKey="label"
+          tick={{ fill: "#94a3b8", fontSize: 12 }}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
+          tick={{ fill: "#64748b", fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+        />
         <RechartsTooltip
           contentStyle={{
             background: "rgba(2,6,23,0.82)",
@@ -3924,7 +4009,11 @@ const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
           } ${day.isToday ? "bg-[linear-gradient(180deg,rgba(127,29,29,0.34),rgba(15,23,42,0.7))] shadow-[0_18px_36px_rgba(127,29,29,0.14),inset_0_1px_0_rgba(255,255,255,0.05)]" : ""} ${selectedDate === day.date ? "ring-1 ring-red-300/40" : ""}`}
         >
           <div className="flex items-center justify-between">
-            <span className={day.isToday ? "font-semibold text-red-100" : "text-slate-200"}>
+            <span
+              className={
+                day.isToday ? "font-semibold text-red-100" : "text-slate-200"
+              }
+            >
               {day.label}
             </span>
             {day.dueCount > 0 && (
@@ -3948,9 +4037,21 @@ const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
             </div>
           </div>
           <div className="mt-3 flex items-center gap-1.5 text-[10px]">
-            {day.hasReminder && <span className="rounded-full bg-amber-500/25 px-1 text-amber-300">L</span>}
-            {day.hasActivity && <span className="rounded-full bg-emerald-500/25 px-1 text-emerald-300">A</span>}
-            {day.hasDue && <span className="rounded-full bg-rose-500/25 px-1 text-rose-300">V</span>}
+            {day.hasReminder && (
+              <span className="rounded-full bg-amber-500/25 px-1 text-amber-300">
+                L
+              </span>
+            )}
+            {day.hasActivity && (
+              <span className="rounded-full bg-emerald-500/25 px-1 text-emerald-300">
+                A
+              </span>
+            )}
+            {day.hasDue && (
+              <span className="rounded-full bg-rose-500/25 px-1 text-rose-300">
+                V
+              </span>
+            )}
           </div>
         </div>
       ))}
@@ -3962,7 +4063,7 @@ const CalendarDaySummary = ({ day, formatter }) => {
   if (!day) {
     return (
       <p className="text-sm text-zinc-400">
-        Selecione um dia no calendario para ver movimentacoes e lembretes.
+        Selecione um dia no calendário para ver movimentações e lembretes.
       </p>
     );
   }
@@ -3970,15 +4071,24 @@ const CalendarDaySummary = ({ day, formatter }) => {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatMiniCard label="Entradas" value={formatter.format(day.income || 0)} />
-        <StatMiniCard label="Saidas" value={formatter.format(day.expense || 0)} />
-        <StatMiniCard label="Saldo liquido" value={formatter.format(day.net || 0)} />
+        <StatMiniCard
+          label="Entradas"
+          value={formatter.format(day.income || 0)}
+        />
+        <StatMiniCard
+          label="Saidas"
+          value={formatter.format(day.expense || 0)}
+        />
+        <StatMiniCard
+          label="Saldo liquido"
+          value={formatter.format(day.net || 0)}
+        />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
         <div className={`${dashboardTheme.panelSecondary} p-4`}>
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-            Movimentacoes
+            Movimentações
           </p>
           <p className="mt-2 text-2xl font-semibold text-white">
             {day.transactions?.length || 0}
@@ -4022,7 +4132,9 @@ const SummaryRow = ({
 );
 
 const InfoRow = ({ title, subtitle, value }) => (
-  <div className={`flex items-center justify-between gap-4 ${dashboardTheme.panelSecondary} px-4 py-4`}>
+  <div
+    className={`flex items-center justify-between gap-4 ${dashboardTheme.panelSecondary} px-4 py-4`}
+  >
     <div>
       <p className="font-semibold text-white">{title}</p>
       <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
@@ -4094,7 +4206,9 @@ const LargeEmptyState = ({
 );
 
 const OnboardingRail = ({ steps, percent, completedSteps }) => (
-  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} sticky top-4 p-5`}>
+  <Card
+    className={`${dashboardTheme.panel} ${dashboardTheme.glow} sticky top-4 p-5`}
+  >
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-200">
@@ -4114,7 +4228,10 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
 
     <div className="mt-5 space-y-3">
       {steps.map((step) => (
-        <div key={step.label} className="rounded-[22px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm">
+        <div
+          key={step.label}
+          className="rounded-[22px] border border-slate-700/30 bg-slate-950/55 p-4 backdrop-blur-sm"
+        >
           <div className="flex items-start gap-3">
             <span
               className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
@@ -4129,7 +4246,7 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
               <p className="font-medium text-white">{step.label}</p>
               {!step.done && (
                 <p className="mt-1 text-sm text-slate-400">
-                  Esse ponto ainda esta pendente.
+                  Esse ponto ainda está pendente.
                 </p>
               )}
             </div>
