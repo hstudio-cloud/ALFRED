@@ -32,6 +32,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   const [inputLevel, setInputLevel] = useState(0.08);
   const [currentLevel, setCurrentLevel] = useState(0.08);
   const [error, setError] = useState(null);
+  const [chatError, setChatError] = useState(null);
 
   const providerRef = useRef(null);
   const recognizerRef = useRef(null);
@@ -162,10 +163,11 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         const response = await assistantService.getHistory();
         if (mounted) {
           setChatHistory(response || []);
+          setChatError(null);
         }
       } catch (fetchError) {
         if (mounted) {
-          setError(fetchError);
+          setChatError(fetchError);
           updateVoiceState('error', 'Nao consegui carregar o historico do Nano.');
         }
       }
@@ -425,6 +427,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       setChatHistory((prev) => [...prev, assistantMessage]);
       setLastAssistantReply(assistantMessage?.content || '');
       setError(null);
+      setChatError(null);
       scheduleTranscriptCleanup();
 
       if (onAfterMessage) {
@@ -496,7 +499,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         updateVoiceState('idle', 'Mensagem concluida. Voce pode enviar outra agora.');
       }
     } catch (requestError) {
-      setError(requestError);
+      setChatError(requestError);
       setChatHistory((prev) => [
         ...prev,
         {
@@ -879,6 +882,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     lastVoiceCommand,
     lastAssistantReply,
     error,
+    chatError,
     startListening,
     stopListening,
     cancelVoiceCommand,

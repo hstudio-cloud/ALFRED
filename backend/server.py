@@ -18,6 +18,7 @@ from routes import (
     accounts_routes,
     assistant_routes,
     auth_routes,
+    billing_routes,
     task_routes,
     chat_routes,
     dashboard_routes,
@@ -151,6 +152,7 @@ app.include_router(api_router)
 app.include_router(auth_routes.router)
 app.include_router(workspace_routes.router)
 app.include_router(client_routes.router)
+app.include_router(billing_routes.router)
 app.include_router(task_routes.router)
 app.include_router(tasks_enhanced_routes.router)
 app.include_router(chat_routes.router)

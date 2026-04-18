@@ -52,6 +52,7 @@ const NanoChatPanel = ({
   isWakeArmed,
   voiceSupported,
   error,
+  chatError,
   onStartVoice,
   onStopVoice,
   onCancelVoiceCommand,
@@ -73,6 +74,7 @@ const NanoChatPanel = ({
       }),
     [isListening, isProcessing, isSpeaking, partialTranscript, finalTranscript]
   );
+  const voiceErrorDetail = error?.message || error?.error || "";
 
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -192,7 +194,10 @@ const NanoChatPanel = ({
           className="nano-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pb-40 pt-5"
         >
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-            <div className="nano-floating-pill inline-flex w-fit max-w-[420px] rounded-[20px] border border-red-500/14 bg-red-500/[0.07] px-4 py-3 text-sm text-zinc-100 shadow-[0_12px_28px_rgba(127,29,29,0.14)] backdrop-blur-sm">
+            <div
+              title={voiceErrorDetail || undefined}
+              className="nano-floating-pill inline-flex w-fit max-w-[420px] rounded-[20px] border border-red-500/14 bg-red-500/[0.07] px-4 py-3 text-sm text-zinc-100 shadow-[0_12px_28px_rgba(127,29,29,0.14)] backdrop-blur-sm"
+            >
               {voiceStatus || liveStatus || "Pronto para ouvir e organizar seu financeiro."}
             </div>
 
@@ -260,7 +265,7 @@ const NanoChatPanel = ({
               </div>
             )}
 
-            {error && (
+            {chatError && (
               <div className="flex justify-start">
                 <div className="flex max-w-[640px] items-start gap-3 rounded-[24px_24px_24px_14px] bg-rose-500/[0.08] px-5 py-4 text-sm text-rose-100 shadow-[0_14px_30px_rgba(127,29,29,0.15)]">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

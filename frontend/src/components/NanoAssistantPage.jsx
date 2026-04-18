@@ -31,6 +31,7 @@ const NanoAssistantPage = ({
     isWakeArmed,
     isAwaitingVoiceCommand,
     error,
+    chatError,
     startListening,
     stopListening,
     cancelVoiceCommand,
@@ -81,6 +82,7 @@ const NanoAssistantPage = ({
         isAwaitingVoiceCommand={isAwaitingVoiceCommand}
         voiceSupported={voiceSupported}
         error={error}
+        chatError={chatError}
         onStartVoice={startListening}
         onStopVoice={stopListening}
         onCancelVoiceCommand={cancelVoiceCommand}

@@ -11,3 +11,4 @@ email-validator==2.3.0
 python-multipart==0.0.22
 openai==1.99.9
 httpx==0.28.1
+stripe==14.4.0
