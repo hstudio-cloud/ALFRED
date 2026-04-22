@@ -1,12 +1,17 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
+import { useAuth } from "../context/AuthContext";
 
 const ComparisonSection = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
   return (
     <section className="px-6 py-20">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-16 text-center space-y-4">
+        <div className="mb-16 space-y-4 text-center">
           <p className="text-sm font-semibold uppercase tracking-wider text-red-300">
             A diferenca
           </p>
@@ -34,12 +39,12 @@ const ComparisonSection = () => {
             <div className="space-y-3">
               <div className="rounded-lg border border-slate-700/30 bg-slate-900/50 p-4">
                 <p className="text-sm text-slate-400">
-                  "Claro. Aqui estão algumas sugestões para organizar suas
+                  "Claro. Aqui estao algumas sugestoes para organizar suas
                   rotinas..."
                 </p>
               </div>
               <div className="text-center text-sm text-slate-500">
-                Você ainda precisa fazer tudo manualmente
+                Voce ainda precisa fazer tudo manualmente
               </div>
             </div>
           </div>
@@ -48,7 +53,7 @@ const ComparisonSection = () => {
             <div className="mb-6 text-center">
               <div className="text-lg font-bold text-red-300">Nano IA</div>
               <div className="mt-2 text-sm text-red-200/70">
-                Organiza e executa para você
+                Organiza e executa para voce
               </div>
             </div>
             <div className="space-y-3 rounded-lg border border-red-500/20 bg-slate-900/50 p-4">
@@ -69,8 +74,9 @@ const ComparisonSection = () => {
           <Button
             size="lg"
             className="rounded-full bg-white px-8 py-6 text-lg font-semibold text-slate-900 hover:bg-slate-100"
+            onClick={() => navigate(isAuthenticated ? "/billing" : "/register")}
           >
-            Começar agora
+            Comecar agora
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>

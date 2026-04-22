@@ -5,10 +5,16 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import NanoMark from "./NanoMark";
 import { mockData } from "../data/mock";
+import { useAuth } from "../context/AuthContext";
 
 const HeroSection = () => {
   const { hero } = mockData;
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handlePrimaryCta = () => {
+    navigate(isAuthenticated ? "/billing" : "/register");
+  };
 
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-20">
@@ -63,7 +69,7 @@ const HeroSection = () => {
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Button
             size="lg"
-            onClick={() => navigate("/login")}
+            onClick={handlePrimaryCta}
             className="rounded-full bg-white px-8 py-6 text-lg font-semibold text-slate-900 shadow-lg transition-all hover:bg-slate-100 hover:shadow-xl"
           >
             {hero.ctaPrimary}

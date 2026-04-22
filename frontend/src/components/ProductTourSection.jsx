@@ -1,12 +1,16 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, MessageCircle, Mic, Zap } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { mockData } from "../data/mock";
+import { useAuth } from "../context/AuthContext";
 
 const ProductTourSection = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { productTabs, chatFeatures } = mockData;
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   return (
     <section id="product-tour" className="px-6 py-20">
@@ -67,7 +71,10 @@ const ProductTourSection = () => {
                   </div>
                 ))}
               </div>
-              <Button className="rounded-full bg-red-500 px-6 py-6 text-white hover:bg-red-600">
+              <Button
+                className="rounded-full bg-red-500 px-6 py-6 text-white hover:bg-red-600"
+                onClick={() => navigate(isAuthenticated ? "/billing" : "/register")}
+              >
                 Experimentar
               </Button>
             </div>

@@ -27,7 +27,7 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Erro",
-        description: "As senhas não coincidem.",
+        description: "As senhas nao coincidem.",
         variant: "destructive",
       });
       return;
@@ -44,9 +44,9 @@ const Register = () => {
     if (result.success) {
       toast({
         title: "Conta criada",
-        description: "Seu ambiente no Nano IA já está pronto.",
+        description: "Seu ambiente no Nano IA ja esta pronto. Agora falta ativar o plano.",
       });
-      navigate("/dashboard");
+      navigate("/billing");
     } else {
       toast({
         title: "Erro no registro",
@@ -73,7 +73,7 @@ const Register = () => {
             </div>
             <h1 className="text-3xl font-semibold text-white">Criar conta</h1>
             <p className="mt-2 text-slate-400">
-              Comece seu painel de pagamentos e gestão financeira.
+              Comece seu painel de pagamentos e gestao financeira.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ const Register = () => {
           </form>
 
           <div className="mt-6 text-center text-sm text-slate-400">
-            Já tem uma conta?{" "}
+            Ja tem uma conta?{" "}
             <Link to="/login" className="text-red-300 hover:text-red-200">
               Entrar
             </Link>
@@ -195,7 +195,7 @@ const Register = () => {
             </h2>
             <p className="max-w-xl text-lg leading-8 text-slate-300">
               O Nano ja nasce com foco em fluxo de caixa, categorias, lembretes
-              e separação entre operação pessoal e empresarial.
+              e separacao entre operacao pessoal e empresarial.
             </p>
           </div>
 
@@ -206,7 +206,7 @@ const Register = () => {
                 Categorias vivas
               </h3>
               <p className="mt-2 text-sm text-slate-400">
-                Organize cartão, Pix, assinaturas, equipe, impostos e o que mais
+                Organize cartao, Pix, assinaturas, equipe, impostos e o que mais
                 fizer sentido para voce.
               </p>
             </Card>
@@ -214,11 +214,11 @@ const Register = () => {
             <Card className="border-red-500/10 bg-slate-950/55 p-5 backdrop-blur">
               <Building2 className="mb-4 h-6 w-6 text-red-200" />
               <h3 className="text-base font-semibold text-white">
-                Separação natural
+                Separacao natural
               </h3>
               <p className="mt-2 text-sm text-slate-400">
-                Controle gastos pessoais e da empresa sem misturar a visão do
-                negócio.
+                Controle gastos pessoais e da empresa sem misturar a visao do
+                negocio.
               </p>
             </Card>
           </div>

@@ -22,6 +22,7 @@ import financeService from "../services/financeService";
 import openFinanceService from "../services/openFinanceService";
 import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
+import billingService from "../services/billingService";
 import { API_BASE_URL } from "../config/env";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -321,6 +322,8 @@ const Dashboard = () => {
   const [openFinanceAccounts, setOpenFinanceAccounts] = useState([]);
   const [openFinanceSyncingId, setOpenFinanceSyncingId] = useState(null);
   const [pluggyWidgetSession, setPluggyWidgetSession] = useState(null);
+  const [billingStatus, setBillingStatus] = useState(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
@@ -358,6 +361,27 @@ const Dashboard = () => {
   useEffect(() => {
     activeSectionRef.current = activeSection;
   }, [activeSection]);
+
+  const loadBillingStatus = useCallback(
+    async (workspaceId) => {
+      if (!workspaceId) {
+        setBillingStatus(null);
+        return;
+      }
+
+      setBillingLoading(true);
+      try {
+        const response = await billingService.getSubscription(workspaceId);
+        setBillingStatus(response);
+      } catch (error) {
+        console.error("Error loading billing status:", error);
+        setBillingStatus(null);
+      } finally {
+        setBillingLoading(false);
+      }
+    },
+    [],
+  );
 
   const loadAll = useCallback(
     async (workspaceId) => {
@@ -552,6 +576,12 @@ const Dashboard = () => {
       loadAll(currentWorkspace.id);
     }
   }, [currentWorkspace?.id, loadAll]);
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      loadBillingStatus(currentWorkspace.id);
+    }
+  }, [currentWorkspace?.id, loadBillingStatus]);
 
   const loadPayrollData = useCallback(
     async (workspaceId) => {
@@ -3524,6 +3554,19 @@ const Dashboard = () => {
     assistant: renderAssistant(),
   };
 
+  const subscriptionAccess = billingStatus?.access;
+  const subscriptionRecord = billingStatus?.subscription;
+  const shouldShowBillingCta =
+    Boolean(currentWorkspace?.id) &&
+    !billingLoading &&
+    !subscriptionAccess?.has_access;
+  const billingHeadline = subscriptionAccess?.status
+    ? `Status atual: ${subscriptionAccess.status}`
+    : "Ative seu plano para liberar o uso completo do Nano.";
+  const billingDescription = subscriptionRecord
+    ? "Seu workspace ja iniciou um fluxo de assinatura, mas o acesso total ainda depende da confirmacao real do pagamento via webhook."
+    : "Seu workspace ja foi criado. O proximo passo e ativar a assinatura para liberar o plano no backend e manter o acesso regular.";
+
   if (!currentWorkspace) {
     return (
       <div
@@ -3622,9 +3665,47 @@ const Dashboard = () => {
           }`}
         >
           {activeSection !== "assistant" && (
-            <div
-              className={`${dashboardTheme.panel} ${dashboardTheme.glow} mb-6 px-5 py-4`}
-            >
+            <div className="mb-6 space-y-4">
+              {shouldShowBillingCta ? (
+                <div
+                  className={`${dashboardTheme.panel} border-red-500/25 bg-gradient-to-r from-red-500/14 via-slate-950/78 to-slate-950/70 px-5 py-5 shadow-[0_18px_50px_rgba(127,29,29,0.24)]`}
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="max-w-3xl">
+                      <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-red-200/75">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        <span>Assinatura pendente</span>
+                      </div>
+                      <h3 className="mt-3 text-2xl font-semibold text-white">
+                        Ative seu plano para concluir a entrada no Nano
+                      </h3>
+                      <p className="mt-2 text-sm leading-7 text-zinc-300">
+                        {billingDescription}
+                      </p>
+                      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-red-200/70">
+                        {billingHeadline}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className="bg-amber-500/15 text-amber-200">
+                        {subscriptionAccess?.status || "inactive"}
+                      </Badge>
+                      <Button
+                        type="button"
+                        className="h-11 bg-white px-5 text-slate-950 hover:bg-slate-100"
+                        onClick={() => navigate("/billing")}
+                      >
+                        Assinar agora
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div
+                className={`${dashboardTheme.panel} ${dashboardTheme.glow} px-5 py-4`}
+              >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
@@ -3662,6 +3743,7 @@ const Dashboard = () => {
                   </div>
                 ))}
               </div>
+            </div>
             </div>
           )}
 
