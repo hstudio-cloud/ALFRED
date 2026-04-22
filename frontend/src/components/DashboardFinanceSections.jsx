@@ -16,6 +16,36 @@ import { dashboardClass, dashboardTheme } from "../lib/dashboardTheme";
 
 const fieldClass = dashboardClass.input;
 const actionButtonClass = dashboardClass.buttonPrimary;
+const cardIssuerOptions = [
+  "Nubank",
+  "Inter",
+  "Itau",
+  "Bradesco",
+  "Santander",
+  "Banco do Brasil",
+  "Caixa",
+  "C6 Bank",
+  "PicPay",
+  "Mercado Pago",
+  "BTG Pactual",
+  "Neon",
+  "Sicoob",
+  "Sicredi",
+  "XP",
+  "Will Bank",
+  "Banco Pan",
+  "Original",
+];
+const cardBrandOptions = [
+  "Visa",
+  "Mastercard",
+  "Elo",
+  "American Express",
+  "Hipercard",
+  "Diners Club",
+  "Cabal",
+  "Aura",
+];
 
 const Panel = ({ title, action, children }) => (
   <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-6`}>
@@ -331,22 +361,34 @@ export const CardsSection = ({
             className={fieldClass}
           />
           <div className="grid grid-cols-2 gap-3">
-            <Input
-              placeholder="Instituicao"
+            <select
+              className={fieldClass}
               value={cardForm.institution}
               onChange={(event) =>
                 setCardForm({ ...cardForm, institution: event.target.value })
               }
+            >
+              <option value="">Selecionar banco</option>
+              {cardIssuerOptions.map((issuer) => (
+                <option key={issuer} value={issuer}>
+                  {issuer}
+                </option>
+              ))}
+            </select>
+            <select
               className={fieldClass}
-            />
-            <Input
-              placeholder="Bandeira"
               value={cardForm.brand}
               onChange={(event) =>
                 setCardForm({ ...cardForm, brand: event.target.value })
               }
-              className={fieldClass}
-            />
+            >
+              <option value="">Selecionar bandeira</option>
+              {cardBrandOptions.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <select
