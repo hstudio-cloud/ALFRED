@@ -382,6 +382,11 @@ class AgentOrchestrator:
                 lines.append(f"{idx}. {title} - {snippet} ({url})")
             return "\n".join(lines)
 
+        if intent_label == "financial_analysis":
+            financial_summary = self._build_financial_analysis_summary(tool_results)
+            if financial_summary:
+                return financial_summary
+
         if "month_expenses" in tool_results:
             data = tool_results.get("month_expenses") or {}
             total = float(data.get("total_expenses", 0) or 0)
@@ -407,6 +412,75 @@ class AgentOrchestrator:
             )
 
         return fallback_response or "Conclui seu pedido com os dados disponiveis no sistema."
+
+    def _build_financial_analysis_summary(self, tool_results: Dict[str, Any]) -> str:
+        month = tool_results.get("month_expenses") or {}
+        cashflow = tool_results.get("cashflow_forecast") or tool_results.get("cashflow") or {}
+        top_categories = (tool_results.get("top_categories") or {}).get("items") or []
+        open_finance_week = tool_results.get("open_finance_week_income") or {}
+        open_finance_summary = tool_results.get("open_finance_summary") or {}
+
+        total_expenses = float(month.get("total_expenses", 0) or 0)
+        expense_count = int(month.get("count", 0) or 0)
+        current_balance = float(cashflow.get("current_balance", 0) or 0)
+        forecasts = cashflow.get("forecasts") or []
+        next_forecast = forecasts[0] if forecasts else {}
+        projected_balance = float(next_forecast.get("projected_balance", 0) or 0)
+        projected_expenses = float(next_forecast.get("projected_expenses", 0) or 0)
+        open_finance_net = float(open_finance_week.get("net", 0) or 0)
+        imported_balance = float(open_finance_summary.get("balance_total", 0) or 0)
+
+        if not any([month, cashflow, top_categories, open_finance_week, open_finance_summary]):
+            return ""
+
+        lines = []
+        if total_expenses or expense_count:
+            average_expense = total_expenses / expense_count if expense_count else 0
+            lines.append(
+                f"No mes, voce ja saiu {self._format_brl(total_expenses)} em {expense_count} movimentacoes. "
+                f"Ticket medio: {self._format_brl(average_expense)}."
+            )
+
+        if current_balance or projected_balance or projected_expenses:
+            balance_line = (
+                f"Seu caixa atual esta em {self._format_brl(current_balance)} "
+                f"e a projecao de 30 dias aponta {self._format_brl(projected_balance)}."
+            )
+            if next_forecast.get("negative_alert"):
+                balance_line += " Do jeito atual, voce corre risco de entrar no negativo."
+            lines.append(balance_line)
+
+        if imported_balance:
+            lines.append(f"Pelas contas conectadas via Open Finance, o saldo consolidado hoje esta em {self._format_brl(imported_balance)}.")
+
+        if open_finance_week:
+            lines.append(
+                f"Nos ultimos 7 dias, entraram {self._format_brl(open_finance_week.get('income', 0) or 0)} "
+                f"e sairam {self._format_brl(open_finance_week.get('expenses', 0) or 0)}."
+            )
+
+        recommendations: List[str] = []
+        if top_categories:
+            lead = top_categories[0]
+            recommendations.append(
+                f"Revise primeiro a categoria {lead.get('category', 'Geral')}, que hoje puxa {self._format_brl(lead.get('amount', 0) or 0)} do seu mes."
+            )
+        if next_forecast.get("negative_alert"):
+            recommendations.append(
+                f"Corte ou reprograme pelo menos {self._format_brl(abs(projected_balance))} em saidas para evitar saldo negativo nos proximos 30 dias."
+            )
+        elif projected_expenses and current_balance and projected_expenses > current_balance * 0.8:
+            recommendations.append("Suas saidas projetadas estao pressionando o caixa. Vale travar gastos variaveis e antecipar recebimentos.")
+        if open_finance_week and open_finance_net < 0:
+            recommendations.append("Nesta semana, seu fluxo ficou negativo. Priorize receitas recorrentes e reduza compras nao essenciais ate equilibrar o ciclo.")
+        if not recommendations:
+            recommendations.append("Seu financeiro esta estavel. O melhor proximo passo agora e organizar categorias recorrentes e revisar despesas variaveis para ganhar margem.")
+
+        lines.append("Recomendacao do Nano:")
+        for index, item in enumerate(recommendations[:3], start=1):
+            lines.append(f"{index}. {item}")
+
+        return "\n".join(lines)
 
     @staticmethod
     def _format_brl(amount: float) -> str:

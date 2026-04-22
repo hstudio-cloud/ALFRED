@@ -77,6 +77,7 @@ async def _load_conversation_context(user_id: str) -> list:
         {
             "role": item.get("role", "user"),
             "content": item.get("content", ""),
+            "metadata": _sanitize_json_payload(item.get("metadata") or {}),
         }
         for item in messages
     ]

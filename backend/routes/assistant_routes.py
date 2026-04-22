@@ -68,7 +68,14 @@ async def _resolve_workspace(current_user: dict) -> Optional[dict]:
 async def _load_conversation_context(user_id: str) -> list:
     messages = await chat_messages_collection.find({"user_id": user_id}).sort("created_at", -1).limit(8).to_list(8)
     messages.reverse()
-    return [{"role": item.get("role", "user"), "content": item.get("content", "")} for item in messages]
+    return [
+        {
+            "role": item.get("role", "user"),
+            "content": item.get("content", ""),
+            "metadata": _sanitize_json_payload(item.get("metadata") or {}),
+        }
+        for item in messages
+    ]
 
 
 @router.post("/message")

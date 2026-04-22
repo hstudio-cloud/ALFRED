@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from copy import deepcopy
 from typing import Any, Dict
 
 from .types import IntentClassification
@@ -66,14 +67,6 @@ class IntentClassifier:
         "quanto entrou esta semana",
         "contas conectadas",
         "maiores despesas",
-        "alguma sugestao",
-        "alguma recomendacao",
-        "o que voce recomenda",
-        "o que me recomenda",
-        "me da uma sugestao",
-        "me de uma sugestao",
-        "como melhorar",
-        "como posso melhorar",
     )
     _ANALYSIS_HINTS = (
         "analise",
@@ -85,6 +78,19 @@ class IntentClassifier:
         "por categoria",
         "lucro",
         "faturamento",
+        "alguma sugestao",
+        "alguma recomendacao",
+        "o que voce recomenda",
+        "o que me recomenda",
+        "me da uma sugestao",
+        "me de uma sugestao",
+        "como melhorar",
+        "como posso melhorar",
+        "melhorar meu financeiro",
+        "melhorar minhas financas",
+        "onde posso cortar",
+        "onde cortar gastos",
+        "reduzir gastos",
     )
     _WEB_HINTS = (
         "pesquisar",
@@ -166,6 +172,15 @@ class IntentClassifier:
                 requires_tool=True,
                 suggested_tool="create_category",
             )
+
+        followup_intent = self._classify_followup_from_context(
+            raw_text=raw_text,
+            text=text,
+            entities=entities,
+            context=context,
+        )
+        if followup_intent:
+            return followup_intent
 
         # Navigation commands like "abra bancos" should be actions even if no other hint matched.
         if entities.get("section") and re.search(r"\b(abra|abre|abrir|ir para|navegar)\b", text):
@@ -301,6 +316,15 @@ class IntentClassifier:
             )
             if free_category_match:
                 category = self._beautify_label(free_category_match.group(1))
+            else:
+                category_reply_match = re.search(
+                    r"\bcategoria\s+(?:sera|ser[aá]|e|eh|fica|vai ser)\s+([a-z][a-z0-9\s]{1,40})$",
+                    text,
+                )
+                if category_reply_match:
+                    category = self._beautify_label(category_reply_match.group(1))
+                elif re.fullmatch(r"[a-z][a-z0-9\s]{2,40}", text) and " " not in text.strip():
+                    category = self._beautify_label(text)
 
         if create_category_name and any(
             token in text
@@ -365,6 +389,90 @@ class IntentClassifier:
             ),
             "period": "month" if any(token in text for token in ("mes", "meses")) else None,
         }
+
+    def _classify_followup_from_context(
+        self,
+        *,
+        raw_text: str,
+        text: str,
+        entities: Dict[str, Any],
+        context: Dict[str, Any],
+    ) -> IntentClassification | None:
+        history = context.get("conversation_history") or []
+        if not history:
+            return None
+
+        last_assistant = next((item for item in reversed(history) if item.get("role") == "assistant"), None)
+        if not last_assistant:
+            return None
+
+        assistant_metadata = last_assistant.get("metadata") or {}
+        missing_fields = assistant_metadata.get("missing_fields") or []
+        if not assistant_metadata.get("followup_needed") or not missing_fields:
+            return None
+
+        previous_user = next((item for item in reversed(history[:-1]) if item.get("role") == "user"), None)
+        previous_text = previous_user.get("content", "") if previous_user else ""
+        previous_entities = self._extract_entities(self._normalize_text(previous_text)) if previous_text else {}
+        merged_entities = deepcopy(previous_entities)
+        merged_entities.update({key: value for key, value in entities.items() if value not in (None, "", [])})
+
+        if "category" in missing_fields and not merged_entities.get("category"):
+            followup_category = self._extract_followup_category(text)
+            if followup_category:
+                merged_entities["category"] = followup_category
+
+        if "amount" in missing_fields and merged_entities.get("amount") is None:
+            merged_entities["amount"] = entities.get("amount")
+
+        if "category" in missing_fields and merged_entities.get("category") and previous_text:
+            return IntentClassification(
+                label="system_action",
+                confidence=0.96,
+                entities=merged_entities,
+                requires_tool=True,
+                suggested_tool="create_transaction",
+            )
+
+        if "amount" in missing_fields and merged_entities.get("amount") is not None and previous_text:
+            missing = [field for field in missing_fields if field != "amount"]
+            return IntentClassification(
+                label="followup_missing_data" if missing else "system_action",
+                confidence=0.95,
+                entities=merged_entities,
+                requires_tool=True,
+                missing_fields=missing,
+                suggested_tool="create_transaction",
+            )
+
+        if any(field in missing_fields for field in ("message", "query")) and raw_text:
+            return IntentClassification(
+                label="general_chat",
+                confidence=0.7,
+                entities=entities,
+                requires_tool=False,
+                suggested_tool=None,
+            )
+
+        return None
+
+    def _extract_followup_category(self, text: str) -> str | None:
+        patterns = [
+            r"\bcategoria\s+(?:sera|sera a|ser[aá]|e|eh|fica|vai ser)\s+([a-z][a-z0-9\s]{1,40})$",
+            r"\bsera\s+([a-z][a-z0-9\s]{1,40})$",
+            r"\beh\s+([a-z][a-z0-9\s]{1,40})$",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return self._beautify_label(match.group(1))
+        cleaned = re.sub(r"\b(a|a categoria|categoria|sera|sera a|eh|e|vai ser|fica)\b", " ", text)
+        cleaned = " ".join(cleaned.split()).strip()
+        if 2 <= len(cleaned.split()) <= 4:
+            return self._beautify_label(cleaned)
+        if re.fullmatch(r"[a-z][a-z0-9\s]{2,40}", text):
+            return self._beautify_label(text)
+        return None
 
     @staticmethod
     def _parse_amount(raw: str) -> float:
