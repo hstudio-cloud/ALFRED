@@ -69,11 +69,14 @@ def create_checkout_session(
     return stripe_client.checkout.Session.create(
         mode="subscription",
         customer=customer_id,
+        payment_method_types=["card"],
         line_items=[{"price": price_id, "quantity": 1}],
         success_url=success_url,
         cancel_url=cancel_url,
         allow_promotion_codes=True,
         billing_address_collection="auto",
+        phone_number_collection={"enabled": False},
+        payment_method_collection="always",
         client_reference_id=workspace_id,
         metadata={
             "workspace_id": workspace_id,

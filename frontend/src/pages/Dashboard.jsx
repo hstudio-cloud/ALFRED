@@ -275,6 +275,16 @@ const textAreaClass =
   "min-h-[120px] rounded-[24px] border border-red-500/12 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
 const actionButtonClass = dashboardClass.buttonPrimary;
 const REQUEST_TIMEOUT_MS = 15000;
+const billingStatusLabels = {
+  active: "acesso ativo",
+  trialing: "periodo de teste",
+  checkout_pending: "pagamento iniciado",
+  checkout_completed: "aguardando confirmacao do pagamento",
+  past_due: "pagamento pendente",
+  unpaid: "pagamento nao compensado",
+  canceled: "assinatura cancelada",
+  inactive: "sem assinatura ativa",
+};
 
 const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) =>
   Promise.race([
@@ -3561,7 +3571,10 @@ const Dashboard = () => {
     !billingLoading &&
     !subscriptionAccess?.has_access;
   const billingHeadline = subscriptionAccess?.status
-    ? `Status atual: ${subscriptionAccess.status}`
+    ? `Status atual: ${
+        billingStatusLabels[subscriptionAccess.status] ||
+        subscriptionAccess.status
+      }`
     : "Ative seu plano para liberar o uso completo do Nano.";
   const billingDescription = subscriptionRecord
     ? "Seu workspace ja iniciou um fluxo de assinatura, mas o acesso total ainda depende da confirmacao real do pagamento via webhook."
@@ -3689,7 +3702,8 @@ const Dashboard = () => {
 
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge className="bg-amber-500/15 text-amber-200">
-                        {subscriptionAccess?.status || "inactive"}
+                        {billingStatusLabels[subscriptionAccess?.status] ||
+                          "sem assinatura ativa"}
                       </Badge>
                       <Button
                         type="button"

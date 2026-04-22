@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Copy, CreditCard, Landmark, QrCode, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  Landmark,
+  QrCode,
+  ShieldCheck,
+} from "lucide-react";
 
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useToast } from "../hooks/use-toast";
@@ -9,29 +17,57 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 
-const planOptions = [
-  { code: "starter", label: "Starter", subtitle: "Assinatura principal do Nano" },
-  { code: "pro", label: "Pro", subtitle: "Estrutura preparada para upgrade" },
+const periodOptions = [
+  {
+    key: "monthly",
+    label: "Mensal",
+    priceLabel: "R$ 49,90",
+    cadence: "/mes",
+    description: "Entrada mais leve para comecar a operar com o Nano.",
+    planCode: "starter",
+    available: true,
+  },
+  {
+    key: "quarterly",
+    label: "Trimestral",
+    priceLabel: "Em configuracao",
+    cadence: "",
+    description: "Fluxo pronto para pacote trimestral assim que o valor for definido.",
+    planCode: "starter_quarterly",
+    available: false,
+  },
+  {
+    key: "yearly",
+    label: "Anual",
+    priceLabel: "Em configuracao",
+    cadence: "",
+    description: "Fluxo pronto para pacote anual assim que o valor for definido.",
+    planCode: "starter_yearly",
+    available: false,
+  },
 ];
 
 const methods = [
   {
     key: "credit_card",
     title: "Cartao",
-    description: "Checkout recorrente no Stripe com confirmacao via webhook.",
+    description: "Checkout direto no Stripe para assinatura recorrente no cartao.",
     icon: CreditCard,
+    provider: "Stripe",
   },
   {
     key: "pix",
     title: "PIX",
-    description: "Cobranca no Asaas com QR Code e liberacao por webhook.",
+    description: "Geracao instantanea de cobranca no Asaas com QR Code.",
     icon: QrCode,
+    provider: "Asaas",
   },
   {
     key: "boleto",
     title: "Boleto",
-    description: "Boleto no Asaas com link de segunda via e reconciliacao por webhook.",
+    description: "Cobranca por boleto no Asaas com liberacao confirmada por webhook.",
     icon: Landmark,
+    provider: "Asaas",
   },
 ];
 
@@ -40,6 +76,34 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+const accessStatusLabels = {
+  active: "Acesso ativo",
+  trialing: "Em periodo de teste",
+  checkout_pending: "Checkout iniciado",
+  checkout_completed: "Pagamento aguardando confirmacao",
+  past_due: "Pagamento pendente",
+  canceled: "Assinatura cancelada",
+  unpaid: "Pagamento nao compensado",
+  inactive: "Sem assinatura ativa",
+};
+
+const providerLabels = {
+  stripe: "Stripe",
+  asaas: "Asaas",
+};
+
+const paymentMethodLabels = {
+  credit_card: "Cartao",
+  pix: "PIX",
+  boleto: "Boleto",
+};
+
+const planLabels = {
+  starter: "Nano Mensal",
+  starter_quarterly: "Nano Trimestral",
+  starter_yearly: "Nano Anual",
+};
+
 const Billing = () => {
   const navigate = useNavigate();
   const { currentWorkspace } = useWorkspace();
@@ -47,10 +111,17 @@ const Billing = () => {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [planCode, setPlanCode] = useState("starter");
+  const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [subscriptionState, setSubscriptionState] = useState(null);
   const [checkoutResult, setCheckoutResult] = useState(null);
+
+  const selectedPeriodConfig = useMemo(
+    () =>
+      periodOptions.find((period) => period.key === selectedPeriod) ||
+      periodOptions[0],
+    [selectedPeriod],
+  );
 
   const selectedMethod = useMemo(
     () => methods.find((item) => item.key === paymentMethod) || methods[0],
@@ -63,13 +134,16 @@ const Billing = () => {
         setLoading(false);
         return;
       }
+
       try {
         const response = await billingService.getSubscription(currentWorkspace.id);
         setSubscriptionState(response);
       } catch (error) {
         toast({
-          title: "Erro ao carregar billing",
-          description: error.response?.data?.detail || "Nao consegui carregar o status da assinatura.",
+          title: "Erro ao carregar assinatura",
+          description:
+            error.response?.data?.detail ||
+            "Nao consegui carregar o status da assinatura.",
           variant: "destructive",
         });
       } finally {
@@ -81,14 +155,23 @@ const Billing = () => {
   }, [currentWorkspace?.id, toast]);
 
   const handleCheckout = async () => {
-    if (!currentWorkspace?.id) {
+    if (!currentWorkspace?.id) return;
+
+    if (!selectedPeriodConfig.available) {
+      toast({
+        title: "Plano em configuracao",
+        description:
+          "Esse periodo ja esta pronto no visual, mas o valor ainda precisa ser configurado.",
+        variant: "destructive",
+      });
       return;
     }
+
     setSubmitting(true);
     try {
       const response = await billingService.createCheckout({
         workspace_id: currentWorkspace.id,
-        plan_code: planCode,
+        plan_code: selectedPeriodConfig.planCode,
         payment_method: paymentMethod,
       });
 
@@ -109,12 +192,14 @@ const Billing = () => {
         description:
           paymentMethod === "pix"
             ? "O QR Code foi carregado abaixo."
-            : "O link do boleto foi carregado abaixo.",
+            : "O link da cobranca foi carregado abaixo.",
       });
     } catch (error) {
       toast({
-        title: "Erro ao iniciar checkout",
-        description: error.response?.data?.detail || "Nao foi possivel iniciar a cobranca.",
+        title: "Erro ao iniciar pagamento",
+        description:
+          error.response?.data?.detail ||
+          "Nao foi possivel iniciar a cobranca agora.",
         variant: "destructive",
       });
     } finally {
@@ -123,9 +208,7 @@ const Billing = () => {
   };
 
   const handleOpenPortal = async () => {
-    if (!currentWorkspace?.id) {
-      return;
-    }
+    if (!currentWorkspace?.id) return;
     try {
       const response = await billingService.createStripePortal({
         workspace_id: currentWorkspace.id,
@@ -136,7 +219,9 @@ const Billing = () => {
     } catch (error) {
       toast({
         title: "Portal indisponivel",
-        description: error.response?.data?.detail || "Nao consegui abrir o portal do Stripe.",
+        description:
+          error.response?.data?.detail ||
+          "Nao consegui abrir o portal da assinatura.",
         variant: "destructive",
       });
     }
@@ -144,29 +229,41 @@ const Billing = () => {
 
   const copyPixPayload = async () => {
     const payload = checkoutResult?.payment?.pix_payload;
-    if (!payload) {
-      return;
-    }
+    if (!payload) return;
+
     await navigator.clipboard.writeText(payload);
     toast({
       title: "Codigo PIX copiado",
-      description: "O payload do PIX foi copiado para sua area de transferencia.",
+      description: "O codigo foi copiado para sua area de transferencia.",
     });
   };
 
   const access = subscriptionState?.access;
   const subscription = subscriptionState?.subscription;
-  const latestPayment = subscriptionState?.latest_payment || checkoutResult?.payment;
+  const latestPayment =
+    subscriptionState?.latest_payment || checkoutResult?.payment;
+  const accessLabel =
+    accessStatusLabels[access?.status] || "Pagamento aguardando confirmacao";
+  const selectedFlowLabel =
+    selectedMethod.key === "credit_card"
+      ? "Pagamento recorrente por cartao"
+      : selectedMethod.key === "pix"
+        ? "Pagamento instantaneo por PIX"
+        : "Pagamento por boleto";
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.22),_transparent_26%),linear-gradient(180deg,#090203_0%,#140304_52%,#090203_100%)] px-6 py-12 text-white">
       <div className="mx-auto max-w-6xl space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.32em] text-red-300/70">Billing</p>
-            <h1 className="text-4xl font-semibold">Assinatura do Nano</h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Escolha o metodo de pagamento. A liberacao de acesso so acontece quando o backend confirma o pagamento via webhook.
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <p className="text-xs uppercase tracking-[0.32em] text-red-300/70">
+              Planos
+            </p>
+            <h1 className="text-4xl font-semibold">Escolha sua assinatura</h1>
+            <p className="max-w-2xl text-sm leading-7 text-slate-300">
+              Primeiro voce escolhe o periodo do plano. Em seguida o Nano abre a
+              forma de pagamento correta: Stripe para cartao e Asaas para PIX ou
+              boleto.
             </p>
           </div>
           <Button
@@ -175,76 +272,102 @@ const Billing = () => {
             className="border-slate-700/60 bg-slate-950/50 text-slate-100"
             onClick={() => navigate("/dashboard")}
           >
-            Voltar ao dashboard
+            Voltar ao painel
           </Button>
         </div>
 
         <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-slate-400">Workspace</p>
-              <h2 className="text-2xl font-semibold">{currentWorkspace?.name || "Sem workspace selecionado"}</h2>
-              <p className="mt-2 text-sm text-slate-400">
-                Status atual: <span className="font-medium text-slate-100">{access?.status || "inactive"}</span>
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Badge className={access?.has_access ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"}>
-                {access?.has_access ? "Acesso liberado" : "Acesso pendente"}
-              </Badge>
-              {access?.grace_period ? <Badge className="bg-orange-500/15 text-orange-300">Grace period</Badge> : null}
-            </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {periodOptions.map((period) => {
+              const isActive = selectedPeriod === period.key;
+              return (
+                <button
+                  key={period.key}
+                  type="button"
+                  onClick={() => setSelectedPeriod(period.key)}
+                  className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
+                    isActive
+                      ? "bg-white text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.12)]"
+                      : "border border-slate-700/40 bg-slate-900/40 text-slate-300 hover:border-slate-500/60"
+                  }`}
+                >
+                  {period.label}
+                </button>
+              );
+            })}
           </div>
 
-          {subscription ? (
-            <div className="mt-6 grid gap-4 md:grid-cols-4">
-              <StatusItem label="Plano" value={subscription.plan_code || "-"} />
-              <StatusItem label="Provider" value={subscription.provider || "-"} />
-              <StatusItem label="Metodo" value={subscription.payment_method || "-"} />
-              <StatusItem
-                label="Fim do ciclo"
-                value={
-                  subscription.current_period_end
-                    ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR")
-                    : "-"
-                }
-              />
-            </div>
-          ) : (
-            <p className="mt-6 text-sm text-slate-400">Nenhuma assinatura ativa encontrada para este workspace.</p>
-          )}
-        </Card>
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-[32px] border border-slate-700/30 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(8,8,10,0.72))] p-8 shadow-[0_24px_70px_rgba(0,0,0,0.32)]">
+              <div className="text-center">
+                <p className="text-4xl font-semibold">Nano IA</p>
+                <div className="mt-5 flex items-end justify-center gap-2">
+                  <span className="text-5xl font-bold text-white">
+                    {selectedPeriodConfig.priceLabel}
+                  </span>
+                  {selectedPeriodConfig.cadence ? (
+                    <span className="pb-2 text-lg text-slate-400">
+                      {selectedPeriodConfig.cadence}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-3 text-sm text-slate-400">
+                  {selectedPeriodConfig.description}
+                </p>
+              </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
-            <div className="space-y-6">
-              <div>
-                <p className="text-sm text-slate-400">Plano</p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  {planOptions.map((plan) => (
-                    <button
-                      key={plan.code}
-                      type="button"
-                      onClick={() => setPlanCode(plan.code)}
-                      className={`rounded-2xl border px-4 py-4 text-left transition ${
-                        planCode === plan.code
-                          ? "border-red-500/50 bg-red-500/10 shadow-[0_0_30px_rgba(239,68,68,0.12)]"
-                          : "border-slate-700/30 bg-slate-900/40 hover:border-slate-600/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-semibold">{plan.label}</span>
-                        <Wallet className="h-4 w-4 text-red-300" />
-                      </div>
-                      <p className="mt-2 text-sm text-slate-400">{plan.subtitle}</p>
-                    </button>
+              <div className="mt-8 border-t border-slate-700/30 pt-8">
+                <p className="text-center text-2xl font-semibold">Tudo incluso</p>
+                <div className="mt-6 space-y-4 text-base text-slate-200">
+                  {[
+                    "Painel financeiro com IA",
+                    "Controle de receitas e despesas",
+                    "Categorias personalizadas",
+                    "Separacao pessoal e empresa",
+                    "Lembretes de vencimento",
+                    "Historico de movimentacoes",
+                    "Insights e analises",
+                    "Chat operacional",
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-red-400" />
+                      <span>{feature}</span>
+                    </div>
                   ))}
                 </div>
               </div>
+            </div>
 
-              <div>
-                <p className="text-sm text-slate-400">Metodo de pagamento</p>
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="space-y-6">
+              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+                <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-red-200/70">
+                  <CalendarClock className="h-4 w-4" />
+                  <span>Passo 1</span>
+                </div>
+                <h2 className="mt-3 text-2xl font-semibold text-white">
+                  Periodo escolhido: {selectedPeriodConfig.label}
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-slate-400">
+                  A escolha do periodo define o codigo do plano enviado ao
+                  backend. Mensal ja esta pronto. Trimestral e anual ficam com o
+                  visual preparado para voce configurar os valores depois.
+                </p>
+                {!selectedPeriodConfig.available ? (
+                  <Badge className="mt-4 bg-amber-500/15 text-amber-300">
+                    Valor ainda nao configurado
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+                <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-red-200/70">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span>Passo 2</span>
+                </div>
+                <h2 className="mt-3 text-2xl font-semibold text-white">
+                  Escolha a forma de pagamento
+                </h2>
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
                   {methods.map((method) => {
                     const Icon = method.icon;
                     const isActive = paymentMethod === method.key;
@@ -256,71 +379,141 @@ const Billing = () => {
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           isActive
                             ? "border-red-500/50 bg-red-500/10 shadow-[0_0_30px_rgba(239,68,68,0.12)]"
-                            : "border-slate-700/30 bg-slate-900/40 hover:border-slate-600/50"
+                            : "border-slate-700/30 bg-slate-950/30 hover:border-slate-600/50"
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-5 w-5 text-red-300" />
-                          <span className="font-semibold">{method.title}</span>
+                          <span className="font-semibold text-white">
+                            {method.title}
+                          </span>
                         </div>
-                        <p className="mt-3 text-sm text-slate-400">{method.description}</p>
+                        <p className="mt-3 text-sm text-slate-400">
+                          {method.description}
+                        </p>
+                        <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
+                          {method.provider}
+                        </p>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 p-5">
-                <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Fluxo escolhido</p>
-                <h3 className="mt-2 text-xl font-semibold">{selectedMethod.title}</h3>
-                <p className="mt-2 text-sm text-slate-300">{selectedMethod.description}</p>
-              </div>
+              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
+                  Fluxo escolhido
+                </p>
+                <h3 className="mt-3 text-2xl font-semibold text-white">
+                  {selectedFlowLabel}
+                </h3>
+                <p className="mt-2 text-sm leading-7 text-slate-400">
+                  {selectedMethod.description}
+                </p>
 
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  type="button"
-                  className="bg-white text-slate-950 hover:bg-slate-100"
-                  onClick={handleCheckout}
-                  disabled={submitting || !currentWorkspace?.id}
-                >
-                  {submitting ? "Processando..." : "Iniciar checkout"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-slate-700/60 bg-slate-950/50 text-slate-100"
-                  onClick={handleOpenPortal}
-                  disabled={!subscription || subscription.provider !== "stripe"}
-                >
-                  Abrir portal Stripe
-                </Button>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    className="bg-white text-slate-950 hover:bg-slate-100"
+                    onClick={handleCheckout}
+                    disabled={submitting || !currentWorkspace?.id}
+                  >
+                    {submitting ? "Processando..." : "Continuar para o pagamento"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-slate-700/60 bg-slate-950/50 text-slate-100"
+                    onClick={handleOpenPortal}
+                    disabled={!subscription || subscription.provider !== "stripe"}
+                  >
+                    Gerenciar assinatura
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid gap-8 lg:grid-cols-[1fr_0.95fr]">
+          <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
+            <div className="space-y-4">
+              <p className="text-xs uppercase tracking-[0.22em] text-red-200/70">
+                Status da assinatura
+              </p>
+              <h3 className="text-3xl font-semibold text-white">
+                {accessLabel}
+              </h3>
+              <p className="text-sm leading-7 text-slate-400">
+                O acesso e liberado somente depois da confirmacao real do
+                pagamento no backend. O retorno visual do checkout sozinho nao
+                ativa o plano.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <StatusItem
+                  label="Plano atual"
+                  value={
+                    planLabels[subscription?.plan_code] ||
+                    planLabels[selectedPeriodConfig.planCode] ||
+                    selectedPeriodConfig.label
+                  }
+                />
+                <StatusItem
+                  label="Processador"
+                  value={providerLabels[subscription?.provider] || "-"}
+                />
+                <StatusItem
+                  label="Forma"
+                  value={
+                    paymentMethodLabels[subscription?.payment_method] || "-"
+                  }
+                />
               </div>
             </div>
           </Card>
 
           <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
             <div className="space-y-4">
-              <p className="text-sm uppercase tracking-[0.28em] text-slate-500">Confirmacao real</p>
-              <h3 className="text-2xl font-semibold">Status do pagamento</h3>
-              <p className="text-sm text-slate-400">
-                O frontend nunca libera acesso sozinho. O Nano espera a confirmacao do webhook antes de ativar o plano.
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                Pagamento em aberto
               </p>
-
               {loading ? (
-                <p className="text-sm text-slate-400">Carregando assinatura...</p>
+                <p className="text-sm text-slate-400">
+                  Carregando status da cobranca...
+                </p>
               ) : latestPayment ? (
                 <div className="space-y-4 rounded-2xl border border-slate-700/30 bg-slate-900/40 p-5">
-                  <StatusItem label="Provider" value={latestPayment.provider || "-"} />
-                  <StatusItem label="Valor" value={currencyFormatter.format(Number(latestPayment.amount || 0))} />
-                  <StatusItem label="Status" value={latestPayment.status || "-"} />
+                  <StatusItem
+                    label="Valor"
+                    value={currencyFormatter.format(
+                      Number(latestPayment.amount || 0),
+                    )}
+                  />
+                  <StatusItem
+                    label="Status"
+                    value={
+                      accessStatusLabels[latestPayment.status] ||
+                      latestPayment.status ||
+                      "-"
+                    }
+                  />
                   <StatusItem
                     label="Vencimento"
-                    value={latestPayment.due_date ? new Date(latestPayment.due_date).toLocaleDateString("pt-BR") : "-"}
+                    value={
+                      latestPayment.due_date
+                        ? new Date(latestPayment.due_date).toLocaleDateString(
+                            "pt-BR",
+                          )
+                        : "-"
+                    }
                   />
 
                   {latestPayment.pix_qr_code ? (
                     <div className="space-y-3 rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
-                      <p className="text-sm font-medium text-red-100">QR Code PIX</p>
+                      <p className="text-sm font-medium text-red-100">
+                        QR Code PIX
+                      </p>
                       <div className="break-all rounded-xl bg-slate-950/80 p-3 text-xs text-slate-300">
                         {latestPayment.pix_qr_code}
                       </div>
@@ -332,7 +525,7 @@ const Billing = () => {
                           onClick={copyPixPayload}
                         >
                           <Copy className="mr-2 h-4 w-4" />
-                          Copiar payload PIX
+                          Copiar codigo PIX
                         </Button>
                       ) : null}
                     </div>
@@ -343,15 +536,22 @@ const Billing = () => {
                       type="button"
                       variant="outline"
                       className="w-full border-slate-700/60 bg-slate-950/50 text-slate-100"
-                      onClick={() => window.open(latestPayment.invoice_url, "_blank", "noopener,noreferrer")}
+                      onClick={() =>
+                        window.open(
+                          latestPayment.invoice_url,
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
                     >
                       Abrir cobranca
                     </Button>
                   ) : null}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">
-                  Ainda nao existe cobranca gerada. Escolha um metodo e inicie o checkout.
+                <p className="text-sm leading-7 text-slate-400">
+                  Nenhuma cobranca gerada ainda. Escolha o periodo, selecione a
+                  forma de pagamento e avance para o checkout.
                 </p>
               )}
             </div>
