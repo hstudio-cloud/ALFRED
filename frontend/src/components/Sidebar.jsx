@@ -67,7 +67,7 @@ const SidebarItem = ({ item, active, expanded, onClick }) => {
       <TooltipTrigger asChild>{content}</TooltipTrigger>
       <TooltipContent
         side="right"
-        className="rounded-xl border border-slate-700/30 bg-slate-950/90 px-3 py-1.5 text-xs text-zinc-100 backdrop-blur-sm"
+        className={`${dashboardTheme.panelSecondary} rounded-xl px-3 py-1.5 text-xs text-zinc-100`}
       >
         {item.label}
       </TooltipContent>
@@ -136,7 +136,7 @@ const DesktopSidebar = ({
   return (
     <TooltipProvider delayDuration={80}>
       <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
-        <div className={`flex h-full w-full flex-col gap-3 rounded-[28px] border border-slate-700/30 bg-[radial-gradient(circle_at_top,_rgba(185,28,28,0.12),_transparent_24%),linear-gradient(180deg,rgba(2,6,23,0.82)_0%,rgba(9,9,11,0.72)_100%)] px-0 py-2 shadow-[0_20px_55px_rgba(2,6,23,0.5)] backdrop-blur-xl`}>
+        <div className={`${dashboardTheme.panel} flex h-full w-full flex-col gap-3 rounded-[28px] px-0 py-2`}>
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
               <NanoMark className="h-10 w-10" />
@@ -221,7 +221,7 @@ const DesktopSidebar = ({
               <button
                 type="button"
                 onClick={onLogout}
-                className="mt-2 flex h-11 w-full items-center justify-center gap-3 rounded-2xl border border-slate-700/30 bg-slate-950/60 px-3 text-sm text-zinc-300 transition hover:border-red-400/16 hover:bg-red-500/10 hover:text-red-100 group-hover/sidebar:justify-start"
+                className={`mt-2 flex h-11 w-full items-center justify-center gap-3 rounded-2xl px-3 text-sm transition hover:border-red-400/16 hover:bg-red-500/10 hover:text-red-100 group-hover/sidebar:justify-start ${dashboardClass.buttonGhost}`}
               >
                 <LogOut className="h-4.5 w-4.5 shrink-0" />
                 <span className="truncate opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -251,12 +251,12 @@ const MobileSidebar = (props) => {
           <Button
             type="button"
             size="icon"
-            className="h-12 w-12 rounded-2xl border border-slate-700/30 bg-slate-950/85 text-white shadow-[0_16px_30px_rgba(2,6,23,0.35)] backdrop-blur-sm hover:bg-slate-900"
+            className={`h-12 w-12 rounded-2xl ${dashboardTheme.panelSecondary} text-white`}
           >
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[300px] border-r border-slate-700/30 bg-[linear-gradient(180deg,rgba(2,6,23,0.96),rgba(9,9,11,0.92))] p-0">
+        <SheetContent side="left" className={`w-[300px] border-r p-0 ${dashboardTheme.panel}`}>
           <SheetHeader className="sr-only">
             <SheetTitle>Menu do Nano</SheetTitle>
             <SheetDescription>Navegacao principal do sistema.</SheetDescription>

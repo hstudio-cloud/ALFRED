@@ -16,6 +16,11 @@ import billingService from "../services/billingService";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import {
+  dashboardClass,
+  dashboardTheme,
+  resolveDashboardThemeMode,
+} from "../lib/dashboardTheme";
 
 const periodOptions = [
   {
@@ -97,6 +102,7 @@ const paymentMethodLabels = {
   pix: "PIX",
   boleto: "Boleto",
 };
+const THEME_STORAGE_KEY = "nano_theme_mode";
 
 const planLabels = {
   starter: "Nano Mensal",
@@ -111,6 +117,12 @@ const Billing = () => {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [themeMode] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    return resolveDashboardThemeMode(
+      window.localStorage.getItem(THEME_STORAGE_KEY) || "dark",
+    );
+  });
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [paymentMethod, setPaymentMethod] = useState("credit_card");
   const [subscriptionState, setSubscriptionState] = useState(null);
@@ -127,6 +139,12 @@ const Billing = () => {
     () => methods.find((item) => item.key === paymentMethod) || methods[0],
     [paymentMethod],
   );
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.dataset.nanoTheme = themeMode;
+    }
+  }, [themeMode]);
 
   useEffect(() => {
     const loadSubscription = async () => {
@@ -252,7 +270,9 @@ const Billing = () => {
         : "Pagamento por boleto";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(127,29,29,0.22),_transparent_26%),linear-gradient(180deg,#090203_0%,#140304_52%,#090203_100%)] px-6 py-12 text-white">
+    <div
+      className={`theme-dashboard-${themeMode} ${dashboardTheme.layout} min-h-screen px-6 py-12 ${dashboardTheme.textPrimary}`}
+    >
       <div className="mx-auto max-w-6xl space-y-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3">
@@ -269,14 +289,14 @@ const Billing = () => {
           <Button
             type="button"
             variant="outline"
-            className="border-slate-700/60 bg-slate-950/50 text-slate-100"
+            className={dashboardClass.buttonGhost}
             onClick={() => navigate("/dashboard")}
           >
             Voltar ao painel
           </Button>
         </div>
 
-        <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
+        <Card className={`${dashboardTheme.panel} p-6`}>
           <div className="flex flex-wrap items-center gap-3">
             {periodOptions.map((period) => {
               const isActive = selectedPeriod === period.key;
@@ -298,7 +318,7 @@ const Billing = () => {
           </div>
 
           <div className="mt-6 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="rounded-[32px] border border-slate-700/30 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(8,8,10,0.72))] p-8 shadow-[0_24px_70px_rgba(0,0,0,0.32)]">
+            <div className={`${dashboardTheme.panelSecondary} ${dashboardTheme.glow} rounded-[32px] p-8`}>
               <div className="text-center">
                 <p className="text-4xl font-semibold">Nano IA</p>
                 <div className="mt-5 flex items-end justify-center gap-2">
@@ -339,7 +359,7 @@ const Billing = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+              <div className={`${dashboardTheme.panelSecondary} rounded-[28px] p-6`}>
                 <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-red-200/70">
                   <CalendarClock className="h-4 w-4" />
                   <span>Passo 1</span>
@@ -359,7 +379,7 @@ const Billing = () => {
                 ) : null}
               </div>
 
-              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+              <div className={`${dashboardTheme.panelSecondary} rounded-[28px] p-6`}>
                 <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-red-200/70">
                   <ShieldCheck className="h-4 w-4" />
                   <span>Passo 2</span>
@@ -400,7 +420,7 @@ const Billing = () => {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-slate-700/30 bg-slate-900/40 p-6">
+              <div className={`${dashboardTheme.panelSecondary} rounded-[28px] p-6`}>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">
                   Fluxo escolhido
                 </p>
@@ -423,7 +443,7 @@ const Billing = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-slate-700/60 bg-slate-950/50 text-slate-100"
+                    className={dashboardClass.buttonGhost}
                     onClick={handleOpenPortal}
                     disabled={!subscription || subscription.provider !== "stripe"}
                   >
@@ -436,7 +456,7 @@ const Billing = () => {
         </Card>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_0.95fr]">
-          <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
+          <Card className={`${dashboardTheme.panel} p-6`}>
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.22em] text-red-200/70">
                 Status da assinatura
@@ -473,7 +493,7 @@ const Billing = () => {
             </div>
           </Card>
 
-          <Card className="border-slate-700/30 bg-slate-950/60 p-6 backdrop-blur-sm">
+          <Card className={`${dashboardTheme.panel} p-6`}>
             <div className="space-y-4">
               <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
                 Pagamento em aberto
@@ -521,7 +541,7 @@ const Billing = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          className="border-slate-700/60 bg-slate-950/50 text-slate-100"
+                          className={dashboardClass.buttonGhost}
                           onClick={copyPixPayload}
                         >
                           <Copy className="mr-2 h-4 w-4" />
@@ -535,7 +555,7 @@ const Billing = () => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full border-slate-700/60 bg-slate-950/50 text-slate-100"
+                      className={`w-full ${dashboardClass.buttonGhost}`}
                       onClick={() =>
                         window.open(
                           latestPayment.invoice_url,
@@ -563,7 +583,7 @@ const Billing = () => {
 };
 
 const StatusItem = ({ label, value }) => (
-  <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 p-4">
+  <div className={`${dashboardTheme.panelSecondary} rounded-2xl p-4`}>
     <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{label}</p>
     <p className="mt-2 text-sm font-medium text-slate-100">{value}</p>
   </div>

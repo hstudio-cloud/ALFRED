@@ -40,7 +40,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { dashboardClass, dashboardTheme } from "../lib/dashboardTheme";
+import {
+  dashboardClass,
+  dashboardTheme,
+  resolveDashboardThemeMode,
+} from "../lib/dashboardTheme";
 import {
   ArrowDownRight,
   ArrowLeftRight,
@@ -62,6 +66,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Sun,
   Target,
   TrendingDown,
   UserRound,
@@ -267,7 +272,7 @@ const initialSettingsForm = {
   notifications: true,
   assistant_voice: true,
   whatsapp_alerts: false,
-  theme_mode: "light",
+  theme_mode: "dark",
 };
 
 const pageFieldClass = dashboardClass.input;
@@ -275,6 +280,7 @@ const textAreaClass =
   "min-h-[120px] rounded-[24px] border border-red-500/12 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-red-400/35";
 const actionButtonClass = dashboardClass.buttonPrimary;
 const REQUEST_TIMEOUT_MS = 15000;
+const THEME_STORAGE_KEY = "nano_theme_mode";
 const billingStatusLabels = {
   active: "acesso ativo",
   trialing: "periodo de teste",
@@ -304,6 +310,12 @@ const Dashboard = () => {
   const [activeSection, setActiveSection] = useState("overview");
   const [financialView, setFinancialView] = useState("general");
   const [loading, setLoading] = useState(true);
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    return resolveDashboardThemeMode(
+      window.localStorage.getItem(THEME_STORAGE_KEY) || "dark",
+    );
+  });
   const activeSectionRef = useRef(activeSection);
 
   const [stats, setStats] = useState(null);
@@ -371,6 +383,13 @@ const Dashboard = () => {
   useEffect(() => {
     activeSectionRef.current = activeSection;
   }, [activeSection]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const normalizedMode = resolveDashboardThemeMode(themeMode);
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalizedMode);
+    document.body.dataset.nanoTheme = normalizedMode;
+  }, [themeMode]);
 
   const loadBillingStatus = useCallback(
     async (workspaceId) => {
@@ -652,7 +671,14 @@ const Dashboard = () => {
       currentWorkspace.settings?.features?.assistant_voice ?? true;
     const whatsappAlerts =
       currentWorkspace.settings?.features?.whatsapp_alerts ?? false;
-    const themeMode = user?.settings?.theme || "light";
+    const storedThemeMode =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(THEME_STORAGE_KEY)
+        : null;
+    const resolvedThemeMode = resolveDashboardThemeMode(
+      storedThemeMode || user?.settings?.theme || "dark",
+    );
+    setThemeMode(resolvedThemeMode);
 
     setCompanyForm({
       name: currentWorkspace.name || "",
@@ -674,7 +700,7 @@ const Dashboard = () => {
       notifications,
       assistant_voice: assistantVoice,
       whatsapp_alerts: whatsappAlerts,
-      theme_mode: themeMode,
+      theme_mode: resolvedThemeMode,
     });
   }, [currentWorkspace, user?.settings?.theme]);
 
@@ -1116,6 +1142,14 @@ const Dashboard = () => {
     }
   };
 
+  const toggleThemeMode = useCallback(() => {
+    setThemeMode((current) => {
+      const next = current === "light" ? "dark" : "light";
+      setSettingsForm((form) => ({ ...form, theme_mode: next }));
+      return next;
+    });
+  }, []);
+
   const handleOpenFinanceSync = async (connection) => {
     if (!currentWorkspace?.id || !connection?.id) return;
 
@@ -1339,6 +1373,11 @@ const Dashboard = () => {
 
   const savePlatformSettings = (event) => {
     event.preventDefault();
+    if (typeof window !== "undefined") {
+      const resolvedMode = resolveDashboardThemeMode(settingsForm.theme_mode);
+      window.localStorage.setItem(THEME_STORAGE_KEY, resolvedMode);
+      setThemeMode(resolvedMode);
+    }
     toast({
       title: "Preferências atualizadas",
       description:
@@ -3583,7 +3622,7 @@ const Dashboard = () => {
   if (!currentWorkspace) {
     return (
       <div
-        className={`min-h-screen ${dashboardTheme.layout} px-6 py-10 text-zinc-100`}
+        className={`theme-dashboard-${themeMode} min-h-screen ${dashboardTheme.layout} px-6 py-10 text-zinc-100`}
       >
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="space-y-3">
@@ -3646,6 +3685,9 @@ const Dashboard = () => {
   }
 
   return (
+    <div
+      className={`theme-dashboard-${themeMode}`}
+    >
     <div
       className={`${dashboardTheme.layout} text-zinc-100 ${
         activeSection === "assistant"
@@ -3738,7 +3780,15 @@ const Dashboard = () => {
                   />
                   <TopIconButton icon={Search} />
                   <TopIconButton icon={Bell} />
-                  <TopIconButton icon={Moon} />
+                  <TopIconButton
+                    icon={themeMode === "light" ? Moon : Sun}
+                    onClick={toggleThemeMode}
+                    title={
+                      themeMode === "light"
+                        ? "Ativar modo escuro"
+                        : "Ativar modo claro"
+                    }
+                  />
                 </div>
               </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -3787,6 +3837,7 @@ const Dashboard = () => {
         onError={handlePluggyError}
       />
     </div>
+    </div>
   );
 };
 
@@ -3834,10 +3885,12 @@ const SurfacePanel = ({ title, action, children }) => (
   </Card>
 );
 
-const TopIconButton = ({ icon: Icon }) => (
+const TopIconButton = ({ icon: Icon, onClick, title }) => (
   <button
     type="button"
-    className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/30 bg-slate-950/55 text-slate-400 transition hover:-translate-y-0.5 hover:bg-white/[0.05] hover:text-red-200"
+    onClick={onClick}
+    title={title}
+    className={`flex h-12 w-12 items-center justify-center ${dashboardTheme.panelSecondary} text-slate-400 transition hover:-translate-y-0.5 hover:text-red-200`}
   >
     <Icon className="h-4.5 w-4.5" />
   </button>
