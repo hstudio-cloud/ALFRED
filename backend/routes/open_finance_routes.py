@@ -1,6 +1,7 @@
+import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from models_open_finance import (
@@ -19,6 +20,13 @@ open_finance_sync_service = OpenFinanceSyncService()
 
 class OpenFinanceSyncRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+def _verify_open_finance_webhook_secret(secret: str | None) -> bool:
+    expected = (os.getenv("OPEN_FINANCE_WEBHOOK_SECRET") or "").strip()
+    if not expected:
+        return True
+    return (secret or "").strip() == expected
 
 
 @router.post("/connect/token")
@@ -58,6 +66,58 @@ async def connect_callback(
         provider_payload=payload.metadata,
     )
     return {"connection": connection, "sync": sync_result}
+
+
+@router.post("/webhook")
+async def open_finance_webhook(
+    request: Request,
+    x_open_finance_webhook_secret: Optional[str] = Header(
+        default=None,
+        alias="X-Open-Finance-Webhook-Secret",
+    ),
+):
+    if not _verify_open_finance_webhook_secret(x_open_finance_webhook_secret):
+        raise HTTPException(status_code=401, detail="Webhook secret invalido.")
+
+    payload = await request.json()
+    event_name = (
+        payload.get("event")
+        or payload.get("type")
+        or payload.get("eventName")
+        or ""
+    )
+    item_id = (
+        payload.get("itemId")
+        or payload.get("item_id")
+        or payload.get("item", {}).get("id")
+        or payload.get("data", {}).get("item", {}).get("id")
+        or payload.get("resource", {}).get("itemId")
+    )
+    provider = (payload.get("provider") or "pluggy").strip().lower()
+
+    if not item_id:
+        return {"received": True, "ignored": True, "reason": "missing_item_id"}
+
+    lowered_event = event_name.lower()
+    if any(
+        marker in lowered_event
+        for marker in ["deleted", "error", "login_failed", "waiting_user_input"]
+    ):
+        status = "error" if "error" in lowered_event or "failed" in lowered_event else "deleted"
+        result = await open_finance_sync_service.update_connection_status_by_item_id(
+            provider=provider,
+            item_id=item_id,
+            status=status,
+            metadata=payload,
+        )
+        return {"received": True, "event": event_name, "result": result}
+
+    result = await open_finance_sync_service.sync_by_item_id(
+        provider=provider,
+        item_id=item_id,
+        provider_payload=payload,
+    )
+    return {"received": True, "event": event_name, "result": result}
 
 
 @router.get("/connections")

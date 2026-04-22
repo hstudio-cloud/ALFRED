@@ -161,6 +161,64 @@ class OpenFinanceSyncService:
             "transactions_synced": upserted_transactions,
         }
 
+    async def sync_by_item_id(
+        self,
+        *,
+        provider: str,
+        item_id: str,
+        provider_payload: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        if not item_id:
+            return {"ok": False, "error": "missing_item_id"}
+
+        connection = await open_finance_connections_collection.find_one(
+            {
+                "provider": (provider or "pluggy").strip().lower(),
+                "item_id": item_id,
+            }
+        )
+        if not connection:
+            return {"ok": False, "error": "connection_not_found"}
+
+        return await self.sync_connection(
+            workspace_id=connection["workspace_id"],
+            connection_id=connection["id"],
+            provider_payload=provider_payload,
+        )
+
+    async def update_connection_status_by_item_id(
+        self,
+        *,
+        provider: str,
+        item_id: str,
+        status: str,
+        metadata: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        if not item_id:
+            return {"ok": False, "error": "missing_item_id"}
+
+        connection = await open_finance_connections_collection.find_one(
+            {
+                "provider": (provider or "pluggy").strip().lower(),
+                "item_id": item_id,
+            }
+        )
+        if not connection:
+            return {"ok": False, "error": "connection_not_found"}
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await open_finance_connections_collection.update_one(
+            {"id": connection["id"]},
+            {
+                "$set": {
+                    "status": status,
+                    "updated_at": now_iso,
+                    "webhook_metadata": metadata or {},
+                }
+            },
+        )
+        return {"ok": True, "connection_id": connection["id"], "status": status}
+
     def _normalize_provider_payload(self, payload: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
         if not payload:
             return {"accounts": [], "transactions": []}
