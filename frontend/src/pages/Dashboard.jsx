@@ -3781,12 +3781,12 @@ const Dashboard = () => {
                   <TopIconButton icon={Search} />
                   <TopIconButton icon={Bell} />
                   <TopIconButton
-                    icon={themeMode === "light" ? Moon : Sun}
+                    icon={themeMode === "light" ? Sun : Moon}
                     onClick={toggleThemeMode}
                     title={
                       themeMode === "light"
-                        ? "Ativar modo escuro"
-                        : "Ativar modo claro"
+                        ? "Modo claro ativo. Clique para mudar para o escuro"
+                        : "Modo escuro ativo. Clique para mudar para o claro"
                     }
                   />
                 </div>
