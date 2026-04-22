@@ -23,6 +23,7 @@ bills_collection = db.financial_bills
 accounts_collection = db.financial_accounts
 cards_collection = db.credit_cards
 subscriptions_collection = db.saas_subscriptions
+payments_collection = db.billing_payments
 automation_logs_collection = db.automation_logs
 user_memories_collection = db.user_memories
 statement_imports_collection = db.statement_imports

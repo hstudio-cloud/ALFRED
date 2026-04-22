@@ -8,6 +8,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Billing from './pages/Billing';
 import Clients from './pages/Clients';
 import TasksKanban from './pages/TasksKanban';
 import DashboardEnhanced from './pages/DashboardEnhanced';
@@ -25,6 +26,14 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 
+              <Route
+                path="/billing"
+                element={(
+                  <ProtectedRoute>
+                    <Billing />
+                  </ProtectedRoute>
+                )}
+              />
               <Route
                 path="/dashboard"
                 element={(

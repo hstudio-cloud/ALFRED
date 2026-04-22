@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { mockData } from "../data/mock";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { useAuth } from "../context/AuthContext";
 import {
   Check,
   ArrowRight,
@@ -15,6 +17,8 @@ import {
 const PricingSection = () => {
   const [isYearly, setIsYearly] = useState(false);
   const { pricing, platforms } = mockData;
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   return (
     <section className="py-20 px-6">
@@ -129,6 +133,7 @@ const PricingSection = () => {
               <Button
                 size="lg"
                 className="w-full bg-white text-slate-900 hover:bg-slate-100 py-6 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all group"
+                onClick={() => navigate(isAuthenticated ? "/billing" : "/register")}
               >
                 Começar agora
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
