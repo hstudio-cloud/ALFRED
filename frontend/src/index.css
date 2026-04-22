@@ -156,7 +156,8 @@ code {
 }
 
 @layer components {
-  .theme-dashboard-dark {
+  .theme-dashboard-dark,
+  [data-nano-theme="dark"] {
     --dashboard-layout-bg:
       radial-gradient(circle at 12% 16%, rgba(185, 28, 28, 0.18), transparent 22%),
       radial-gradient(circle at 82% 18%, rgba(239, 68, 68, 0.08), transparent 18%),
@@ -180,7 +181,8 @@ code {
     --dashboard-button-ghost-text: #d4d4d8;
   }
 
-  .theme-dashboard-light {
+  .theme-dashboard-light,
+  [data-nano-theme="light"] {
     --dashboard-layout-bg:
       radial-gradient(circle at 14% 14%, rgba(248, 113, 113, 0.09), transparent 18%),
       radial-gradient(circle at 84% 16%, rgba(251, 191, 36, 0.08), transparent 16%),
@@ -318,7 +320,11 @@ code {
   .theme-dashboard-light .text-white,
   .theme-dashboard-light .text-zinc-100,
   .theme-dashboard-light .text-slate-100,
-  .theme-dashboard-light .text-zinc-50 {
+  .theme-dashboard-light .text-zinc-50,
+  [data-nano-theme="light"] .text-white,
+  [data-nano-theme="light"] .text-zinc-100,
+  [data-nano-theme="light"] .text-slate-100,
+  [data-nano-theme="light"] .text-zinc-50 {
     color: #111827 !important;
   }
 
@@ -327,7 +333,13 @@ code {
   .theme-dashboard-light .text-slate-500,
   .theme-dashboard-light .text-zinc-300,
   .theme-dashboard-light .text-zinc-400,
-  .theme-dashboard-light .text-zinc-500 {
+  .theme-dashboard-light .text-zinc-500,
+  [data-nano-theme="light"] .text-slate-300,
+  [data-nano-theme="light"] .text-slate-400,
+  [data-nano-theme="light"] .text-slate-500,
+  [data-nano-theme="light"] .text-zinc-300,
+  [data-nano-theme="light"] .text-zinc-400,
+  [data-nano-theme="light"] .text-zinc-500 {
     color: #374151 !important;
   }
 
@@ -336,22 +348,34 @@ code {
   .theme-dashboard-light .text-red-200\/65,
   .theme-dashboard-light .text-red-200\/70,
   .theme-dashboard-light .text-red-200\/75,
-  .theme-dashboard-light .text-red-300\/70 {
+  .theme-dashboard-light .text-red-300\/70,
+  [data-nano-theme="light"] .text-red-200,
+  [data-nano-theme="light"] .text-red-300,
+  [data-nano-theme="light"] .text-red-200\/65,
+  [data-nano-theme="light"] .text-red-200\/70,
+  [data-nano-theme="light"] .text-red-200\/75,
+  [data-nano-theme="light"] .text-red-300\/70 {
     color: #9f1239 !important;
   }
 
   .theme-dashboard-light .text-amber-200,
-  .theme-dashboard-light .text-amber-300 {
+  .theme-dashboard-light .text-amber-300,
+  [data-nano-theme="light"] .text-amber-200,
+  [data-nano-theme="light"] .text-amber-300 {
     color: #92400e !important;
   }
 
-  .theme-dashboard-light .text-slate-600 {
+  .theme-dashboard-light .text-slate-600,
+  [data-nano-theme="light"] .text-slate-600 {
     color: #475569 !important;
   }
 
   .theme-dashboard-light .border-slate-700\/30,
   .theme-dashboard-light .border-slate-700\/50,
-  .theme-dashboard-light .border-red-500\/25 {
+  .theme-dashboard-light .border-red-500\/25,
+  [data-nano-theme="light"] .border-slate-700\/30,
+  [data-nano-theme="light"] .border-slate-700\/50,
+  [data-nano-theme="light"] .border-red-500\/25 {
     border-color: rgba(100, 116, 139, 0.22) !important;
   }
 
@@ -360,21 +384,32 @@ code {
   .theme-dashboard-light .bg-slate-900\/40,
   .theme-dashboard-light .bg-slate-900\/50,
   .theme-dashboard-light .bg-slate-900\/60,
-  .theme-dashboard-light .bg-\[linear-gradient\(180deg\,rgba\(2\,6\,23\,0\.56\)\,rgba\(9\,9\,11\,0\.38\)\)\] {
+  .theme-dashboard-light .bg-\[linear-gradient\(180deg\,rgba\(2\,6\,23\,0\.56\)\,rgba\(9\,9\,11\,0\.38\)\)\],
+  [data-nano-theme="light"] .bg-slate-950\/50,
+  [data-nano-theme="light"] .bg-slate-950\/60,
+  [data-nano-theme="light"] .bg-slate-900\/40,
+  [data-nano-theme="light"] .bg-slate-900\/50,
+  [data-nano-theme="light"] .bg-slate-900\/60,
+  [data-nano-theme="light"] .bg-\[linear-gradient\(180deg\,rgba\(2\,6\,23\,0\.56\)\,rgba\(9\,9\,11\,0\.38\)\)\] {
     background: rgba(229, 224, 217, 0.88) !important;
   }
 
   .theme-dashboard-light .bg-amber-500\/15,
-  .theme-dashboard-light .bg-amber-500\/25 {
+  .theme-dashboard-light .bg-amber-500\/25,
+  [data-nano-theme="light"] .bg-amber-500\/15,
+  [data-nano-theme="light"] .bg-amber-500\/25 {
     background: rgba(251, 191, 36, 0.16) !important;
   }
 
   .theme-dashboard-light .bg-red-500\/10,
-  .theme-dashboard-light .bg-red-500\/12 {
+  .theme-dashboard-light .bg-red-500\/12,
+  [data-nano-theme="light"] .bg-red-500\/10,
+  [data-nano-theme="light"] .bg-red-500\/12 {
     background: rgba(244, 63, 94, 0.12) !important;
   }
 
-  .theme-dashboard-light .text-slate-950 {
+  .theme-dashboard-light .text-slate-950,
+  [data-nano-theme="light"] .text-slate-950 {
     color: #0f172a !important;
   }
 }

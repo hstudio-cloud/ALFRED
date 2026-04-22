@@ -388,6 +388,7 @@ const Dashboard = () => {
     if (typeof window === "undefined") return;
     const normalizedMode = resolveDashboardThemeMode(themeMode);
     window.localStorage.setItem(THEME_STORAGE_KEY, normalizedMode);
+    document.documentElement.dataset.nanoTheme = normalizedMode;
     document.body.dataset.nanoTheme = normalizedMode;
   }, [themeMode]);
 

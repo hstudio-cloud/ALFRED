@@ -142,6 +142,7 @@ const Billing = () => {
 
   useEffect(() => {
     if (typeof document !== "undefined") {
+      document.documentElement.dataset.nanoTheme = themeMode;
       document.body.dataset.nanoTheme = themeMode;
     }
   }, [themeMode]);
