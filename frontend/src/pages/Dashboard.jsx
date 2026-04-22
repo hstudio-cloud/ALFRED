@@ -1089,17 +1089,17 @@ const Dashboard = () => {
           includeSandbox: Boolean(payload?.sandbox),
         });
       } else {
-        toast({
-          title: "Conexão preparada",
-          description:
-            "O endpoint respondeu, mas sem URL pública. Verifique a configuração do provider.",
-        });
+        throw new Error(
+          payload?.message ||
+            "O provider respondeu sem URL ou token de conexão.",
+        );
       }
     } catch (error) {
       toast({
         title: "Erro ao conectar Open Finance",
         description:
           error?.response?.data?.detail ||
+          error?.message ||
           "Não consegui iniciar a conexão bancária agora.",
         variant: "destructive",
       });

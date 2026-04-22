@@ -193,6 +193,28 @@ class OpenFinanceService:
             request_body,
             headers={"X-API-KEY": api_key},
         )
+        if response.get("error") == "http_403":
+            refreshed_api_key = await self._pluggy_get_api_key(force_refresh=True)
+            if refreshed_api_key and refreshed_api_key != api_key:
+                response = await self._http_post_json(
+                    endpoint,
+                    request_body,
+                    headers={"X-API-KEY": refreshed_api_key},
+                )
+
+        if response.get("error"):
+            return {
+                "provider": "pluggy",
+                "connect_token": None,
+                "connect_url": None,
+                "configured": False,
+                "message": self._extract_provider_error_message(
+                    response,
+                    default="Pluggy recusou a criacao do token de conexao.",
+                ),
+                "raw": response,
+            }
+
         return {
             "provider": "pluggy",
             "connect_token": response.get("accessToken") or response.get("connectToken"),
@@ -283,8 +305,8 @@ class OpenFinanceService:
             "metadata": transaction,
         }
 
-    async def _pluggy_get_api_key(self) -> str:
-        if self.api_key:
+    async def _pluggy_get_api_key(self, force_refresh: bool = False) -> str:
+        if self.api_key and not force_refresh:
             return self.api_key
 
         endpoint = f"{self.base_url.rstrip('/')}/auth"
@@ -293,12 +315,36 @@ class OpenFinanceService:
             {"clientId": self.client_id, "clientSecret": self.client_secret},
             headers={},
         )
-        return (
+        api_key = (
             response.get("apiKey")
             or response.get("accessToken")
             or response.get("access_token")
             or ""
         )
+        if api_key:
+            self.api_key = api_key
+        return api_key
+
+    def _extract_provider_error_message(
+        self,
+        response: Dict[str, Any],
+        *,
+        default: str,
+    ) -> str:
+        body = response.get("body")
+        if isinstance(body, str) and body:
+            try:
+                parsed_body = json.loads(body)
+            except json.JSONDecodeError:
+                parsed_body = {}
+            if isinstance(parsed_body, dict):
+                return (
+                    parsed_body.get("message")
+                    or parsed_body.get("codeDescription")
+                    or parsed_body.get("error")
+                    or default
+                )
+        return response.get("error") or default
 
     async def _belvo_create_connect_token(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         endpoint = f"{self.base_url.rstrip('/')}/token"
