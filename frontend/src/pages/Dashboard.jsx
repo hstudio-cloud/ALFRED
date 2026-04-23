@@ -1676,6 +1676,30 @@ const Dashboard = () => {
   const payrollSummary = payrollReport?.summary || {};
   const payrollGroups = payrollReport?.groups || { clt: [], contract: [] };
   const todayDateValue = new Date().toISOString().slice(0, 10);
+  const overviewHighlights = [
+    {
+      label: "Posição do mês",
+      title:
+        monthlyResult >= 0
+          ? `Resultado positivo de ${currencyFormatter.format(monthlyResult)}`
+          : `Resultado negativo de ${currencyFormatter.format(Math.abs(monthlyResult))}`,
+      description:
+        monthlyResult >= 0
+          ? "O caixa fechou acima das saídas até agora e há espaço para organizar os próximos passos."
+          : "As saídas estão acima das entradas no período e o foco precisa ser proteger o caixa.",
+    },
+    {
+      label: "Prioridade do Nano",
+      title: "Leitura operacional do momento",
+      description: reportMessage,
+    },
+    {
+      label: "Setup do workspace",
+      title: `${completionPercent}% da leitura pronta`,
+      description:
+        "Quanto mais contas, categorias, alertas e rotinas você conclui, mais precisa fica a visão do Nano.",
+    },
+  ];
 
   const renderOverview = () => (
     <SectionLayout
@@ -1688,21 +1712,24 @@ const Dashboard = () => {
       }
     >
       <PageHeader
-        eyebrow="Dashboard"
-        title="Visão geral das suas finanças"
-        description="Um cockpit limpo para acompanhar entradas, saídas, contas, agenda financeira e o que merece ação no Nano."
+        eyebrow="Resumo executivo"
+        title="O que está acontecendo no seu financeiro agora"
+        description="Aqui o Nano resume a posição do mês, destaca a principal prioridade e abre o cockpit completo logo abaixo."
       />
       <div className="grid gap-3 lg:grid-cols-3">
-        {topNanoInsights.map((item, index) => (
+        {overviewHighlights.map((item, index) => (
           <div
-            key={`${item.label || "insight"}-${index}`}
+            key={`${item.label}-${index}`}
             className={`${dashboardTheme.panelSecondary} px-4 py-3`}
           >
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-red-200/70">
-              {item.label || "Insight do Nano"}
+              {item.label}
             </p>
-            <p className="mt-2 text-sm leading-6 text-zinc-200">
-              {item.message}
+            <p className="mt-2 text-lg font-semibold leading-7 text-white">
+              {item.title}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">
+              {item.description}
             </p>
           </div>
         ))}
