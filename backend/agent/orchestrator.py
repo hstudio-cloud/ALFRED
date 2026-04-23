@@ -61,8 +61,14 @@ class AgentOrchestrator:
             "now": datetime.utcnow().isoformat(),
         }
 
-        intent = self.intent_classifier.classify(message, base_context)
-        plan = self.planner.create_plan(intent, message)
+        intent, intent_source = await self._classify_with_fallback(
+            message=message,
+            base_context=base_context,
+        )
+        plan, plan_source = await self._plan_with_fallback(
+            intent=intent,
+            message=message,
+        )
 
         if plan.followup_needed:
             followup_text = await self.llm.ask_for_missing_data(message, plan.missing_fields)
@@ -71,7 +77,11 @@ class AgentOrchestrator:
                 intent=intent.label,
                 followup_needed=True,
                 missing_fields=plan.missing_fields,
-                metadata={"plan": self._plan_debug(plan)},
+                metadata={
+                    "plan": self._plan_debug(plan),
+                    "intent_source": intent_source,
+                    "plan_source": plan_source,
+                },
             )
 
         tool_results: Dict[str, Any] = {}
@@ -114,11 +124,10 @@ class AgentOrchestrator:
         normalized_actions = normalize_declared_actions(actions)
         normalized_executed_actions = normalize_executed_actions(executed_actions)
 
-        # Fast-path: when we already executed real actions/tools, prefer a deterministic
-        # grounded response to reduce latency and avoid generic replies.
         if normalized_executed_actions or tool_results:
-            response_text = self._build_grounded_summary(
-                intent_label=intent.label,
+            response_text = await self.llm.respond_with_tool_results(
+                message=message,
+                intent=intent.label,
                 tool_results=tool_results,
                 executed_actions=normalized_executed_actions,
                 fallback_response=fallback_response,
@@ -156,7 +165,278 @@ class AgentOrchestrator:
             executed_actions=normalized_executed_actions,
             followup_needed=False,
             missing_fields=[],
-            metadata={"plan": self._plan_debug(plan), "intent_confidence": intent.confidence},
+            metadata={
+                "plan": self._plan_debug(plan),
+                "intent_confidence": intent.confidence,
+                "intent_source": intent_source,
+                "plan_source": plan_source,
+            },
+        )
+
+    async def _classify_with_fallback(
+        self,
+        *,
+        message: str,
+        base_context: Dict[str, Any],
+    ) -> tuple[IntentClassification, str]:
+        llm_payload = await self.llm.classify_intent(message, base_context)
+        llm_intent = self._intent_from_llm_payload(llm_payload)
+        if llm_intent and llm_intent.label != "unknown" and llm_intent.confidence >= 0.55:
+            return llm_intent, "llm"
+        return self.intent_classifier.classify(message, base_context), "fallback_rules"
+
+    async def _plan_with_fallback(
+        self,
+        *,
+        intent: IntentClassification,
+        message: str,
+    ) -> tuple[ExecutionPlan, str]:
+        llm_plan = await self._create_llm_plan(intent=intent, message=message)
+        if llm_plan and llm_plan.steps:
+            return llm_plan, "llm"
+        if llm_plan and llm_plan.followup_needed:
+            return llm_plan, "llm"
+        return self.planner.create_plan(intent, message), "fallback_planner"
+
+    async def _create_llm_plan(
+        self,
+        *,
+        intent: IntentClassification,
+        message: str,
+    ) -> ExecutionPlan | None:
+        if intent.label == "followup_missing_data":
+            return ExecutionPlan(
+                intent=intent,
+                followup_needed=True,
+                missing_fields=list(intent.missing_fields),
+                steps=[
+                    PlanStep(
+                        name="ask_missing_data",
+                        meta={"missing_fields": intent.missing_fields, "original_message": message},
+                    )
+                ],
+            )
+
+        tool_specs = self._tool_specs_for_intent(intent)
+        if not tool_specs:
+            return None
+
+        selected_tools = await self.llm.select_tools(
+            message=message,
+            intent=intent.label,
+            tools=tool_specs,
+        )
+        if not selected_tools:
+            return None
+
+        plan = ExecutionPlan(
+            intent=intent,
+            followup_needed=bool(intent.missing_fields),
+            missing_fields=list(intent.missing_fields),
+        )
+
+        for item in selected_tools:
+            step = self._step_from_llm_selection(
+                selected=item,
+                intent=intent,
+                message=message,
+            )
+            if step:
+                plan.steps.append(step)
+
+        return plan if plan.steps else None
+
+    def _tool_specs_for_intent(self, intent: IntentClassification) -> List[Dict[str, Any]]:
+        if intent.label == "system_action":
+            return [
+                self._tool_spec(
+                    "create_transaction",
+                    "Registrar uma receita ou despesa financeira no sistema.",
+                    {
+                        "amount": {"type": "number"},
+                        "category": {"type": "string"},
+                        "transaction_type": {"type": "string"},
+                        "description": {"type": "string"},
+                        "payment_method": {"type": "string"},
+                        "account_scope": {"type": "string"},
+                    },
+                ),
+                self._tool_spec(
+                    "create_category",
+                    "Criar uma nova categoria financeira no Nano.",
+                    {
+                        "name": {"type": "string"},
+                        "kind": {"type": "string"},
+                        "account_scope": {"type": "string"},
+                    },
+                ),
+                self._tool_spec(
+                    "create_reminder",
+                    "Criar um lembrete ou compromisso com data e hora.",
+                    {
+                        "title": {"type": "string"},
+                        "remind_at": {"type": "string"},
+                        "description": {"type": "string"},
+                    },
+                ),
+                self._tool_spec(
+                    "navigate_to_section",
+                    "Navegar para uma seção do painel, como bancos, cartoes ou relatorios.",
+                    {
+                        "section": {"type": "string"},
+                        "label": {"type": "string"},
+                    },
+                ),
+                self._tool_spec(
+                    "execute_system_actions",
+                    "Usar o fallback de parsing local para detectar acoes livres no texto.",
+                    {},
+                ),
+            ]
+
+        if intent.label == "system_query":
+            return [
+                self._tool_spec("fetch_agenda", "Consultar agenda e lembretes de hoje.", {}),
+                self._tool_spec("fetch_open_bills", "Consultar contas abertas.", {}),
+                self._tool_spec("fetch_recent_transactions", "Consultar movimentacoes recentes.", {}),
+                self._tool_spec("month_expenses", "Consultar total de despesas do mes.", {}),
+                self._tool_spec("cashflow_forecast", "Consultar fluxo de caixa e projecao.", {}),
+                self._tool_spec("open_finance_summary", "Consultar resumo do Open Finance.", {}),
+                self._tool_spec("open_finance_week_income", "Consultar entradas e saidas dos ultimos 7 dias.", {}),
+                self._tool_spec("open_finance_top_expenses", "Consultar maiores despesas importadas do banco.", {}),
+            ]
+
+        if intent.label == "financial_analysis":
+            return [
+                self._tool_spec("month_expenses", "Consultar total de despesas do mes.", {}),
+                self._tool_spec("cashflow_forecast", "Consultar fluxo de caixa e projecao.", {}),
+                self._tool_spec("top_categories", "Consultar categorias com maior peso no periodo.", {}),
+                self._tool_spec("workspace_summary", "Consultar resumo geral do workspace.", {}),
+                self._tool_spec("open_finance_summary", "Consultar resumo do Open Finance.", {}),
+                self._tool_spec("open_finance_week_income", "Consultar entradas e saidas dos ultimos 7 dias.", {}),
+                self._tool_spec("open_finance_top_expenses", "Consultar maiores despesas importadas do banco.", {}),
+            ]
+
+        if intent.label == "web_research":
+            return [
+                self._tool_spec("web_search", "Pesquisar na web usando a cadeia Brave/Tavily/DuckDuckGo.", {"query": {"type": "string"}}),
+                self._tool_spec("date_time", "Consultar data e hora atuais.", {}),
+                self._tool_spec("account_balances", "Consultar saldos das contas para comparar com a pesquisa.", {"scope": {"type": "string"}}),
+            ]
+
+        if intent.label == "knowledge_lookup":
+            return [
+                self._tool_spec("knowledge_lookup", "Consultar a base interna de conhecimento do Nano.", {"query": {"type": "string"}})
+            ]
+
+        if intent.label == "memory_recall":
+            return [
+                self._tool_spec("read_memory", "Ler memoria recente do usuario no Nano.", {})
+            ]
+
+        return []
+
+    def _step_from_llm_selection(
+        self,
+        *,
+        selected: Dict[str, Any],
+        intent: IntentClassification,
+        message: str,
+    ) -> PlanStep | None:
+        name = str(selected.get("name") or "").strip()
+        arguments = selected.get("arguments") if isinstance(selected.get("arguments"), dict) else {}
+
+        if name == "create_transaction":
+            payload = self.planner._extract_transaction_payload(message, intent)
+            payload.update({k: v for k, v in arguments.items() if v not in (None, "")})
+            return PlanStep(
+                name="create_transaction",
+                tool="orchestrator_tools.create_transaction",
+                tool_input=payload,
+            )
+
+        if name == "create_category":
+            payload = self.planner._extract_category_payload(message, intent)
+            payload.update({k: v for k, v in arguments.items() if v not in (None, "")})
+            return PlanStep(
+                name="create_category",
+                tool="orchestrator_tools.create_category",
+                tool_input=payload,
+            )
+
+        if name == "create_reminder":
+            payload = self.planner._extract_reminder_payload(message)
+            payload.update({k: v for k, v in arguments.items() if v not in (None, "")})
+            return PlanStep(
+                name="create_reminder",
+                tool="orchestrator_tools.create_reminder",
+                tool_input=payload,
+            )
+
+        if name == "navigate_to_section":
+            payload = {
+                "section": arguments.get("section") or intent.entities.get("section"),
+                "label": arguments.get("label") or intent.entities.get("section"),
+            }
+            if not payload["section"]:
+                return None
+            return PlanStep(
+                name="navigate_section",
+                tool="workspace_tools.navigate_to_section",
+                tool_input=payload,
+            )
+
+        if name == "execute_system_actions":
+            return PlanStep(
+                name="execute_system_actions",
+                tool="assistant_action_service.execute_from_text",
+                tool_input={"message": message},
+            )
+
+        mapping = {
+            "fetch_agenda": ("fetch_agenda", "reminder_tools.get_agenda_today"),
+            "fetch_open_bills": ("fetch_open_bills", "finance_tools.get_open_bills"),
+            "fetch_recent_transactions": ("fetch_recent_transactions", "finance_tools.get_recent_transactions"),
+            "month_expenses": ("month_expenses", "finance_tools.get_month_expenses"),
+            "cashflow_forecast": ("cashflow_forecast", "finance_tools.get_cashflow"),
+            "top_categories": ("top_categories", "report_tools.get_top_categories"),
+            "workspace_summary": ("workspace_summary", "system_tools.get_workspace_summary"),
+            "open_finance_summary": ("open_finance_summary", "open_finance_tools.get_open_finance_summary"),
+            "open_finance_week_income": ("open_finance_week_income", "open_finance_tools.get_open_finance_week_income"),
+            "open_finance_top_expenses": ("open_finance_top_expenses", "open_finance_tools.get_open_finance_top_expenses"),
+            "web_search": ("web_search", "web_tools.web_search"),
+            "date_time": ("date_time", "utility_tools.current_date_time"),
+            "account_balances": ("account_balances", "account_tools.get_account_balances"),
+            "knowledge_lookup": ("knowledge_lookup", "knowledge_tools.search_internal_knowledge"),
+            "read_memory": ("read_memory", "memory_manager.recall_relevant"),
+        }
+        if name not in mapping:
+            return None
+        step_name, tool_name = mapping[name]
+        return PlanStep(name=step_name, tool=tool_name, tool_input=arguments)
+
+    @staticmethod
+    def _tool_spec(name: str, description: str, properties: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": {"type": "object", "properties": properties},
+            },
+        }
+
+    @staticmethod
+    def _intent_from_llm_payload(payload: Dict[str, Any]) -> IntentClassification | None:
+        if not payload or not payload.get("label"):
+            return None
+        return IntentClassification(
+            label=payload["label"],
+            confidence=float(payload.get("confidence", 0) or 0),
+            entities=payload.get("entities") or {},
+            suggested_tool=payload.get("suggested_tool"),
+            requires_tool=bool(payload.get("requires_tool", False)),
+            missing_fields=list(payload.get("missing_fields") or []),
         )
 
     async def _execute_step(

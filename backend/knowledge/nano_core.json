@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "title": "Registrar despesa e receita",
+      "keywords": ["despesa", "receita", "registrar", "movimentacao"],
+      "content": "Use comandos como 'criar despesa de 80 em combustivel' ou 'registrar receita de 1200' para lancar movimentacoes diretamente no Nano."
+    },
+    {
+      "title": "Agenda e lembretes",
+      "keywords": ["agenda", "lembrete", "vencimento", "hoje"],
+      "content": "Pergunte 'o que temos para hoje?' para listar seus lembretes ativos do dia ou peça para criar um lembrete com data e hora."
+    },
+    {
+      "title": "Fluxo de caixa e previsao",
+      "keywords": ["fluxo de caixa", "previsao", "saldo", "30", "60", "90"],
+      "content": "O Nano calcula fluxo atual e projecao futura considerando contas pendentes, movimentacoes registradas e sinalizacao de risco no caixa."
+    },
+    {
+      "title": "Escopos pessoal, empresa e geral",
+      "keywords": ["pessoal", "empresa", "geral", "escopo"],
+      "content": "Pessoal para PF, empresa para PJ e geral para visao consolidada do workspace."
+    }
+  ]
+}
