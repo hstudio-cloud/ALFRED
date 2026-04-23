@@ -3214,7 +3214,7 @@ const Dashboard = () => {
             <input
               ref={cnpjCardInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
+              accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf,.pdf"
               className="hidden"
               onChange={handleCnpjCardUpload}
             />
@@ -3241,7 +3241,7 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <FileUp className="mr-2 h-4 w-4" />
-                    Enviar cartao CNPJ
+                    Enviar cartao CNPJ ou PDF
                   </>
                 )}
               </Button>

@@ -106,10 +106,12 @@ async def extract_cnpj_card(
             raise HTTPException(status_code=403, detail="Apenas o dono pode importar dados do CNPJ")
 
         mime_type = (document.content_type or "").lower()
-        if not mime_type.startswith("image/"):
+        is_image = mime_type.startswith("image/")
+        is_pdf = "pdf" in mime_type or (document.filename or "").lower().endswith(".pdf")
+        if not is_image and not is_pdf:
             raise HTTPException(
                 status_code=400,
-                detail="Envie uma imagem do cartao CNPJ em PNG, JPG, JPEG ou WEBP.",
+                detail="Envie o cartao CNPJ em PNG, JPG, JPEG, WEBP ou PDF.",
             )
 
         file_bytes = await document.read()
@@ -119,6 +121,7 @@ async def extract_cnpj_card(
         extracted = await workspace_document_service.extract_cnpj_card(
             file_bytes=file_bytes,
             mime_type=mime_type,
+            filename=document.filename or "",
         )
         update_payload = workspace_document_service.build_workspace_update(
             current_workspace=workspace,
@@ -140,7 +143,7 @@ async def extract_cnpj_card(
         logger.error(f"Error extracting CNPJ card: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Nao consegui ler esse cartao CNPJ agora. Tente uma foto mais nitida e frontal.",
+            detail="Nao consegui ler esse cartao CNPJ agora. Tente um PDF com texto ou uma imagem mais nitida e frontal.",
         )
 
 @router.delete("/{workspace_id}")

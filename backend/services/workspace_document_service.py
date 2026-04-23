@@ -1,10 +1,12 @@
 import base64
+import io
 import json
 import os
 import re
 import unicodedata
 from typing import Any, Dict
 
+import pdfplumber
 from openai import AsyncOpenAI
 
 
@@ -36,7 +38,17 @@ class WorkspaceDocumentService:
             default_headers=default_headers or None,
         )
 
-    async def extract_cnpj_card(self, *, file_bytes: bytes, mime_type: str) -> Dict[str, Any]:
+    async def extract_cnpj_card(
+        self,
+        *,
+        file_bytes: bytes,
+        mime_type: str,
+        filename: str = "",
+    ) -> Dict[str, Any]:
+        lower_name = (filename or "").lower()
+        if "pdf" in mime_type or lower_name.endswith(".pdf"):
+            return await self.extract_cnpj_pdf(file_bytes=file_bytes)
+
         data_url = self._to_data_url(file_bytes, mime_type)
         prompt = (
             "Leia este cartao CNPJ brasileiro e extraia apenas os dados que realmente estiverem visiveis. "
@@ -83,6 +95,20 @@ class WorkspaceDocumentService:
         if not payload:
             raise ValueError("Nao consegui extrair dados estruturados do cartao CNPJ.")
         return self._normalize_payload(payload)
+
+    async def extract_cnpj_pdf(self, *, file_bytes: bytes) -> Dict[str, Any]:
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            pages = [(page.extract_text() or "").strip() for page in pdf.pages]
+        text = "\n".join(page for page in pages if page)
+        if not text.strip():
+            raise ValueError(
+                "Nao consegui ler o texto do PDF do cartao CNPJ. Se for um PDF escaneado, envie a imagem do cartao."
+            )
+
+        parsed = self._parse_cnpj_text(text)
+        if parsed.get("cnpj") and (parsed.get("legal_name") or parsed.get("trade_name")):
+            return parsed
+        return await self._extract_cnpj_from_text_with_llm(text)
 
     @staticmethod
     def build_workspace_update(*, current_workspace: dict, extracted: Dict[str, Any]) -> Dict[str, Any]:
@@ -169,6 +195,123 @@ class WorkspaceDocumentService:
             except Exception:
                 continue
         return {}
+
+    @staticmethod
+    def _parse_cnpj_text(text: str) -> Dict[str, Any]:
+        single_line = " ".join((text or "").split())
+        legal_name = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"NOME EMPRESARIAL\s+([A-Z0-9&.,'()/\-\s]+?)\s+T[ÍI]TULO DO ESTABELECIMENTO",
+        )
+        trade_name = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"T[ÍI]TULO DO ESTABELECIMENTO \(NOME DE FANTASIA\)\s+([A-Z0-9&.,'()/\-\s]+?)\s+PORTE",
+        )
+        cnpj = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"N[ÚU]MERO DE INSCRI[ÇC][ÃA]O\s+([\d./-]+)",
+        ) or WorkspaceDocumentService._extract_match(single_line, r"CNPJ[:\s]+([\d./-]+)")
+        opening_date = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"DATA DE ABERTURA\s+(\d{2}/\d{2}/\d{4})",
+        )
+        status = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"SITUA[ÇC][ÃA]O CADASTRAL\s+([A-ZÇÃÁÉÍÓÚ\s]+?)\s+DATA DA SITUA",
+        )
+        legal_nature = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"C[ÓO]DIGO E DESCRI[ÇC][ÃA]O DA NATUREZA JUR[ÍI]DICA\s+\d+\s*-\s*([A-Z0-9&.,'()/\-\s]+?)\s+LOGRADOURO",
+        )
+        main_activity = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"C[ÓO]DIGO E DESCRI[ÇC][ÃA]O DA ATIVIDADE ECON[ÔO]MICA PRINCIPAL\s+\d[\d./-]*\s*-\s*([A-Z0-9&.,'()/\-\s]+?)\s+C[ÓO]DIGO E DESCRI",
+        )
+        address_street = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"LOGRADOURO\s+([A-Z0-9.,'()/\-\s]+?)\s+N[ÚU]MERO",
+        )
+        address_number = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"N[ÚU]MERO\s+([A-Z0-9\-\/]+?)\s+COMPLEMENTO",
+        )
+        address_complement = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"COMPLEMENTO\s+([A-Z0-9.,'()/\-\s]*?)\s+CEP",
+        )
+        cep = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"CEP\s+([\d.\-]+)",
+        )
+        neighborhood = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"BAIRRO/DISTRITO\s+([A-Z0-9.,'()/\-\s]+?)\s+MUNIC[ÍI]PIO",
+        )
+        city = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"MUNIC[ÍI]PIO\s+([A-ZÀ-Ý0-9.,'()/\-\s]+?)\s+UF",
+        )
+        state = WorkspaceDocumentService._extract_match(
+            single_line,
+            r"UF\s+([A-Z]{2})",
+        )
+        return WorkspaceDocumentService._normalize_payload(
+            {
+                "legal_name": legal_name,
+                "trade_name": trade_name,
+                "cnpj": cnpj,
+                "opening_date": opening_date,
+                "status": status,
+                "legal_nature": legal_nature,
+                "main_activity": main_activity,
+                "address_street": address_street,
+                "address_number": address_number,
+                "address_complement": address_complement,
+                "neighborhood": neighborhood,
+                "city": city,
+                "state": state,
+                "cep": cep,
+            }
+        )
+
+    async def _extract_cnpj_from_text_with_llm(self, text: str) -> Dict[str, Any]:
+        prompt = (
+            "Leia o texto de um cartao CNPJ brasileiro extraido de PDF e responda apenas JSON valido, sem markdown. "
+            "Campos esperados: legal_name, trade_name, cnpj, opening_date, status, legal_nature, "
+            "main_activity, address_street, address_number, address_complement, neighborhood, city, state, cep. "
+            "Nao invente dados. Se um campo nao estiver presente, retorne string vazia."
+        )
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Voce extrai dados de cartao CNPJ brasileiro a partir de texto. "
+                        "Responda somente JSON valido e nunca invente informacoes."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nTEXTO DO PDF:\n{text[:40000]}",
+                },
+            ],
+            temperature=0,
+            max_tokens=1200,
+        )
+
+        content = response.choices[0].message.content
+        text_content = str(content or "")
+        payload = self._extract_json_object(text_content)
+        if not payload:
+            raise ValueError("Nao consegui extrair dados estruturados do PDF do cartao CNPJ.")
+        return self._normalize_payload(payload)
+
+    @staticmethod
+    def _extract_match(text: str, pattern: str) -> str:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        return match.group(1).strip() if match else ""
 
     @staticmethod
     def _normalize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
