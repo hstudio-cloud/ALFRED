@@ -84,6 +84,8 @@ def compute_employee_payroll(
     employee_type = normalize_employee_type(employee.get("employee_type"))
     payment_cycle = normalize_payment_cycle(company_payment_cycle or employee.get("payment_cycle"))
     salary = float(employee.get("salary") or 0.0)
+    salary_family_amount = float(employee.get("salary_family_amount") or 0.0) if employee_type == "clt" else 0.0
+    dependents_count = int(employee.get("dependents_count") or 0) if employee_type == "clt" else 0
     inss_percent = float(employee.get("inss_percent") or 0.0) if employee_type == "clt" else 0.0
 
     month_business_days = business_days_count(month_start, month_end)
@@ -109,8 +111,8 @@ def compute_employee_payroll(
     absent_days = len(absent_dates)
 
     absence_discount = absent_days * daily_rate
-    gross_month = salary
-    inss_discount = gross_month * (inss_percent / 100.0) if employee_type == "clt" else 0.0
+    gross_month = salary + salary_family_amount
+    inss_discount = salary * (inss_percent / 100.0) if employee_type == "clt" else 0.0
     net_month = max(0.0, gross_month - absence_discount - inss_discount)
 
     half_1_start, half_1_end, half_2_start, half_2_end = _split_half_bounds(month_start, month_end)
@@ -138,6 +140,9 @@ def compute_employee_payroll(
         "employee_type": employee_type,
         "payment_cycle": payment_cycle,
         "salary": round(gross_month, 2),
+        "base_salary": round(salary, 2),
+        "salary_family_amount": round(salary_family_amount, 2),
+        "dependents_count": dependents_count,
         "daily_rate": round(daily_rate, 2),
         "expected_days": expected_days,
         "present_days": present_days,
@@ -183,6 +188,7 @@ def build_payroll_report(
         "present_days": 0,
         "absent_days": 0,
         "gross_salary": 0.0,
+        "salary_family_amount": 0.0,
         "absence_discount": 0.0,
         "inss_discount": 0.0,
         "net_payable": 0.0,
@@ -201,6 +207,7 @@ def build_payroll_report(
         totals["present_days"] += row["present_days"]
         totals["absent_days"] += row["absent_days"]
         totals["gross_salary"] += row["salary"]
+        totals["salary_family_amount"] += row["salary_family_amount"]
         totals["absence_discount"] += row["absence_discount"]
         totals["inss_discount"] += row["inss_discount"]
         totals["net_payable"] += row["net_month_estimated"]
@@ -223,6 +230,7 @@ def build_payroll_report(
             "present_days": totals["present_days"],
             "absent_days": totals["absent_days"],
             "gross_salary": round(totals["gross_salary"], 2),
+            "salary_family_amount": round(totals["salary_family_amount"], 2),
             "absence_discount": round(totals["absence_discount"], 2),
             "inss_discount": round(totals["inss_discount"], 2),
             "net_payable": round(totals["net_payable"], 2),

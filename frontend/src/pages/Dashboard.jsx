@@ -237,6 +237,8 @@ const initialEmployeeForm = {
   employee_type: "clt",
   payment_cycle: "monthly",
   inss_percent: "",
+  dependents_count: "",
+  salary_family_amount: "",
   notes: "",
 };
 
@@ -387,7 +389,10 @@ const Dashboard = () => {
   const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] =
     useState("all");
   const [uploadingCnpjCard, setUploadingCnpjCard] = useState(false);
+  const [uploadingPayrollSheet, setUploadingPayrollSheet] = useState(false);
+  const [payrollImportResult, setPayrollImportResult] = useState(null);
   const cnpjCardInputRef = useRef(null);
+  const payrollSheetInputRef = useRef(null);
 
   useEffect(() => {
     activeSectionRef.current = activeSection;
@@ -1245,6 +1250,14 @@ const Dashboard = () => {
           employeeForm.employee_type === "clt"
             ? Number(employeeForm.inss_percent || 0)
             : 0,
+        dependents_count:
+          employeeForm.employee_type === "clt"
+            ? Number(employeeForm.dependents_count || 0)
+            : 0,
+        salary_family_amount:
+          employeeForm.employee_type === "clt"
+            ? Number(employeeForm.salary_family_amount || 0)
+            : 0,
       });
       setEmployeeForm(initialEmployeeForm);
       await loadPayrollData(currentWorkspace.id);
@@ -1295,6 +1308,40 @@ const Dashboard = () => {
           "Não consegui registrar este ponto agora.",
         variant: "destructive",
       });
+    }
+  };
+
+  const triggerPayrollSheetUpload = () => {
+    payrollSheetInputRef.current?.click();
+  };
+
+  const handlePayrollSheetUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !currentWorkspace?.id) return;
+
+    setUploadingPayrollSheet(true);
+    try {
+      const response = await payrollService.importPayrollSheet(
+        currentWorkspace.id,
+        file,
+      );
+      setPayrollImportResult(response);
+      await loadPayrollData(currentWorkspace.id);
+      toast({
+        title: "Folha importada",
+        description: `${response?.employees_count || 0} funcionario(s) atualizados a partir do PDF.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao importar folha",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui ler a folha enviada agora.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingPayrollSheet(false);
     }
   };
 
@@ -2485,17 +2532,77 @@ const Dashboard = () => {
         title="Ponto, presença, faltas e pagamento"
         description="Cadastre equipe CLT e contrato, registre presença/falta por dia e feche a estimativa do mês com desconto de faltas e INSS."
         action={
-          <Button
-            type="button"
-            onClick={() => loadPayrollData(currentWorkspace.id)}
-            className={`h-12 ${actionButtonClass}`}
-          >
-            Atualizar folha
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <input
+              ref={payrollSheetInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={handlePayrollSheetUpload}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={triggerPayrollSheetUpload}
+              disabled={uploadingPayrollSheet}
+              className="h-12 rounded-2xl border border-red-500/18 bg-black/20 px-4 text-zinc-100 hover:bg-red-500/10"
+            >
+              {uploadingPayrollSheet ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Lendo folha
+                </>
+              ) : (
+                <>
+                  <FileUp className="mr-2 h-4 w-4" />
+                  Importar folha
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => loadPayrollData(currentWorkspace.id)}
+              className={`h-12 ${actionButtonClass}`}
+            >
+              Atualizar folha
+            </Button>
+          </div>
         }
       />
 
       <SurfacePanel title="Cadastro de funcionário">
+        {payrollImportResult?.employees_count ? (
+          <div className="mb-5 space-y-4 rounded-[24px] border border-red-500/12 bg-black/20 p-4">
+            <div className="grid gap-3 md:grid-cols-4">
+              <StatMiniCard
+                label="Funcionarios lidos"
+                value={String(payrollImportResult.employees_count || 0)}
+              />
+              <StatMiniCard
+                label="Novos"
+                value={String(payrollImportResult.created || 0)}
+              />
+              <StatMiniCard
+                label="Atualizados"
+                value={String(payrollImportResult.updated || 0)}
+              />
+              <StatMiniCard
+                label="Competencia"
+                value={payrollImportResult.competence || "-"}
+              />
+            </div>
+            <div className="space-y-2">
+              {(payrollImportResult.items || []).slice(0, 5).map((item) => (
+                <InfoRow
+                  key={`${item.id}-${item.cpf}`}
+                  title={`${item.name} - ${item.role}`}
+                  subtitle={`CPF ${item.cpf} • INSS ${item.inss_percent || 0}% • Salario-familia ${currencyFormatter.format(item.salary_family_amount || 0)}`}
+                  value={`${item.status === "created" ? "Novo" : "Atualizado"} • ${currencyFormatter.format(item.salary || 0)}`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
         <form onSubmit={submitEmployee} className="grid gap-3 xl:grid-cols-6">
           <Input
             placeholder="Nome completo"
@@ -2580,6 +2687,36 @@ const Dashboard = () => {
               setEmployeeForm({ ...employeeForm, notes: event.target.value })
             }
             className={`${pageFieldClass} xl:col-span-2`}
+          />
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            disabled={employeeForm.employee_type !== "clt"}
+            placeholder="Dependentes"
+            value={employeeForm.dependents_count}
+            onChange={(event) =>
+              setEmployeeForm({
+                ...employeeForm,
+                dependents_count: event.target.value,
+              })
+            }
+            className={pageFieldClass}
+          />
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            disabled={employeeForm.employee_type !== "clt"}
+            placeholder="Salario-familia"
+            value={employeeForm.salary_family_amount}
+            onChange={(event) =>
+              setEmployeeForm({
+                ...employeeForm,
+                salary_family_amount: event.target.value,
+              })
+            }
+            className={pageFieldClass}
           />
           <Button
             type="submit"
@@ -2715,6 +2852,12 @@ const Dashboard = () => {
                   payrollSummary.inss_discount || 0,
                 )}
               />
+              <StatMiniCard
+                label="Salario-familia"
+                value={currencyFormatter.format(
+                  payrollSummary.salary_family_amount || 0,
+                )}
+              />
             </div>
           )}
         </SurfacePanel>
@@ -2780,13 +2923,18 @@ const Dashboard = () => {
                   <Badge className="border border-white/10 bg-black/30 text-zinc-200">
                     {currencyFormatter.format(employee.salary || 0)}
                   </Badge>
+                  {!!employee.salary_family_amount && (
+                    <Badge className="border border-amber-500/20 bg-amber-500/10 text-amber-100">
+                      SF {currencyFormatter.format(employee.salary_family_amount || 0)}
+                    </Badge>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => deactivateEmployee(employee.id)}
                     className="h-9 rounded-xl border border-red-500/20 bg-black/20 px-3 text-xs text-zinc-200 hover:bg-red-500/10"
                   >
-                    Desativar
+                    Demitir
                   </Button>
                 </div>
               </div>

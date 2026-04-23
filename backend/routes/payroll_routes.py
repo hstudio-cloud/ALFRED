@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from database import attendance_collection, employees_collection
 from models_extended import (
@@ -22,8 +22,10 @@ from payroll_service import (
 )
 from routes.auth_routes import get_current_user
 from routes.workspace_access import verify_workspace_access
+from services.payroll_document_service import PayrollDocumentService
 
 router = APIRouter(prefix="/api/payroll", tags=["payroll"])
+payroll_document_service = PayrollDocumentService()
 
 
 def _serialize(document: dict) -> dict:
@@ -37,12 +39,19 @@ def _normalize_employee_payload(payload: dict) -> dict:
     payload["payment_cycle"] = normalize_payment_cycle(payload.get("payment_cycle"))
     if payload["employee_type"] == "contract":
         payload["inss_percent"] = 0.0
+        payload["salary_family_amount"] = 0.0
+        payload["dependents_count"] = 0
     else:
         payload["inss_percent"] = float(payload.get("inss_percent") or 0.0)
+        payload["salary_family_amount"] = float(payload.get("salary_family_amount") or 0.0)
+        payload["dependents_count"] = int(payload.get("dependents_count") or 0)
     payload["salary"] = float(payload.get("salary") or 0.0)
     payload["cpf"] = (payload.get("cpf") or "").strip()
     payload["name"] = (payload.get("name") or "").strip()
     payload["role"] = (payload.get("role") or "").strip()
+    payload["admission_date"] = (payload.get("admission_date") or "").strip() or None
+    payload["termination_date"] = (payload.get("termination_date") or "").strip() or None
+    payload["notes"] = (payload.get("notes") or "").strip() or None
     return payload
 
 
@@ -136,11 +145,115 @@ async def delete_employee(
     else:
         result = await employees_collection.update_one(
             {"workspace_id": workspace_id, "id": employee_id},
-            {"$set": {"active": False, "updated_at": datetime.utcnow()}},
+            {
+                "$set": {
+                    "active": False,
+                    "termination_date": datetime.utcnow().date().isoformat(),
+                    "updated_at": datetime.utcnow(),
+                }
+            },
         )
         if not result.matched_count:
             raise HTTPException(status_code=404, detail="Funcionario nao encontrado.")
     return {"deleted": True, "hard_delete": hard_delete}
+
+
+@router.post("/import-sheet")
+async def import_payroll_sheet(
+    document: UploadFile = File(...),
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+
+    mime_type = (document.content_type or "").lower()
+    if "pdf" not in mime_type and not (document.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Envie a folha de pagamento em PDF para importar os funcionarios.",
+        )
+
+    file_bytes = await document.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Arquivo vazio para leitura da folha.")
+
+    try:
+        extracted = await payroll_document_service.extract_payroll_sheet(
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+            filename=document.filename or "",
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    created = 0
+    updated = 0
+    imported_items = []
+
+    for employee_data in extracted.get("employees", []):
+        normalized = _normalize_employee_payload(employee_data)
+        if not normalized["name"] or not normalized["cpf"] or not normalized["role"] or normalized["salary"] <= 0:
+            continue
+
+        existing = await employees_collection.find_one(
+            {"workspace_id": workspace_id, "cpf": normalized["cpf"]}
+        )
+        if existing:
+            merged = dict(existing)
+            merged.update(normalized)
+            merged["active"] = True
+            merged["updated_at"] = datetime.utcnow()
+            await employees_collection.update_one(
+                {"workspace_id": workspace_id, "id": existing["id"]},
+                {"$set": merged},
+            )
+            updated += 1
+            imported_items.append(
+                {
+                    "id": existing["id"],
+                    "name": merged["name"],
+                    "cpf": merged["cpf"],
+                    "role": merged["role"],
+                    "salary": merged["salary"],
+                    "inss_percent": merged.get("inss_percent", 0.0),
+                    "dependents_count": merged.get("dependents_count", 0),
+                    "salary_family_amount": merged.get("salary_family_amount", 0.0),
+                    "status": "updated",
+                }
+            )
+            continue
+
+        employee = Employee(
+            workspace_id=workspace_id,
+            user_id=current_user["id"],
+            **normalized,
+        )
+        await employees_collection.insert_one(employee.dict())
+        created += 1
+        imported_items.append(
+            {
+                "id": employee.id,
+                "name": employee.name,
+                "cpf": employee.cpf,
+                "role": employee.role,
+                "salary": employee.salary,
+                "inss_percent": employee.inss_percent,
+                "dependents_count": employee.dependents_count,
+                "salary_family_amount": employee.salary_family_amount,
+                "status": "created",
+            }
+        )
+
+    return {
+        "company_name": extracted.get("company_name"),
+        "cnpj": extracted.get("cnpj"),
+        "competence": extracted.get("competence"),
+        "calculation_type": extracted.get("calculation_type"),
+        "created": created,
+        "updated": updated,
+        "employees_count": len(imported_items),
+        "items": imported_items,
+    }
 
 
 @router.post("/attendance")

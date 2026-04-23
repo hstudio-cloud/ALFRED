@@ -391,6 +391,10 @@ class EmployeeCreate(BaseModel):
     employee_type: str = "clt"  # clt, contract
     payment_cycle: str = "monthly"  # monthly, biweekly
     inss_percent: Optional[float] = None
+    admission_date: Optional[str] = None
+    termination_date: Optional[str] = None
+    dependents_count: Optional[int] = 0
+    salary_family_amount: Optional[float] = 0.0
     active: bool = True
     notes: Optional[str] = None
 
@@ -403,6 +407,10 @@ class EmployeeUpdate(BaseModel):
     employee_type: Optional[str] = None
     payment_cycle: Optional[str] = None
     inss_percent: Optional[float] = None
+    admission_date: Optional[str] = None
+    termination_date: Optional[str] = None
+    dependents_count: Optional[int] = None
+    salary_family_amount: Optional[float] = None
     active: Optional[bool] = None
     notes: Optional[str] = None
 
@@ -418,6 +426,10 @@ class Employee(BaseModel):
     employee_type: str = "clt"  # clt, contract
     payment_cycle: str = "monthly"  # monthly, biweekly
     inss_percent: float = 0.0
+    admission_date: Optional[str] = None
+    termination_date: Optional[str] = None
+    dependents_count: int = 0
+    salary_family_amount: float = 0.0
     active: bool = True
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

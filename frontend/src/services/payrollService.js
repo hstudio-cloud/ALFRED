@@ -62,6 +62,17 @@ export const payrollService = {
       .get(`${API}/payroll/estimate`, { params: withWorkspace(workspaceId, params) })
       .then((response) => response.data);
   },
+
+  importPayrollSheet(workspaceId, file) {
+    const formData = new FormData();
+    formData.append("document", file);
+    return axios
+      .post(`${API}/payroll/import-sheet`, formData, {
+        params: withWorkspace(workspaceId),
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then((response) => response.data);
+  },
 };
 
 export default payrollService;
