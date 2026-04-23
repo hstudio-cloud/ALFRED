@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import List
 from models_extended import Workspace, WorkspaceCreate, WorkspaceUpdate
 from database import db
 from routes.auth_routes import get_current_user
+from services.workspace_document_service import WorkspaceDocumentService
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/workspaces", tags=["workspaces"])
 
 workspaces_collection = db.workspaces
+workspace_document_service = WorkspaceDocumentService()
 
 @router.get("", response_model=List[Workspace])
 async def get_workspaces(current_user: dict = Depends(get_current_user)):
@@ -86,6 +88,60 @@ async def update_workspace(workspace_id: str, workspace_data: WorkspaceUpdate, c
     except Exception as e:
         logger.error(f"Error updating workspace: {e}")
         raise HTTPException(status_code=500, detail="Erro ao atualizar empresa")
+
+
+@router.post("/{workspace_id}/extract-cnpj-card")
+async def extract_cnpj_card(
+    workspace_id: str,
+    document: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Extrair dados do cartao CNPJ a partir de imagem e vincular ao workspace atual."""
+    try:
+        workspace = await workspaces_collection.find_one({"id": workspace_id})
+        if not workspace:
+            raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+
+        if workspace.get("owner_id") != current_user["id"]:
+            raise HTTPException(status_code=403, detail="Apenas o dono pode importar dados do CNPJ")
+
+        mime_type = (document.content_type or "").lower()
+        if not mime_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400,
+                detail="Envie uma imagem do cartao CNPJ em PNG, JPG, JPEG ou WEBP.",
+            )
+
+        file_bytes = await document.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Arquivo vazio para leitura do cartao CNPJ.")
+
+        extracted = await workspace_document_service.extract_cnpj_card(
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+        )
+        update_payload = workspace_document_service.build_workspace_update(
+            current_workspace=workspace,
+            extracted=extracted,
+        )
+
+        await workspaces_collection.update_one(
+            {"id": workspace_id},
+            {"$set": update_payload},
+        )
+        updated_workspace = await workspaces_collection.find_one({"id": workspace_id})
+        return {
+            "extracted": extracted,
+            "workspace": Workspace(**updated_workspace).dict(),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting CNPJ card: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Nao consegui ler esse cartao CNPJ agora. Tente uma foto mais nitida e frontal.",
+        )
 
 @router.delete("/{workspace_id}")
 async def delete_workspace(workspace_id: str, current_user: dict = Depends(get_current_user)):

@@ -180,10 +180,6 @@ async def _process_orchestrated_message(
     if not workspace:
         raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
 
-    if persist_history:
-        user_message = ChatMessage(user_id=current_user["id"], role="user", content=content)
-        await chat_messages_collection.insert_one(_model_dump(user_message))
-
     conversation_context = await _load_conversation_context(current_user["id"])
     agent_result = await orchestrator.handle_message(
         user=current_user,
@@ -221,6 +217,9 @@ async def _process_orchestrated_message(
             "execution_status": execution_status,
         },
     )
+    if persist_history:
+        user_message = ChatMessage(user_id=current_user["id"], role="user", content=content)
+        await chat_messages_collection.insert_one(_model_dump(user_message))
     if persist_history:
         await chat_messages_collection.insert_one(_model_dump(assistant_message))
 

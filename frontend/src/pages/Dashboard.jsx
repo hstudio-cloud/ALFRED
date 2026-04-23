@@ -23,6 +23,7 @@ import openFinanceService from "../services/openFinanceService";
 import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
 import billingService from "../services/billingService";
+import workspaceService from "../services/workspaceService";
 import { API_BASE_URL } from "../config/env";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -58,6 +59,7 @@ import {
   CreditCard,
   FileBarChart2,
   FileUp,
+  Loader2,
   Landmark,
   LayoutDashboard,
   Moon,
@@ -302,8 +304,13 @@ const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) =>
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { currentWorkspace, workspaces, switchWorkspace, createWorkspace } =
-    useWorkspace();
+  const {
+    currentWorkspace,
+    workspaces,
+    switchWorkspace,
+    createWorkspace,
+    refreshWorkspaces,
+  } = useWorkspace();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -379,6 +386,8 @@ const Dashboard = () => {
     useState("all");
   const [payrollPaymentCycleFilter, setPayrollPaymentCycleFilter] =
     useState("all");
+  const [uploadingCnpjCard, setUploadingCnpjCard] = useState(false);
+  const cnpjCardInputRef = useRef(null);
 
   useEffect(() => {
     activeSectionRef.current = activeSection;
@@ -1360,6 +1369,67 @@ const Dashboard = () => {
         description: "Não foi possível atualizar esse workspace agora.",
         variant: "destructive",
       });
+    }
+  };
+
+  const applyExtractedCompanyData = useCallback((extracted = {}, workspace) => {
+    const profile = workspace?.settings?.company_profile || {};
+    setCompanyForm((prev) => ({
+      ...prev,
+      name:
+        workspace?.name || extracted.trade_name || extracted.legal_name || prev.name,
+      subdomain: workspace?.subdomain || prev.subdomain,
+      description:
+        workspace?.description || extracted.main_activity || prev.description,
+      document_type: "cnpj",
+      document: profile.document || extracted.cnpj || prev.document,
+      business_type: profile.business_type || prev.business_type,
+      tax_regime: profile.tax_regime || prev.tax_regime,
+      address: profile.address || prev.address,
+      complement:
+        profile.complement || extracted.address_complement || prev.complement,
+      city: profile.city || extracted.city || prev.city,
+      state: profile.state || extracted.state || prev.state,
+      phone: profile.phone || prev.phone,
+      website: profile.website || prev.website,
+    }));
+  }, []);
+
+  const triggerCnpjCardUpload = () => {
+    cnpjCardInputRef.current?.click();
+  };
+
+  const handleCnpjCardUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !currentWorkspace?.id) return;
+
+    setUploadingCnpjCard(true);
+    try {
+      const payload = await workspaceService.extractCnpjCard(
+        currentWorkspace.id,
+        file,
+      );
+      applyExtractedCompanyData(payload?.extracted, payload?.workspace);
+      if (payload?.workspace) {
+        switchWorkspace(payload.workspace);
+      }
+      await refreshWorkspaces();
+      toast({
+        title: "Cartao CNPJ lido com sucesso",
+        description:
+          "Os dados da empresa foram vinculados automaticamente ao workspace atual.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao ler cartao CNPJ",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui extrair os dados desse cartao agora.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingCnpjCard(false);
     }
   };
 
@@ -2993,6 +3063,41 @@ const Dashboard = () => {
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <SurfacePanel title="Informações da empresa">
           <form onSubmit={saveCompanySettings} className="grid gap-4">
+            <input
+              ref={cnpjCardInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+              onChange={handleCnpjCardUpload}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-red-500/12 bg-black/20 px-4 py-4">
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">
+                  Upload do cartao CNPJ
+                </p>
+                <p className="text-sm text-zinc-400">
+                  O Nano le os dados do cartao, vincula ao workspace atual e ja prepara a empresa para administracao.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={triggerCnpjCardUpload}
+                disabled={uploadingCnpjCard}
+                className={`h-11 ${actionButtonClass}`}
+              >
+                {uploadingCnpjCard ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Lendo cartao...
+                  </>
+                ) : (
+                  <>
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Enviar cartao CNPJ
+                  </>
+                )}
+              </Button>
+            </div>
             <Input
               placeholder="Nome da empresa"
               value={companyForm.name}
