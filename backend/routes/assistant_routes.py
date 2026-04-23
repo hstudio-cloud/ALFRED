@@ -35,6 +35,18 @@ def _sanitize_json_payload(value):
     return value
 
 
+def _model_dump(instance):
+    if hasattr(instance, "model_dump"):
+        return instance.model_dump()
+    return instance.dict()
+
+
+def _coerce_tool_results_map(value):
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
 class AssistantVoiceRequest(BaseModel):
     text: str
     locale: str = "pt-BR"
@@ -123,9 +135,10 @@ async def assistant_message(message_data: ChatMessageCreate, current_user: dict 
                     "fallback_mode": "legacy_orchestrator",
                 },
             )
-            await chat_messages_collection.insert_one(assistant_message.dict())
+            payload = _model_dump(assistant_message)
+            await chat_messages_collection.insert_one(payload)
             return {
-                "message": assistant_message.dict(),
+                "message": payload,
                 "actions": safe_actions,
                 "executed_actions": safe_executed_actions,
                 "intent": agent_result.intent,
@@ -169,7 +182,7 @@ async def _process_orchestrated_message(
 
     if persist_history:
         user_message = ChatMessage(user_id=current_user["id"], role="user", content=content)
-        await chat_messages_collection.insert_one(user_message.dict())
+        await chat_messages_collection.insert_one(_model_dump(user_message))
 
     conversation_context = await _load_conversation_context(current_user["id"])
     agent_result = await orchestrator.handle_message(
@@ -181,7 +194,7 @@ async def _process_orchestrated_message(
 
     safe_actions = _sanitize_json_payload(agent_result.actions)
     safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
-    safe_tool_results = _sanitize_json_payload(agent_result.tool_results)
+    safe_tool_results = _coerce_tool_results_map(_sanitize_json_payload(agent_result.tool_results))
     used_tools = list(safe_tool_results.keys())
     execution_status = "responding"
     if used_tools:
@@ -209,13 +222,15 @@ async def _process_orchestrated_message(
         },
     )
     if persist_history:
-        await chat_messages_collection.insert_one(assistant_message.dict())
+        await chat_messages_collection.insert_one(_model_dump(assistant_message))
+
+    message_payload = _model_dump(assistant_message)
 
     return {
         "intent": agent_result.intent,
         "used_tools": used_tools,
         "tool_results": safe_tool_results,
-        "message": assistant_message.dict(),
+        "message": message_payload,
         "followup_needed": agent_result.followup_needed,
         "missing_fields": agent_result.missing_fields,
         "actions": safe_actions,
