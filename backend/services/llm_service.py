@@ -56,10 +56,23 @@ class LLMService:
 
         history = context.get("conversation_history") or []
         memory = context.get("memory") or {}
+        recent_assistant = next(
+            (
+                item.get("content", "")
+                for item in reversed(history)
+                if isinstance(item, dict) and item.get("role") == "assistant"
+            ),
+            "",
+        )
         prompt = (
             "Classifique a intencao do pedido para o Nano.\n"
             "Labels permitidos: system_action, system_query, knowledge_lookup, financial_analysis, "
             "general_chat, web_research, memory_recall, followup_missing_data, unknown.\n"
+            "Voce deve sempre preferir a label mais especifica. Evite unknown quando houver qualquer sinal util.\n"
+            "Use system_action para criar/editar/registrar/executar algo no sistema.\n"
+            "Use system_query para consultas operacionais como agenda, contas, saldos ou historico.\n"
+            "Use financial_analysis para diagnostico financeiro, melhoria, cortes, planejamento e aconselhamento.\n"
+            "Use followup_missing_data quando o usuario estiver respondendo a uma pergunta anterior pedindo um campo faltante.\n"
             "Retorne JSON puro com:\n"
             "{"
             '"label":"...",'
@@ -69,8 +82,8 @@ class LLMService:
             '"missing_fields":["..."],'
             '"entities":{}'
             "}\n"
-            "Use followup_missing_data quando o usuario estiver respondendo um dado faltante do turno anterior.\n"
             f"Mensagem: {message}\n"
+            f"Ultima resposta do assistente: {recent_assistant}\n"
             f"Historico recente: {history[-4:]}\n"
             f"Memoria relevante: {memory}"
         )
@@ -80,7 +93,11 @@ class LLMService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Voce classifica intencoes de um assistente financeiro e responde apenas JSON valido.",
+                        "content": (
+                            "Voce classifica intencoes de um assistente financeiro brasileiro. "
+                            "Responda apenas JSON valido, sem markdown, sem comentarios. "
+                            "Nao use labels fora da lista permitida."
+                        ),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -90,7 +107,7 @@ class LLMService:
             payload = self._extract_json_object(text)
             if not payload:
                 return {}
-            label = str(payload.get("label") or "").strip()
+            label = self._normalize_intent_label(payload.get("label"))
             if label not in self._ALLOWED_INTENTS:
                 return {}
             return {
@@ -120,6 +137,8 @@ class LLMService:
         system_prompt = (
             "Voce e Nano, assistente financeiro e operacional do usuario. "
             "Responda em portugues do Brasil, com clareza, utilidade e senso pratico. "
+            "Nunca escreva em ingles, chines ou qualquer outro idioma. "
+            "Nunca misture idiomas. Nunca devolva caracteres corrompidos. "
             "Se houver dados reais de tools ou acoes executadas, use isso como verdade principal. "
             "Evite respostas vazias, vagas ou muito genericas."
         )
@@ -140,6 +159,15 @@ class LLMService:
                 temperature=0.2,
                 max_tokens=700,
             )
+            text = self._normalize_text_response(text)
+            if self._looks_like_low_quality_output(text):
+                return self._fallback_answer(
+                    message,
+                    intent,
+                    tool_results,
+                    executed_actions,
+                    fallback_response,
+                )
             return text or self._fallback_answer(
                 message,
                 intent,
@@ -235,6 +263,7 @@ class LLMService:
 
         prompt = (
             "Escolha as ferramentas mais uteis para atender o pedido do Nano.\n"
+            "Voce deve montar um plano curto, pragmático e aderente ao pedido.\n"
             "Retorne JSON puro no formato:\n"
             '{"steps":[{"name":"tool_name","arguments":{}}]}\n'
             "Se nenhuma ferramenta for necessaria, retorne {\"steps\":[]}.\n"
@@ -249,7 +278,11 @@ class LLMService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Voce seleciona tools para um assistente financeiro e responde apenas JSON valido.",
+                        "content": (
+                            "Voce seleciona tools para um assistente financeiro e responde apenas JSON valido. "
+                            "Nao use markdown. Nao invente nomes de tools. "
+                            "Se o pedido pedir criar ou registrar algo, priorize tools de acao."
+                        ),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -304,7 +337,9 @@ class LLMService:
                         "content": (
                             "Voce e Nano IA. Responda em pt-BR, direto, claro e util. "
                             "Baseie a resposta estritamente em resultados reais de tools e acoes executadas. "
-                            "Evite inventar dados e evite respostas genericas."
+                            "Evite inventar dados e evite respostas genericas. "
+                            "Nunca use markdown pesado quando uma resposta simples resolver. "
+                            "Nunca escreva em outro idioma."
                         ),
                     },
                     {
@@ -322,7 +357,9 @@ class LLMService:
                 max_tokens=500,
             )
             if text:
-                return text
+                text = self._normalize_text_response(text)
+                if not self._looks_like_low_quality_output(text):
+                    return text
         except Exception:
             pass
         return self._fallback_tool_response(
@@ -350,7 +387,7 @@ class LLMService:
         choice = response.choices[0].message
         content = choice.content
         if isinstance(content, str):
-            return content.strip()
+            return self._normalize_text_response(content)
         if isinstance(content, list):
             parts: List[str] = []
             for item in content:
@@ -359,11 +396,11 @@ class LLMService:
                     continue
                 if isinstance(item, dict) and item.get("type") == "text":
                     parts.append(str(item.get("text") or ""))
-            return "\n".join(part for part in parts if part).strip()
+            return self._normalize_text_response("\n".join(part for part in parts if part))
         return ""
 
     def _extract_json_object(self, text: str) -> Dict[str, Any]:
-        raw = (text or "").strip()
+        raw = self._normalize_text_response(text)
         if not raw:
             return {}
         candidates = [raw]
@@ -383,6 +420,27 @@ class LLMService:
         return {}
 
     @staticmethod
+    def _normalize_intent_label(value: Any) -> str:
+        label = str(value or "").strip().lower()
+        aliases = {
+            "action": "system_action",
+            "system-action": "system_action",
+            "system_action_request": "system_action",
+            "query": "system_query",
+            "system-query": "system_query",
+            "knowledge": "knowledge_lookup",
+            "analysis": "financial_analysis",
+            "financial_advice": "financial_analysis",
+            "chat": "general_chat",
+            "general": "general_chat",
+            "research": "web_research",
+            "memory": "memory_recall",
+            "followup": "followup_missing_data",
+            "follow_up_missing_data": "followup_missing_data",
+        }
+        return aliases.get(label, label)
+
+    @staticmethod
     def _coerce_confidence(value: Any) -> float:
         try:
             return max(0.0, min(float(value), 1.0))
@@ -394,6 +452,62 @@ class LLMService:
         if not isinstance(value, list):
             return []
         return [str(item).strip() for item in value if str(item).strip()]
+
+    @staticmethod
+    def _normalize_text_response(text: Any) -> str:
+        raw = str(text or "").strip()
+        if not raw:
+            return ""
+        raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+        replacements = {
+            "Ã¡": "á",
+            "Ã£": "ã",
+            "Ã§": "ç",
+            "Ã©": "é",
+            "Ãª": "ê",
+            "Ã­": "í",
+            "Ã³": "ó",
+            "Ãµ": "õ",
+            "Ãº": "ú",
+            "Ã ": "à",
+            "MÃªs": "Mês",
+            "SituaÃ§Ã£o": "Situação",
+            "RecomendaÃ§Ãµes": "Recomendações",
+            "visÃ£o": "visão",
+            "nÃ£o": "não",
+            "vÃª": "vê",
+            "você terÃ¡": "você terá",
+            "TransaÃ§Ãµes": "Transações",
+            "CombustÃ­vel": "Combustível",
+            "orÃ§amento": "orçamento",
+            "dÃ­vidas": "dívidas",
+            "previsÃµes": "previsões",
+        }
+        for broken, fixed in replacements.items():
+            raw = raw.replace(broken, fixed)
+        raw = re.sub(r"\n{3,}", "\n\n", raw)
+        return raw.strip()
+
+    @staticmethod
+    def _looks_like_low_quality_output(text: str) -> bool:
+        candidate = (text or "").strip()
+        if not candidate:
+            return True
+        lower = candidate.lower()
+        if "```" in candidate:
+            return True
+        if any(token in candidate for token in ["Ã", "â", "â", "è´¢"]):
+            return True
+        if re.search(r"[\u4e00-\u9fff\u3040-\u30ff]", candidate):
+            return True
+        generic_fragments = (
+            "posso responder perguntas gerais",
+            "estou com voce",
+            "posso responder, analisar",
+        )
+        if any(fragment in lower for fragment in generic_fragments) and len(candidate) < 220:
+            return True
+        return False
 
     def _fallback_answer(
         self,

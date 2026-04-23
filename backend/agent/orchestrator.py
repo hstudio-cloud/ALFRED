@@ -181,9 +181,17 @@ class AgentOrchestrator:
     ) -> tuple[IntentClassification, str]:
         llm_payload = await self.llm.classify_intent(message, base_context)
         llm_intent = self._intent_from_llm_payload(llm_payload)
-        if llm_intent and llm_intent.label != "unknown" and llm_intent.confidence >= 0.55:
+        if llm_intent and llm_intent.label != "unknown":
+            if llm_intent.label == "followup_missing_data":
+                return llm_intent, "llm"
+            if llm_intent.confidence >= 0.35:
+                return llm_intent, "llm"
+            if llm_intent.requires_tool and llm_intent.confidence >= 0.2:
+                return llm_intent, "llm"
+        fallback_intent = self.intent_classifier.classify(message, base_context)
+        if llm_intent and fallback_intent.label == "general_chat" and llm_intent.label != "general_chat":
             return llm_intent, "llm"
-        return self.intent_classifier.classify(message, base_context), "fallback_rules"
+        return fallback_intent, "fallback_rules"
 
     async def _plan_with_fallback(
         self,
@@ -196,6 +204,8 @@ class AgentOrchestrator:
             return llm_plan, "llm"
         if llm_plan and llm_plan.followup_needed:
             return llm_plan, "llm"
+        if intent.label == "general_chat":
+            return ExecutionPlan(intent=intent), "llm"
         return self.planner.create_plan(intent, message), "fallback_planner"
 
     async def _create_llm_plan(
