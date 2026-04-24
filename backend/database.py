@@ -33,3 +33,6 @@ payroll_runs_collection = db.payroll_runs
 open_finance_connections_collection = db.open_finance_connections
 open_finance_accounts_collection = db.open_finance_accounts
 open_finance_transactions_collection = db.open_finance_transactions
+whatsapp_identities_collection = db.whatsapp_identities
+nano_tasks_collection = db.nano_tasks
+pending_confirmations_collection = db.pending_confirmations

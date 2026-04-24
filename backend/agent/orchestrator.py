@@ -52,6 +52,8 @@ class AgentOrchestrator:
         workspace: Dict[str, Any],
         message: str,
         conversation_history: List[Dict[str, str]],
+        execute_actions: bool = True,
+        source_channel: str = "web_chat",
     ) -> AgentResult:
         memory_context = await self.memory.load(user["id"], workspace["id"])
         base_context = {
@@ -111,7 +113,7 @@ class AgentOrchestrator:
             if step.name == "execute_system_actions":
                 actions = result.get("actions", [])
                 fallback_response = result.get("fallback_response", "")
-                if actions:
+                if actions and execute_actions:
                     executed_actions = await self.actions.execute_actions(
                         workspace_id=workspace["id"],
                         current_user=user,
@@ -170,6 +172,7 @@ class AgentOrchestrator:
                 "intent_confidence": intent.confidence,
                 "intent_source": intent_source,
                 "plan_source": plan_source,
+                "source_channel": source_channel,
             },
         )
 

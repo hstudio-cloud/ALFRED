@@ -2,8 +2,14 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from controllers.whatsappWebhookController import handle_incoming_whatsapp
-from services.whatsappService import verify_whatsapp_webhook
+from services.whatsapp_message_router import route_whatsapp_message
+from services.whatsapp_service import (
+    extract_whatsapp_message,
+    send_whatsapp_message,
+    verify_whatsapp_signature,
+    verify_whatsapp_webhook,
+)
+from services.whatsapp_user_resolver import resolve_user_workspace_by_phone
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -42,8 +48,36 @@ async def whatsapp_webhook(
     request: Request,
     x_signature: str | None = Header(default=None),
 ):
+    if not verify_whatsapp_signature(x_signature):
+        raise HTTPException(status_code=401, detail="Assinatura de webhook invalida")
+
     payload = await request.json()
-    if isinstance(payload, dict):
-        return await handle_incoming_whatsapp(payload, signature=x_signature)
-    parsed = WhatsAppWebhookPayload.model_validate(payload)
-    return await handle_incoming_whatsapp(parsed.to_payload(), signature=x_signature)
+    raw_payload = payload if isinstance(payload, dict) else WhatsAppWebhookPayload.model_validate(payload).to_payload()
+    incoming = extract_whatsapp_message(raw_payload)
+    sender = incoming.get("from") or ""
+    message_text = incoming.get("text") or ""
+    if not sender or not message_text:
+        return {"ok": True, "ignored": True, "reason": "no_supported_message"}
+
+    resolved = await resolve_user_workspace_by_phone(sender)
+    if not resolved or not resolved.get("identity"):
+        reply = "Nao encontrei este numero vinculado ao Nano. Entre no painel e conecte o WhatsApp primeiro."
+        delivery = await send_whatsapp_message(to=sender, text=reply)
+        return {"ok": True, "resolved": False, "reply": reply, "delivery": delivery}
+
+    routed = await route_whatsapp_message(
+        user=resolved["user"],
+        workspace=resolved["workspace"],
+        content=message_text,
+        contact_name=incoming.get("profile_name"),
+    )
+    delivery = await send_whatsapp_message(to=sender, text=routed["reply"])
+    return {
+        "ok": True,
+        "resolved": True,
+        "intent": routed.get("intent"),
+        "risk_level": routed.get("risk_level"),
+        "requires_confirmation": routed.get("requires_confirmation"),
+        "used_tools": routed.get("used_tools", []),
+        "delivery": delivery,
+    }

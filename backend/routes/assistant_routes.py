@@ -14,6 +14,7 @@ from ai_service import AlfredAI
 from database import chat_messages_collection, db
 from models import ChatMessage, ChatMessageCreate
 from routes.auth_routes import get_current_user
+from services.nano_channel_router import route_channel_message
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -179,63 +180,47 @@ async def _process_orchestrated_message(
     workspace = await _resolve_workspace(current_user)
     if not workspace:
         raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
-
-    conversation_context = await _load_conversation_context(current_user["id"])
-    agent_result = await orchestrator.handle_message(
+    routed = await route_channel_message(
         user=current_user,
         workspace=workspace,
-        message=content,
-        conversation_history=conversation_context,
+        content=content,
+        source_channel="web_chat",
+        persist_history=persist_history,
     )
-
-    safe_actions = _sanitize_json_payload(agent_result.actions)
-    safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
-    safe_tool_results = _coerce_tool_results_map(_sanitize_json_payload(agent_result.tool_results))
+    safe_actions = _sanitize_json_payload(routed.get("actions") or [])
+    safe_executed_actions = _sanitize_json_payload(routed.get("executed_actions") or [])
+    safe_tool_results = _coerce_tool_results_map(_sanitize_json_payload(routed.get("tool_results") or {}))
     used_tools = list(safe_tool_results.keys())
-    execution_status = "responding"
-    if used_tools:
-        if agent_result.intent == "web_research":
-            execution_status = "researching"
-        elif agent_result.intent in {"system_action", "system_query", "financial_analysis", "knowledge_lookup"}:
-            execution_status = "executing"
-        else:
-            execution_status = "thinking"
+    execution_status = "awaiting_confirmation" if routed.get("requires_confirmation") else "executed"
 
-    assistant_message = ChatMessage(
-        user_id=current_user["id"],
-        role="assistant",
-        content=agent_result.message,
-        metadata={
+    message_payload = routed.get("assistant_message") or {
+        "role": "assistant",
+        "content": routed.get("reply") or "",
+        "metadata": {
             "actions": safe_actions,
             "executed_actions": safe_executed_actions,
-            "intent": agent_result.intent,
+            "intent": routed.get("intent"),
             "tool_results": safe_tool_results,
-            "followup_needed": agent_result.followup_needed,
-            "missing_fields": agent_result.missing_fields,
-            "agent_metadata": _sanitize_json_payload(agent_result.metadata),
             "workspace_id": workspace["id"],
             "execution_status": execution_status,
+            "risk_level": routed.get("risk_level"),
+            "requires_confirmation": routed.get("requires_confirmation", False),
         },
-    )
-    if persist_history:
-        user_message = ChatMessage(user_id=current_user["id"], role="user", content=content)
-        await chat_messages_collection.insert_one(_model_dump(user_message))
-    if persist_history:
-        await chat_messages_collection.insert_one(_model_dump(assistant_message))
-
-    message_payload = _model_dump(assistant_message)
+    }
 
     return {
-        "intent": agent_result.intent,
+        "intent": routed.get("intent"),
         "used_tools": used_tools,
         "tool_results": safe_tool_results,
         "message": message_payload,
-        "followup_needed": agent_result.followup_needed,
-        "missing_fields": agent_result.missing_fields,
+        "followup_needed": False,
+        "missing_fields": [],
         "actions": safe_actions,
         "executed_actions": safe_executed_actions,
         "execution_status": execution_status,
         "workspace_id": workspace["id"],
+        "risk_level": routed.get("risk_level"),
+        "requires_confirmation": routed.get("requires_confirmation", False),
     }
 
 

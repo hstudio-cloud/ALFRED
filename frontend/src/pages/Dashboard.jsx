@@ -19,6 +19,7 @@ import {
   ReportsSection,
 } from "../components/DashboardFinanceSections";
 import financeService from "../services/financeService";
+import nanoOpsService from "../services/nanoOpsService";
 import openFinanceService from "../services/openFinanceService";
 import payrollService from "../services/payrollService";
 import reportService from "../services/reportService";
@@ -145,6 +146,20 @@ const navigationItems = [
     label: "Relatórios",
     icon: FileBarChart2,
     description: "Análises e demonstrativos",
+    group: "Negócio",
+  },
+  {
+    id: "automations",
+    label: "Automações",
+    icon: BrainCircuit,
+    description: "Rotinas, histórico e tarefas do Nano",
+    group: "Negócio",
+  },
+  {
+    id: "nano_whatsapp",
+    label: "WhatsApp do Nano",
+    icon: ShieldCheck,
+    description: "Número conectado e confirmações pendentes",
     group: "Negócio",
   },
   {
@@ -392,6 +407,12 @@ const Dashboard = () => {
   const [uploadingCnpjCard, setUploadingCnpjCard] = useState(false);
   const [uploadingPayrollSheet, setUploadingPayrollSheet] = useState(false);
   const [payrollImportResult, setPayrollImportResult] = useState(null);
+  const [nanoOpsLoading, setNanoOpsLoading] = useState(false);
+  const [nanoOpsStatus, setNanoOpsStatus] = useState(null);
+  const [nanoOpsTasks, setNanoOpsTasks] = useState([]);
+  const [nanoOpsConfirmations, setNanoOpsConfirmations] = useState([]);
+  const [nanoOpsAutomations, setNanoOpsAutomations] = useState([]);
+  const [whatsappLinkPhone, setWhatsappLinkPhone] = useState("");
   const cnpjCardInputRef = useRef(null);
   const payrollSheetInputRef = useRef(null);
 
@@ -672,11 +693,52 @@ const Dashboard = () => {
     [payrollEmployeeTypeFilter, payrollMonth, payrollPaymentCycleFilter, toast],
   );
 
+  const loadNanoOpsData = useCallback(
+    async (workspaceId) => {
+      if (!workspaceId) return;
+      setNanoOpsLoading(true);
+      try {
+        const [statusResponse, tasksResponse, confirmationsResponse, automationsResponse] =
+          await Promise.all([
+            nanoOpsService.getStatus(workspaceId),
+            nanoOpsService.getTasks(workspaceId),
+            nanoOpsService.getConfirmations(workspaceId),
+            nanoOpsService.getAutomations(workspaceId),
+          ]);
+        setNanoOpsStatus(statusResponse || null);
+        setNanoOpsTasks(tasksResponse?.items || []);
+        setNanoOpsConfirmations(confirmationsResponse?.items || []);
+        setNanoOpsAutomations(automationsResponse?.items || []);
+        setWhatsappLinkPhone(
+          statusResponse?.whatsapp_identity?.phone_number || "",
+        );
+      } catch (error) {
+        toast({
+          title: "Erro ao carregar operação do Nano",
+          description: "Não consegui carregar os dados de WhatsApp e automações agora.",
+          variant: "destructive",
+        });
+      } finally {
+        setNanoOpsLoading(false);
+      }
+    },
+    [toast],
+  );
+
   useEffect(() => {
     if (activeSection === "employees" && currentWorkspace?.id) {
       loadPayrollData(currentWorkspace.id);
     }
   }, [activeSection, currentWorkspace?.id, loadPayrollData]);
+
+  useEffect(() => {
+    if (
+      (activeSection === "automations" || activeSection === "nano_whatsapp") &&
+      currentWorkspace?.id
+    ) {
+      loadNanoOpsData(currentWorkspace.id);
+    }
+  }, [activeSection, currentWorkspace?.id, loadNanoOpsData]);
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -1428,6 +1490,29 @@ const Dashboard = () => {
         description:
           error?.response?.data?.detail ||
           "Não foi possível desativar o funcionário.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitWhatsappLink = async (event) => {
+    event.preventDefault();
+    if (!currentWorkspace?.id || !whatsappLinkPhone.trim()) return;
+    try {
+      await nanoOpsService.linkWhatsapp(currentWorkspace.id, {
+        phone_number: whatsappLinkPhone,
+      });
+      await loadNanoOpsData(currentWorkspace.id);
+      toast({
+        title: "WhatsApp vinculado",
+        description: "O número foi salvo para uso operacional do Nano.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao vincular WhatsApp",
+        description:
+          error?.response?.data?.detail ||
+          "Não consegui salvar esse número agora.",
         variant: "destructive",
       });
     }
@@ -3887,6 +3972,140 @@ const Dashboard = () => {
     </SectionLayout>
   );
 
+  const renderAutomations = () => (
+    <SectionLayout>
+      <PageHeader
+        eyebrow="Automações"
+        title="Rotinas e histórico operacional do Nano"
+        description="Acompanhe sinais automáticos, tarefas criadas pelo agente e execuções realizadas no workspace."
+        action={
+          <Button
+            type="button"
+            onClick={() => currentWorkspace?.id && loadNanoOpsData(currentWorkspace.id)}
+            className={`h-12 ${actionButtonClass}`}
+          >
+            Atualizar
+          </Button>
+        }
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
+        <SurfacePanel title="Base de automações">
+          {nanoOpsLoading ? (
+            <p className="text-sm text-zinc-400">Carregando automações...</p>
+          ) : nanoOpsAutomations.length ? (
+            <div className="space-y-3">
+              {nanoOpsAutomations.map((item) => (
+                <InfoRow
+                  key={item.id}
+                  title={item.title}
+                  subtitle={item.description}
+                  value={`${item.status || "available"} • sinal ${item.signal || 0}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={BrainCircuit}
+              title="Nenhuma automação carregada"
+              description="A base operacional do Nano aparece aqui."
+            />
+          )}
+        </SurfacePanel>
+
+        <SurfacePanel title="Histórico de ações do Nano">
+          {nanoOpsTasks.length ? (
+            <div className="space-y-3">
+              {nanoOpsTasks.slice(0, 12).map((item) => (
+                <InfoRow
+                  key={item.id}
+                  title={item.title}
+                  subtitle={`${item.type} • ${item.source_channel} • ${item.status}`}
+                  value={item.risk_level || "low_risk"}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={CalendarDays}
+              title="Sem histórico operacional"
+              description="As ações do Nano via web e WhatsApp aparecem aqui."
+            />
+          )}
+        </SurfacePanel>
+      </div>
+    </SectionLayout>
+  );
+
+  const renderNanoWhatsapp = () => (
+    <SectionLayout>
+      <PageHeader
+        eyebrow="WhatsApp do Nano"
+        title="Canal operacional do agente"
+        description="Conecte o número, monitore confirmações pendentes e acompanhe o uso multicanal do mesmo orquestrador."
+        action={
+          <Button
+            type="button"
+            onClick={() => currentWorkspace?.id && loadNanoOpsData(currentWorkspace.id)}
+            className={`h-12 ${actionButtonClass}`}
+          >
+            Atualizar canal
+          </Button>
+        }
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1fr]">
+        <SurfacePanel title="Número conectado">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StatMiniCard
+              label="Status"
+              value={nanoOpsStatus?.whatsapp_connected ? "Conectado" : "Desconectado"}
+            />
+            <StatMiniCard
+              label="Pendências"
+              value={String(nanoOpsStatus?.pending_confirmations || 0)}
+            />
+          </div>
+          <form onSubmit={submitWhatsappLink} className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+            <Input
+              value={whatsappLinkPhone}
+              onChange={(event) => setWhatsappLinkPhone(event.target.value)}
+              placeholder="Número do WhatsApp com DDD"
+              className={pageFieldClass}
+            />
+            <Button type="submit" className={`h-12 ${actionButtonClass}`}>
+              Salvar número
+            </Button>
+          </form>
+          <p className="mt-3 text-sm text-zinc-400">
+            O webhook só executa ações quando o telefone estiver vinculado ao usuário e workspace.
+          </p>
+        </SurfacePanel>
+
+        <SurfacePanel title="Confirmações pendentes">
+          {nanoOpsConfirmations.length ? (
+            <div className="space-y-3">
+              {nanoOpsConfirmations.slice(0, 12).map((item) => (
+                <InfoRow
+                  key={item.id}
+                  title={item.action?.message || "Ação pendente"}
+                  subtitle={`${item.source_channel} • expira em ${new Date(item.expires_at).toLocaleString("pt-BR")}`}
+                  value={item.status}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={ShieldCheck}
+              title="Nenhuma confirmação pendente"
+              description="Ações sensíveis do Nano aparecem aqui antes da execução."
+            />
+          )}
+        </SurfacePanel>
+      </div>
+    </SectionLayout>
+  );
+
   const renderAssistant = () => (
     <div className="h-full overflow-hidden">
       <NanoAssistantPage
@@ -3939,6 +4158,8 @@ const Dashboard = () => {
     ),
     contacts: renderContacts(),
     employees: renderEmployees(),
+    automations: renderAutomations(),
+    nano_whatsapp: renderNanoWhatsapp(),
     reports: (
       <ReportsSection
         currencyFormatter={currencyFormatter}

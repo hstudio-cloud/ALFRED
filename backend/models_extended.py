@@ -459,3 +459,41 @@ class AttendanceRecord(BaseModel):
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class WhatsappIdentity(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    workspace_id: str
+    phone_number: str
+    status: str = "linked"  # linked, pending, blocked, disconnected
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class NanoTask(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    workspace_id: str
+    source_channel: str = "web_chat"  # web_chat, whatsapp
+    title: str
+    type: str  # reminder, financial_review, bill_alert, report_summary, followup, automation
+    status: str = "pending"  # pending, completed, canceled, awaiting_confirmation
+    scheduled_at: Optional[datetime] = None
+    requires_confirmation: bool = False
+    risk_level: str = "low_risk"  # low_risk, medium_risk, high_risk
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PendingConfirmation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    workspace_id: str
+    action: dict
+    source_channel: str = "web_chat"
+    expires_at: datetime
+    status: str = "pending"  # pending, confirmed, expired, canceled, executed
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
