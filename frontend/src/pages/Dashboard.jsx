@@ -84,30 +84,6 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const csvEscape = (value) => {
-  if (value === null || value === undefined) return "";
-  const text = String(value);
-  if (/[\";\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-};
-
-const downloadCsvFile = (filename, content) => {
-  if (typeof window === "undefined") return;
-  const blob = new Blob(["\ufeff", content], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-};
-
 const scopeOptions = [
   { id: "general", label: "Geral" },
   { id: "personal", label: "Pessoal" },
@@ -1370,7 +1346,7 @@ const Dashboard = () => {
     }
   };
 
-  const exportPayrollAttendance = () => {
+  const exportPayrollAttendance = async () => {
     if (!payrollReport) {
       toast({
         title: "Nada para exportar",
@@ -1383,104 +1359,54 @@ const Dashboard = () => {
     const rows = [
       ...(payrollReport?.groups?.clt || []),
       ...(payrollReport?.groups?.contract || []),
-    ].sort((left, right) => (left?.name || "").localeCompare(right?.name || ""));
+    ];
 
     if (!rows.length) {
       toast({
         title: "Nada para exportar",
-        description: "Nao ha funcionarios no filtro atual para gerar o CSV.",
+        description: "Nao ha funcionarios no filtro atual para gerar a planilha.",
         variant: "destructive",
       });
       return;
     }
 
-    const summary = payrollReport.summary || {};
-    const filtersLabel = [
-      payrollEmployeeTypeFilter !== "all"
-        ? `tipo=${payrollEmployeeTypeFilter}`
-        : null,
-      payrollPaymentCycleFilter !== "all"
-        ? `ciclo=${payrollPaymentCycleFilter}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(" | ");
+    try {
+      const { buildPayrollWorkbook } = await import(
+        "../lib/payrollWorkbook"
+      );
+      const buffer = await buildPayrollWorkbook({
+        workspaceName: currentWorkspace?.name || "Workspace",
+        month: payrollMonth,
+        payrollReport,
+        attendanceRecords,
+        employeeTypeFilter: payrollEmployeeTypeFilter,
+        paymentCycleFilter: payrollPaymentCycleFilter,
+      });
 
-    const summaryLines = [
-      ["Relatorio", "Folha e presenca por funcionario"],
-      ["Workspace", currentWorkspace?.name || "Workspace"],
-      ["Competencia", payrollReport.month || payrollMonth],
-      ["Filtros", filtersLabel || "todos"],
-      ["Funcionarios", summary.employees || 0],
-      ["Faltas", summary.absent_days || 0],
-      ["Bruto", summary.gross_salary || 0],
-      ["Desconto faltas", summary.absence_discount || 0],
-      ["Desconto INSS", summary.inss_discount || 0],
-      ["Liquido estimado", summary.net_payable || 0],
-      [],
-    ];
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `folha-presenca-${payrollReport.month || payrollMonth}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-    const detailHeader = [
-      "Funcionario",
-      "CPF",
-      "Funcao",
-      "Tipo",
-      "Ciclo",
-      "Salario base",
-      "Salario familia",
-      "Dias uteis do mes",
-      "Base diaria contrato",
-      "Dias esperados",
-      "Presencas",
-      "Faltas",
-      "Datas de presenca",
-      "Datas de falta",
-      "Diaria",
-      "Desconto falta",
-      "INSS %",
-      "Desconto INSS",
-      "Liquido estimado",
-      "1a quinzena",
-      "2a quinzena",
-    ];
-
-    const detailLines = rows.map((item) => [
-      item.name || "",
-      item.cpf || "",
-      item.role || "",
-      item.employee_type === "clt" ? "CLT" : "Contrato",
-      item.payment_cycle === "biweekly" ? "Quinzenal" : "Mensal",
-      item.base_salary || 0,
-      item.salary_family_amount || 0,
-      item.month_business_days || 0,
-      item.contract_days_base || "",
-      item.expected_days || 0,
-      item.present_days || 0,
-      item.absent_days || 0,
-      (item.present_dates || []).join(", "),
-      (item.absent_dates || []).join(", "),
-      item.daily_rate || 0,
-      item.absence_discount || 0,
-      item.inss_percent || 0,
-      item.inss_discount || 0,
-      item.net_month_estimated || 0,
-      item.biweekly?.first_half_payment || 0,
-      item.biweekly?.second_half_payment || 0,
-    ]);
-
-    const csvContent = [...summaryLines, detailHeader, ...detailLines]
-      .map((line) => line.map(csvEscape).join(";"))
-      .join("\n");
-
-    downloadCsvFile(
-      `folha-presenca-${payrollReport.month || payrollMonth}.csv`,
-      csvContent,
-    );
-
-    toast({
-      title: "CSV exportado",
-      description: "O arquivo com presencas, faltas e liquido estimado foi baixado.",
-    });
+      toast({
+        title: "Planilha exportada",
+        description: "O arquivo .xlsx com folha e ponto foi baixado.",
+      });
+    } catch (error) {
+      console.error("Error exporting payroll workbook:", error);
+      toast({
+        title: "Erro ao exportar",
+        description: "Nao consegui montar a planilha .xlsx agora.",
+        variant: "destructive",
+      });
+    }
   };
 
   const deactivateEmployee = async (employeeId) => {
@@ -2704,7 +2630,7 @@ const Dashboard = () => {
               className="h-12 rounded-2xl border border-white/12 bg-black/20 px-4 text-zinc-100 hover:bg-white/5"
             >
               <Download className="mr-2 h-4 w-4" />
-              Exportar CSV
+              Exportar XLSX
             </Button>
             <Button
               type="button"
