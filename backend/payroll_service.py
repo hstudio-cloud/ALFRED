@@ -60,6 +60,10 @@ def business_days_count(start: datetime, end: datetime) -> int:
     return max(total, 1)
 
 
+def contract_business_days_base(month_business_days: int) -> int:
+    return max(int(month_business_days or 0), 22)
+
+
 def _split_half_bounds(start: datetime, end: datetime) -> Tuple[datetime, datetime, datetime, datetime]:
     half_break = datetime(start.year, start.month, 16)
     half_break = min(max(half_break, start), end)
@@ -89,10 +93,11 @@ def compute_employee_payroll(
     inss_percent = float(employee.get("inss_percent") or 0.0) if employee_type == "clt" else 0.0
 
     month_business_days = business_days_count(month_start, month_end)
+    contract_days_base = contract_business_days_base(month_business_days)
     month_days = _get_month_days(month_start)
     # CLT costuma usar base de 30 dias para desconto de faltas.
-    daily_rate = (salary / 30.0) if employee_type == "clt" else (salary / month_business_days)
-    expected_days = 30 if employee_type == "clt" else month_business_days
+    daily_rate = (salary / 30.0) if employee_type == "clt" else (salary / contract_days_base)
+    expected_days = 30 if employee_type == "clt" else contract_days_base
 
     present_dates: List[datetime] = []
     absent_dates: List[datetime] = []
@@ -161,6 +166,7 @@ def compute_employee_payroll(
             "absent_days_second_half": absent_half_2,
         },
         "month_business_days": month_business_days,
+        "contract_days_base": contract_days_base if employee_type == "contract" else None,
         "month_days": month_days,
     }
 
