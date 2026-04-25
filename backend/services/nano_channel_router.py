@@ -13,6 +13,7 @@ from database import chat_messages_collection, nano_tasks_collection
 from models import ChatMessage
 from models_extended import NanoTask
 from services.assistant_action_service import AssistantActionService
+from services.nano_audit_service import create_nano_audit_log
 from services.nano_confirmation_service import (
     create_pending_confirmation,
     get_latest_pending_confirmation,
@@ -164,6 +165,17 @@ async def route_channel_message(
                 requires_confirmation=False,
                 metadata={"pending_confirmation_id": pending["id"], "executed_actions": executed_actions},
             )
+            await create_nano_audit_log(
+                user_id=user_id,
+                workspace_id=workspace_id,
+                source_channel=source_channel,
+                event_type="confirmation_executed",
+                status="completed",
+                risk_level="high_risk",
+                action_type=(actions[0] or {}).get("type") if actions else None,
+                message=normalized_content,
+                metadata={"pending_confirmation_id": pending["id"], "executed_actions": executed_actions},
+            )
             if persist_history:
                 assistant_message_payload = await _store_message(
                     user_id=user_id,
@@ -185,6 +197,16 @@ async def route_channel_message(
             }
         if is_rejection_message(normalized_content):
             await mark_confirmation_status(pending["id"], "canceled")
+            await create_nano_audit_log(
+                user_id=user_id,
+                workspace_id=workspace_id,
+                source_channel=source_channel,
+                event_type="confirmation_canceled",
+                status="canceled",
+                risk_level="high_risk",
+                message=normalized_content,
+                metadata={"pending_confirmation_id": pending["id"]},
+            )
             reply = "Confirmacao cancelada. Nao executei a acao pendente."
             if persist_history:
                 assistant_message_payload = await _store_message(
@@ -231,6 +253,18 @@ async def route_channel_message(
         intent_confidence=float((agent_result.metadata or {}).get("intent_confidence") or 0),
         user_message=normalized_content,
     )
+    if agent_result.actions:
+        await create_nano_audit_log(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            source_channel=source_channel,
+            event_type="action_planned",
+            status="planned",
+            risk_level=risk_policy["risk_level"],
+            action_type=(agent_result.actions[0] or {}).get("type"),
+            message=normalized_content,
+            metadata={"actions": agent_result.actions, "agent_metadata": agent_result.metadata},
+        )
     executed_actions = list(agent_result.executed_actions or [])
     reply = agent_result.message
 
@@ -257,6 +291,17 @@ async def route_channel_message(
             requires_confirmation=True,
             metadata={"pending_confirmation_id": pending_record["id"], "actions": agent_result.actions},
         )
+        await create_nano_audit_log(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            source_channel=source_channel,
+            event_type="confirmation_requested",
+            status="awaiting_confirmation",
+            risk_level=risk_policy["risk_level"],
+            action_type=(agent_result.actions[0] or {}).get("type"),
+            message=normalized_content,
+            metadata={"pending_confirmation_id": pending_record["id"], "actions": agent_result.actions},
+        )
     elif agent_result.actions:
         executed_actions = await _action_service.execute_actions(
             workspace_id=workspace_id,
@@ -276,6 +321,17 @@ async def route_channel_message(
             requires_confirmation=False,
             metadata={"declared_actions": agent_result.actions, "executed_actions": executed_actions},
         )
+        await create_nano_audit_log(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            source_channel=source_channel,
+            event_type="action_executed",
+            status="completed",
+            risk_level=risk_policy["risk_level"],
+            action_type=(agent_result.actions[0] or {}).get("type"),
+            message=normalized_content,
+            metadata={"declared_actions": agent_result.actions, "executed_actions": executed_actions},
+        )
     else:
         await _register_task(
             user_id=user_id,
@@ -286,6 +342,16 @@ async def route_channel_message(
             status="completed",
             risk_level=risk_policy["risk_level"],
             requires_confirmation=False,
+            metadata={"intent": agent_result.intent, "used_tools": list((agent_result.tool_results or {}).keys())},
+        )
+        await create_nano_audit_log(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            source_channel=source_channel,
+            event_type="report_served",
+            status="completed",
+            risk_level=risk_policy["risk_level"],
+            message=normalized_content,
             metadata={"intent": agent_result.intent, "used_tools": list((agent_result.tool_results or {}).keys())},
         )
 

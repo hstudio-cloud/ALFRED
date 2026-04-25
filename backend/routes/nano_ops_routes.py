@@ -6,8 +6,13 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from database import nano_tasks_collection, pending_confirmations_collection, whatsapp_identities_collection
-from models_extended import WhatsappIdentity
+from database import (
+    nano_audit_logs_collection,
+    nano_tasks_collection,
+    pending_confirmations_collection,
+    whatsapp_identities_collection,
+)
+from models_extended import NanoAutomationConfigUpdate, WhatsappIdentity
 from routes.auth_routes import get_current_user
 from routes.workspace_access import verify_workspace_access
 from services.nano_automation_service import NanoAutomationService
@@ -21,6 +26,10 @@ automation_service = NanoAutomationService()
 class WhatsappLinkRequest(BaseModel):
     phone_number: str
     status: str = "linked"
+
+
+class NanoAutomationUpdateRequest(NanoAutomationConfigUpdate):
+    pass
 
 
 def _serialize(document: dict) -> dict:
@@ -134,4 +143,37 @@ async def list_nano_automations(
 ):
     await verify_workspace_access(workspace_id, current_user)
     items = await automation_service.list_workspace_automations(workspace_id=workspace_id)
+    return {"items": items}
+
+
+@router.patch("/automations/{automation_id}")
+async def update_nano_automation(
+    automation_id: str,
+    payload: NanoAutomationUpdateRequest,
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    try:
+        item = await automation_service.update_workspace_automation(
+            workspace_id=workspace_id,
+            user_id=current_user["id"],
+            automation_key=automation_id,
+            payload=payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return item
+
+
+@router.get("/audits")
+async def list_nano_audits(
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    items = await nano_audit_logs_collection.find(
+        {"workspace_id": workspace_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
     return {"items": items}

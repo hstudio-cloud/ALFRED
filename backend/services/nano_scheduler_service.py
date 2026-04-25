@@ -9,11 +9,15 @@ from database import (
     accounts_collection,
     automation_logs_collection,
     bills_collection,
+    cards_collection,
     nano_tasks_collection,
     reminders_collection,
+    transactions_collection,
     whatsapp_identities_collection,
 )
 from models_extended import NanoTask
+from services.nano_audit_service import create_nano_audit_log
+from services.nano_automation_service import NanoAutomationService
 from services.whatsapp_service import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
@@ -24,6 +28,7 @@ class NanoSchedulerService:
         self.interval_seconds = interval_seconds
         self._task: Optional[asyncio.Task] = None
         self._running = False
+        self._automation_service = NanoAutomationService()
 
     async def start(self) -> None:
         if self._task and not self._task.done():
@@ -67,14 +72,47 @@ class NanoSchedulerService:
         now = datetime.utcnow()
         today_key = now.strftime("%Y-%m-%d")
         week_key = f"{now.year}-W{now.isocalendar().week:02d}"
+        automation_map = await self._automation_service.get_workspace_automation_map(
+            workspace_id=workspace_id
+        )
 
-        if now.hour >= 8:
-            await self._maybe_send_daily_summary(identity, dedupe_key=f"daily_summary:{workspace_id}:{today_key}")
-            await self._maybe_send_due_bills(identity, dedupe_key=f"due_bills:{workspace_id}:{today_key}")
-            await self._maybe_send_due_reminders(identity, dedupe_key=f"due_reminders:{workspace_id}:{today_key}")
+        if self._should_run(automation_map.get("daily_summary"), now):
+            await self._maybe_send_daily_summary(
+                identity,
+                dedupe_key=f"daily_summary:{workspace_id}:{today_key}",
+            )
+            await self._maybe_send_due_reminders(
+                identity,
+                dedupe_key=f"due_reminders:{workspace_id}:{today_key}",
+            )
+        if self._should_run(automation_map.get("bill_alert"), now):
+            await self._maybe_send_due_bills(
+                identity,
+                dedupe_key=f"bill_alert:{workspace_id}:{today_key}",
+            )
+        if self._should_run(automation_map.get("high_spend"), now):
+            await self._maybe_send_high_spend_alert(
+                identity,
+                dedupe_key=f"high_spend:{workspace_id}:{today_key}",
+            )
+        if self._should_run(automation_map.get("card_reminder"), now):
+            await self._maybe_send_card_reminder(
+                identity,
+                dedupe_key=f"card_reminder:{workspace_id}:{today_key}",
+            )
+        if self._should_run(automation_map.get("weekly_review"), now):
+            await self._maybe_send_weekly_review(
+                identity,
+                dedupe_key=f"weekly_review:{workspace_id}:{week_key}",
+            )
 
-        if now.weekday() == 0 and now.hour >= 9:
-            await self._maybe_send_weekly_review(identity, dedupe_key=f"weekly_review:{workspace_id}:{week_key}")
+    def _should_run(self, config: Optional[dict], now: datetime) -> bool:
+        if not config or not config.get("enabled"):
+            return False
+        weekdays = config.get("weekdays") or []
+        if weekdays and now.weekday() not in weekdays:
+            return False
+        return now.hour >= int(config.get("trigger_hour", 8))
 
     async def _has_log(self, dedupe_key: str) -> bool:
         found = await automation_logs_collection.find_one({"dedupe_key": dedupe_key})
@@ -89,6 +127,11 @@ class NanoSchedulerService:
                 "payload": payload,
                 "created_at": datetime.utcnow(),
             }
+        )
+        await self._automation_service.mark_automation_run(
+            workspace_id=workspace_id,
+            automation_key=automation_type,
+            ran_at=datetime.utcnow(),
         )
 
     async def _save_task(
@@ -115,6 +158,17 @@ class NanoSchedulerService:
             },
         )
         await nano_tasks_collection.insert_one(task.dict())
+        await create_nano_audit_log(
+            user_id=identity["user_id"],
+            workspace_id=identity["workspace_id"],
+            source_channel="whatsapp",
+            event_type="automation_sent",
+            status="completed",
+            risk_level="low_risk",
+            action_type=automation_type,
+            message=title,
+            metadata={"scheduler": True, **payload},
+        )
 
     async def _send_text(self, *, phone_number: str, text: str) -> None:
         await send_whatsapp_message(to=phone_number, text=text)
@@ -132,7 +186,7 @@ class NanoSchedulerService:
         if open_bills == 0 and active_reminders == 0:
             return
         text = (
-            f"Resumo diário do Nano: {open_bills} conta(s) pendente(s) e "
+            f"Resumo diario do Nano: {open_bills} conta(s) pendente(s) e "
             f"{active_reminders} lembrete(s) ativo(s). Quer que eu liste as prioridades de hoje?"
         )
         await self._send_text(phone_number=identity["phone_number"], text=text)
@@ -144,7 +198,7 @@ class NanoSchedulerService:
         )
         await self._save_task(
             identity=identity,
-            title="Resumo diário enviado no WhatsApp",
+            title="Resumo diario enviado no WhatsApp",
             automation_type="daily_summary",
             payload={"open_bills": open_bills, "active_reminders": active_reminders},
         )
@@ -183,6 +237,41 @@ class NanoSchedulerService:
             payload={"bills_count": len(bills), "total": total},
         )
 
+    async def _maybe_send_high_spend_alert(self, identity: dict, *, dedupe_key: str) -> None:
+        if await self._has_log(dedupe_key):
+            return
+        workspace_id = identity["workspace_id"]
+        threshold = 1000
+        expenses = await transactions_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "type": "expense",
+                "amount": {"$gte": threshold},
+                "date": {"$gte": datetime.utcnow() - timedelta(days=7)},
+            },
+            {"_id": 0},
+        ).to_list(5)
+        if not expenses:
+            return
+        total = sum(float(item.get("amount") or 0) for item in expenses)
+        text = (
+            f"Nano detectou {len(expenses)} gasto(s) alto(s) nos ultimos 7 dias, somando R$ {total:.2f}. "
+            "Se quiser, eu resumo onde estao os maiores desvios."
+        )
+        await self._send_text(phone_number=identity["phone_number"], text=text)
+        await self._save_log(
+            workspace_id=workspace_id,
+            dedupe_key=dedupe_key,
+            automation_type="high_spend",
+            payload={"expenses_count": len(expenses), "total": total, "threshold": threshold},
+        )
+        await self._save_task(
+            identity=identity,
+            title="Alerta de gastos altos enviado no WhatsApp",
+            automation_type="high_spend",
+            payload={"expenses_count": len(expenses), "total": total, "threshold": threshold},
+        )
+
     async def _maybe_send_due_reminders(self, identity: dict, *, dedupe_key: str) -> None:
         if await self._has_log(dedupe_key):
             return
@@ -200,7 +289,7 @@ class NanoSchedulerService:
         if not reminders:
             return
         text = (
-            f"Você tem {len(reminders)} lembrete(s) nas próximas 24h. "
+            f"Voce tem {len(reminders)} lembrete(s) nas proximas 24h. "
             "Se quiser, eu organizo a agenda financeira de hoje agora."
         )
         await self._send_text(phone_number=identity["phone_number"], text=text)
@@ -217,6 +306,47 @@ class NanoSchedulerService:
             payload={"reminders_count": len(reminders)},
         )
 
+    async def _maybe_send_card_reminder(self, identity: dict, *, dedupe_key: str) -> None:
+        if await self._has_log(dedupe_key):
+            return
+        workspace_id = identity["workspace_id"]
+        today = datetime.utcnow()
+        cards = await cards_collection.find(
+            {"workspace_id": workspace_id, "active": True},
+            {"_id": 0},
+        ).to_list(50)
+        relevant_cards = []
+        for card in cards:
+            due_day = int(card.get("due_day") or 0)
+            closing_day = int(card.get("closing_day") or 0)
+            if due_day and 0 <= due_day - today.day <= 3:
+                relevant_cards.append(
+                    {"name": card.get("name") or "Cartao", "kind": "vencimento", "day": due_day}
+                )
+            elif closing_day and 0 <= closing_day - today.day <= 3:
+                relevant_cards.append(
+                    {"name": card.get("name") or "Cartao", "kind": "fechamento", "day": closing_day}
+                )
+        if not relevant_cards:
+            return
+        labels = ", ".join(
+            f"{item['name']} ({item['kind']} dia {item['day']})" for item in relevant_cards[:3]
+        )
+        text = f"Nano identificou cartao com data proxima: {labels}. Quer que eu organize a fatura e o caixa previsto?"
+        await self._send_text(phone_number=identity["phone_number"], text=text)
+        await self._save_log(
+            workspace_id=workspace_id,
+            dedupe_key=dedupe_key,
+            automation_type="card_reminder",
+            payload={"cards": relevant_cards[:5]},
+        )
+        await self._save_task(
+            identity=identity,
+            title="Lembrete de cartao enviado no WhatsApp",
+            automation_type="card_reminder",
+            payload={"cards": relevant_cards[:5]},
+        )
+
     async def _maybe_send_weekly_review(self, identity: dict, *, dedupe_key: str) -> None:
         if await self._has_log(dedupe_key):
             return
@@ -227,7 +357,7 @@ class NanoSchedulerService:
         accounts = await accounts_collection.find({"workspace_id": workspace_id}, {"_id": 0}).to_list(100)
         account_count = len(accounts)
         text = (
-            f"Revisão semanal do Nano: {account_count} conta(s) mapeada(s) e {open_bills} pendência(s) aberta(s). "
+            f"Revisao semanal do Nano: {account_count} conta(s) mapeada(s) e {open_bills} pendencia(s) aberta(s). "
             "Quer um resumo executivo da semana?"
         )
         await self._send_text(phone_number=identity["phone_number"], text=text)
@@ -239,7 +369,7 @@ class NanoSchedulerService:
         )
         await self._save_task(
             identity=identity,
-            title="Revisão semanal enviada no WhatsApp",
+            title="Revisao semanal enviada no WhatsApp",
             automation_type="weekly_review",
             payload={"open_bills": open_bills, "accounts": account_count},
         )

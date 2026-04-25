@@ -509,3 +509,42 @@ class WhatsappLinkCode(BaseModel):
     phone_number: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class NanoAutomationConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    automation_key: str
+    title: str
+    description: str
+    source_channel: str = "whatsapp"
+    enabled: bool = True
+    trigger_hour: int = 8
+    weekdays: List[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6])
+    risk_level: str = "low_risk"
+    settings: dict = Field(default_factory=dict)
+    last_run_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class NanoAutomationConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    trigger_hour: Optional[int] = None
+    weekdays: Optional[List[int]] = None
+    settings: Optional[dict] = None
+
+
+class NanoAuditLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    workspace_id: str
+    source_channel: str = "web_chat"
+    event_type: str
+    status: str
+    risk_level: str = "low_risk"
+    action_type: Optional[str] = None
+    message: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.utcnow)

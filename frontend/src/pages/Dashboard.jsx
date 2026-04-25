@@ -412,6 +412,7 @@ const Dashboard = () => {
   const [nanoOpsTasks, setNanoOpsTasks] = useState([]);
   const [nanoOpsConfirmations, setNanoOpsConfirmations] = useState([]);
   const [nanoOpsAutomations, setNanoOpsAutomations] = useState([]);
+  const [nanoOpsAudits, setNanoOpsAudits] = useState([]);
   const [whatsappLinkPhone, setWhatsappLinkPhone] = useState("");
   const [whatsappLinkCode, setWhatsappLinkCode] = useState(null);
   const [whatsappLinkCountdown, setWhatsappLinkCountdown] = useState("");
@@ -700,17 +701,25 @@ const Dashboard = () => {
       if (!workspaceId) return;
       setNanoOpsLoading(true);
       try {
-        const [statusResponse, tasksResponse, confirmationsResponse, automationsResponse] =
+        const [
+          statusResponse,
+          tasksResponse,
+          confirmationsResponse,
+          automationsResponse,
+          auditsResponse,
+        ] =
           await Promise.all([
             nanoOpsService.getStatus(workspaceId),
             nanoOpsService.getTasks(workspaceId),
             nanoOpsService.getConfirmations(workspaceId),
             nanoOpsService.getAutomations(workspaceId),
+            nanoOpsService.getAudits(workspaceId),
           ]);
         setNanoOpsStatus(statusResponse || null);
         setNanoOpsTasks(tasksResponse?.items || []);
         setNanoOpsConfirmations(confirmationsResponse?.items || []);
         setNanoOpsAutomations(automationsResponse?.items || []);
+        setNanoOpsAudits(auditsResponse?.items || []);
         setWhatsappLinkPhone(
           statusResponse?.whatsapp_identity?.phone_number || "",
         );
@@ -1567,6 +1576,28 @@ const Dashboard = () => {
       toast({
         title: "Erro ao gerar código",
         description: "Não consegui gerar o código de conexão agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleNanoAutomation = async (automationId, enabled) => {
+    if (!currentWorkspace?.id) return;
+    try {
+      await nanoOpsService.updateAutomation(currentWorkspace.id, automationId, {
+        enabled,
+      });
+      await loadNanoOpsData(currentWorkspace.id);
+      toast({
+        title: enabled ? "Automacao ativada" : "Automacao desativada",
+        description: "A agenda operacional do Nano foi atualizada.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar automacao",
+        description:
+          error?.response?.data?.detail ||
+          "Nao consegui salvar essa configuracao agora.",
         variant: "destructive",
       });
     }
@@ -4050,12 +4081,45 @@ const Dashboard = () => {
           ) : nanoOpsAutomations.length ? (
             <div className="space-y-3">
               {nanoOpsAutomations.map((item) => (
-                <InfoRow
+                <div
                   key={item.id}
-                  title={item.title}
-                  subtitle={item.description}
-                  value={`${item.status || "available"} • sinal ${item.signal || 0}`}
-                />
+                  className="rounded-[24px] border border-white/10 bg-black/20 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-zinc-100">
+                        {item.title}
+                      </p>
+                      <p className="text-sm text-zinc-400">{item.description}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant={item.enabled ? "outline" : "default"}
+                      onClick={() => toggleNanoAutomation(item.id, !item.enabled)}
+                      className={`h-10 rounded-2xl px-4 ${
+                        item.enabled
+                          ? "border border-white/12 bg-black/20 text-zinc-100 hover:bg-white/5"
+                          : actionButtonClass
+                      }`}
+                    >
+                      {item.enabled ? "Desativar" : "Ativar"}
+                    </Button>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <StatMiniCard
+                      label="Status"
+                      value={item.enabled ? "Ativa" : "Pausada"}
+                    />
+                    <StatMiniCard
+                      label="Sinal"
+                      value={String(item.signal || 0)}
+                    />
+                    <StatMiniCard
+                      label="Horario"
+                      value={`${String(item.trigger_hour ?? 8).padStart(2, "0")}:00`}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -4086,6 +4150,49 @@ const Dashboard = () => {
               description="As ações do Nano via web e WhatsApp aparecem aqui."
             />
           )}
+        </SurfacePanel>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <SurfacePanel title="Trilha de auditoria">
+          {nanoOpsAudits.length ? (
+            <div className="space-y-3">
+              {nanoOpsAudits.slice(0, 12).map((item) => (
+                <InfoRow
+                  key={item.id}
+                  title={item.message || item.event_type}
+                  subtitle={`${item.event_type} • ${item.source_channel} • ${new Date(item.created_at).toLocaleString("pt-BR")}`}
+                  value={`${item.risk_level || "low_risk"} • ${item.status}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={ShieldCheck}
+              title="Sem auditoria ainda"
+              description="Pedidos, confirmações e execuções do Nano passam a aparecer aqui."
+            />
+          )}
+        </SurfacePanel>
+
+        <SurfacePanel title="Leitura operacional">
+          <div className="space-y-3">
+            <InfoRow
+              title="Canal principal"
+              subtitle="As automações configuradas aqui usam o mesmo AgentOrchestrator do chat web."
+              value="WhatsApp + painel"
+            />
+            <InfoRow
+              title="Ações sensíveis"
+              subtitle="Tudo o que exigir confirmação ou executar mudança real entra na trilha de auditoria."
+              value={`${nanoOpsConfirmations.length} pendente(s)`}
+            />
+            <InfoRow
+              title="Rotina ativa"
+              subtitle="Desative individualmente qualquer automação para o workspace sem desligar o Nano."
+              value={`${nanoOpsAutomations.filter((item) => item.enabled).length} ativa(s)`}
+            />
+          </div>
         </SurfacePanel>
       </div>
     </SectionLayout>

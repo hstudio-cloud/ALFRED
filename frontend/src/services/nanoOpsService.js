@@ -33,6 +33,20 @@ const nanoOpsService = {
       .then((response) => response.data);
   },
 
+  updateAutomation(workspaceId, automationId, payload) {
+    return axios
+      .patch(`${API}/nano-ops/automations/${automationId}`, payload, {
+        params: withWorkspace(workspaceId),
+      })
+      .then((response) => response.data);
+  },
+
+  getAudits(workspaceId) {
+    return axios
+      .get(`${API}/nano-ops/audits`, { params: withWorkspace(workspaceId) })
+      .then((response) => response.data);
+  },
+
   linkWhatsapp(workspaceId, payload) {
     return axios
       .post(`${API}/nano-ops/whatsapp/link`, payload, { params: withWorkspace(workspaceId) })
