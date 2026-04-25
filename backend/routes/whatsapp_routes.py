@@ -9,6 +9,7 @@ from services.whatsapp_service import (
     verify_whatsapp_signature,
     verify_whatsapp_webhook,
 )
+from services.whatsapp_link_service import consume_link_code
 from services.whatsapp_user_resolver import resolve_user_workspace_by_phone
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
@@ -61,7 +62,13 @@ async def whatsapp_webhook(
 
     resolved = await resolve_user_workspace_by_phone(sender)
     if not resolved or not resolved.get("identity"):
-        reply = "Nao encontrei este numero vinculado ao Nano. Entre no painel e conecte o WhatsApp primeiro."
+        linked = await consume_link_code(code=message_text, phone_number=sender)
+        if linked:
+            reply = "Número vinculado com sucesso ao Nano. Pode me enviar comandos financeiros por aqui."
+            delivery = await send_whatsapp_message(to=sender, text=reply)
+            return {"ok": True, "resolved": True, "linked": True, "reply": reply, "delivery": delivery}
+
+        reply = "Nao encontrei este numero vinculado ao Nano. Gere um codigo no painel e envie esse codigo aqui para conectar o WhatsApp."
         delivery = await send_whatsapp_message(to=sender, text=reply)
         return {"ok": True, "resolved": False, "reply": reply, "delivery": delivery}
 

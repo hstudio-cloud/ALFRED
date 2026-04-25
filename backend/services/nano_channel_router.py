@@ -229,6 +229,7 @@ async def route_channel_message(
     risk_policy = evaluate_execution_policy(
         agent_result.actions or [],
         intent_confidence=float((agent_result.metadata or {}).get("intent_confidence") or 0),
+        user_message=normalized_content,
     )
     executed_actions = list(agent_result.executed_actions or [])
     reply = agent_result.message

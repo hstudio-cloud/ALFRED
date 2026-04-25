@@ -39,6 +39,7 @@ from routes import (
 from database import users_collection
 from auth import get_password_hash
 from models import User
+from services.nano_scheduler_service import NanoSchedulerService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -53,6 +54,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+scheduler_service = NanoSchedulerService(
+    interval_seconds=int(os.environ.get("NANO_AUTOMATION_INTERVAL_SECONDS", "60"))
+)
 
 
 # --- NOVO GERENCIADOR DE LIFESPAN ---
@@ -90,10 +94,14 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("ℹ️  Admin user already exists")
 
+    if os.environ.get("NANO_AUTOMATION_SCHEDULER_ENABLED", "true").strip().lower() == "true":
+        await scheduler_service.start()
+
     # A aplicação roda enquanto está pausada neste yield
     yield
 
     # --- LÓGICA DE SHUTDOWN (Após o yield) ---
+    await scheduler_service.stop()
     client.close()
     logger.info("Nano API shutdown")
 

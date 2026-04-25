@@ -19,6 +19,16 @@ MEDIUM_RISK_TYPES = {
     "filter_report",
 }
 
+HIGH_RISK_TYPES = {
+    "delete_transaction",
+    "delete_bill",
+    "delete_reminder",
+    "delete_category",
+    "cancel_plan",
+    "start_payment",
+    "send_charge",
+}
+
 HIGH_RISK_KEYWORDS = {
     "delete",
     "remove",
@@ -39,6 +49,8 @@ def classify_action_risk(action: Dict[str, Any]) -> str:
     data = action.get("data") if isinstance(action.get("data"), dict) else {}
     data_blob = " ".join(str(value).lower() for value in data.values())
 
+    if action_type in HIGH_RISK_TYPES:
+        return "high_risk"
     if action_type in LOW_RISK_TYPES:
         return "low_risk"
     if action_type in MEDIUM_RISK_TYPES:
@@ -52,7 +64,33 @@ def evaluate_execution_policy(
     actions: List[Dict[str, Any]],
     *,
     intent_confidence: float = 0.0,
+    user_message: str = "",
 ) -> Dict[str, Any]:
+    normalized_message = str(user_message or "").strip().lower()
+    if any(
+        keyword in normalized_message
+        for keyword in [
+            "apaga",
+            "apagar",
+            "delete",
+            "excluir",
+            "cancelar plano",
+            "cancela plano",
+            "iniciar pagamento",
+            "cobrança",
+            "cobranca",
+            "enviar cobrança",
+            "enviar cobranca",
+            "alterar dados sensíveis",
+            "alterar dados sensiveis",
+        ]
+    ):
+        return {
+            "risk_level": "high_risk",
+            "requires_confirmation": True,
+            "reason": "Pedido sensivel detectado. Preciso de confirmacao explicita antes de executar.",
+        }
+
     if not actions:
         return {
             "risk_level": "low_risk",

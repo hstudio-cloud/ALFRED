@@ -11,6 +11,7 @@ from models_extended import WhatsappIdentity
 from routes.auth_routes import get_current_user
 from routes.workspace_access import verify_workspace_access
 from services.nano_automation_service import NanoAutomationService
+from services.whatsapp_link_service import create_link_code, get_latest_link_code
 from services.whatsapp_user_resolver import normalize_phone_number
 
 router = APIRouter(prefix="/api/nano-ops", tags=["nano-ops"])
@@ -46,6 +47,10 @@ async def get_nano_ops_status(
         "workspace_id": workspace_id,
         "whatsapp_connected": bool(identity and identity.get("status") == "linked"),
         "whatsapp_identity": identity,
+        "pending_link_code": await get_latest_link_code(
+            user_id=current_user["id"],
+            workspace_id=workspace_id,
+        ),
         "pending_confirmations": pending_count,
         "nano_tasks": tasks_count,
     }
@@ -83,6 +88,16 @@ async def link_whatsapp_number(
 
     await whatsapp_identities_collection.insert_one(document)
     return document
+
+
+@router.post("/whatsapp/link-code")
+async def create_whatsapp_link_code(
+    workspace_id: str = Query(...),
+    current_user: dict = Depends(get_current_user),
+):
+    await verify_workspace_access(workspace_id, current_user)
+    record = await create_link_code(user_id=current_user["id"], workspace_id=workspace_id)
+    return record
 
 
 @router.get("/tasks")

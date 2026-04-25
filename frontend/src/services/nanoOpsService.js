@@ -38,6 +38,12 @@ const nanoOpsService = {
       .post(`${API}/nano-ops/whatsapp/link`, payload, { params: withWorkspace(workspaceId) })
       .then((response) => response.data);
   },
+
+  createWhatsappLinkCode(workspaceId) {
+    return axios
+      .post(`${API}/nano-ops/whatsapp/link-code`, {}, { params: withWorkspace(workspaceId) })
+      .then((response) => response.data);
+  },
 };
 
 export default nanoOpsService;

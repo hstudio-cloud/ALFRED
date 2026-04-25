@@ -497,3 +497,15 @@ class PendingConfirmation(BaseModel):
     status: str = "pending"  # pending, confirmed, expired, canceled, executed
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class WhatsappLinkCode(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    workspace_id: str
+    code: str
+    status: str = "pending"  # pending, linked, expired, canceled
+    expires_at: datetime
+    phone_number: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

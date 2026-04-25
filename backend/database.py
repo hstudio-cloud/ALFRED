@@ -36,3 +36,4 @@ open_finance_transactions_collection = db.open_finance_transactions
 whatsapp_identities_collection = db.whatsapp_identities
 nano_tasks_collection = db.nano_tasks
 pending_confirmations_collection = db.pending_confirmations
+whatsapp_link_codes_collection = db.whatsapp_link_codes

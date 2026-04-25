@@ -413,6 +413,7 @@ const Dashboard = () => {
   const [nanoOpsConfirmations, setNanoOpsConfirmations] = useState([]);
   const [nanoOpsAutomations, setNanoOpsAutomations] = useState([]);
   const [whatsappLinkPhone, setWhatsappLinkPhone] = useState("");
+  const [whatsappLinkCode, setWhatsappLinkCode] = useState(null);
   const cnpjCardInputRef = useRef(null);
   const payrollSheetInputRef = useRef(null);
 
@@ -712,6 +713,7 @@ const Dashboard = () => {
         setWhatsappLinkPhone(
           statusResponse?.whatsapp_identity?.phone_number || "",
         );
+        setWhatsappLinkCode(statusResponse?.pending_link_code || null);
       } catch (error) {
         toast({
           title: "Erro ao carregar operação do Nano",
@@ -1513,6 +1515,24 @@ const Dashboard = () => {
         description:
           error?.response?.data?.detail ||
           "Não consegui salvar esse número agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateWhatsappLinkCode = async () => {
+    if (!currentWorkspace?.id) return;
+    try {
+      const response = await nanoOpsService.createWhatsappLinkCode(currentWorkspace.id);
+      setWhatsappLinkCode(response);
+      toast({
+        title: "Código gerado",
+        description: "Envie esse código para o WhatsApp do Nano para concluir a conexão.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao gerar código",
+        description: "Não consegui gerar o código de conexão agora.",
         variant: "destructive",
       });
     }
@@ -4066,6 +4086,20 @@ const Dashboard = () => {
               value={String(nanoOpsStatus?.pending_confirmations || 0)}
             />
           </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <StatMiniCard
+              label="Código atual"
+              value={whatsappLinkCode?.code || "Nenhum"}
+            />
+            <StatMiniCard
+              label="Expira"
+              value={
+                whatsappLinkCode?.expires_at
+                  ? new Date(whatsappLinkCode.expires_at).toLocaleTimeString("pt-BR")
+                  : "-"
+              }
+            />
+          </div>
           <form onSubmit={submitWhatsappLink} className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
             <Input
               value={whatsappLinkPhone}
@@ -4077,8 +4111,16 @@ const Dashboard = () => {
               Salvar número
             </Button>
           </form>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={generateWhatsappLinkCode}
+            className="mt-3 h-11 rounded-2xl border border-white/12 bg-black/20 px-4 text-sm text-zinc-100 hover:bg-white/5"
+          >
+            Gerar código de conexão
+          </Button>
           <p className="mt-3 text-sm text-zinc-400">
-            O webhook só executa ações quando o telefone estiver vinculado ao usuário e workspace.
+            Gere o código no painel e envie esse código para o WhatsApp do Nano para concluir a conexão pelo celular.
           </p>
         </SurfacePanel>
 
