@@ -414,6 +414,7 @@ const Dashboard = () => {
   const [nanoOpsAutomations, setNanoOpsAutomations] = useState([]);
   const [whatsappLinkPhone, setWhatsappLinkPhone] = useState("");
   const [whatsappLinkCode, setWhatsappLinkCode] = useState(null);
+  const [whatsappLinkCountdown, setWhatsappLinkCountdown] = useState("");
   const cnpjCardInputRef = useRef(null);
   const payrollSheetInputRef = useRef(null);
 
@@ -741,6 +742,39 @@ const Dashboard = () => {
       loadNanoOpsData(currentWorkspace.id);
     }
   }, [activeSection, currentWorkspace?.id, loadNanoOpsData]);
+
+  useEffect(() => {
+    if (!whatsappLinkCode?.expires_at) {
+      setWhatsappLinkCountdown("");
+      return undefined;
+    }
+
+    const tick = () => {
+      const remainingMs =
+        new Date(whatsappLinkCode.expires_at).getTime() - Date.now();
+      if (remainingMs <= 0) {
+        setWhatsappLinkCountdown("expirado");
+        if (currentWorkspace?.id && activeSection === "nano_whatsapp") {
+          loadNanoOpsData(currentWorkspace.id);
+        }
+        return false;
+      }
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      setWhatsappLinkCountdown(`${minutes}:${seconds}`);
+      return true;
+    };
+
+    tick();
+    const interval = window.setInterval(() => {
+      const keepRunning = tick();
+      if (!keepRunning) {
+        window.clearInterval(interval);
+      }
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [whatsappLinkCode?.expires_at, currentWorkspace?.id, activeSection, loadNanoOpsData]);
 
   useEffect(() => {
     if (!currentWorkspace) return;
@@ -4095,7 +4129,7 @@ const Dashboard = () => {
               label="Expira"
               value={
                 whatsappLinkCode?.expires_at
-                  ? new Date(whatsappLinkCode.expires_at).toLocaleTimeString("pt-BR")
+                  ? `${new Date(whatsappLinkCode.expires_at).toLocaleTimeString("pt-BR")} ${whatsappLinkCountdown ? `• ${whatsappLinkCountdown}` : ""}`
                   : "-"
               }
             />
@@ -4122,6 +4156,11 @@ const Dashboard = () => {
           <p className="mt-3 text-sm text-zinc-400">
             Gere o código no painel e envie esse código para o WhatsApp do Nano para concluir a conexão pelo celular.
           </p>
+          {!!whatsappLinkCode?.code && (
+            <p className="mt-2 text-xs uppercase tracking-[0.22em] text-zinc-500">
+              Aguardando envio do código {whatsappLinkCode.code}
+            </p>
+          )}
         </SurfacePanel>
 
         <SurfacePanel title="Confirmações pendentes">

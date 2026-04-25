@@ -47,9 +47,10 @@ async def whatsapp_webhook_verify(
 @router.post("/webhook")
 async def whatsapp_webhook(
     request: Request,
-    x_signature: str | None = Header(default=None),
+    x_signature: str | None = Header(default=None, alias="x-hub-signature-256"),
 ):
-    if not verify_whatsapp_signature(x_signature):
+    raw_body = await request.body()
+    if not verify_whatsapp_signature(x_signature, raw_body):
         raise HTTPException(status_code=401, detail="Assinatura de webhook invalida")
 
     payload = await request.json()

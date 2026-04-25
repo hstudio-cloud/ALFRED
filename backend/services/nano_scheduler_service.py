@@ -9,9 +9,11 @@ from database import (
     accounts_collection,
     automation_logs_collection,
     bills_collection,
+    nano_tasks_collection,
     reminders_collection,
     whatsapp_identities_collection,
 )
+from models_extended import NanoTask
 from services.whatsapp_service import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
@@ -89,6 +91,31 @@ class NanoSchedulerService:
             }
         )
 
+    async def _save_task(
+        self,
+        *,
+        identity: dict,
+        title: str,
+        automation_type: str,
+        payload: dict,
+    ) -> None:
+        task = NanoTask(
+            user_id=identity["user_id"],
+            workspace_id=identity["workspace_id"],
+            source_channel="whatsapp",
+            title=title,
+            type="automation",
+            status="completed",
+            risk_level="low_risk",
+            requires_confirmation=False,
+            metadata={
+                "automation_type": automation_type,
+                "scheduler": True,
+                **payload,
+            },
+        )
+        await nano_tasks_collection.insert_one(task.dict())
+
     async def _send_text(self, *, phone_number: str, text: str) -> None:
         await send_whatsapp_message(to=phone_number, text=text)
 
@@ -112,6 +139,12 @@ class NanoSchedulerService:
         await self._save_log(
             workspace_id=workspace_id,
             dedupe_key=dedupe_key,
+            automation_type="daily_summary",
+            payload={"open_bills": open_bills, "active_reminders": active_reminders},
+        )
+        await self._save_task(
+            identity=identity,
+            title="Resumo diário enviado no WhatsApp",
             automation_type="daily_summary",
             payload={"open_bills": open_bills, "active_reminders": active_reminders},
         )
@@ -143,6 +176,12 @@ class NanoSchedulerService:
             automation_type="bill_alert",
             payload={"bills_count": len(bills), "total": total},
         )
+        await self._save_task(
+            identity=identity,
+            title="Alerta de contas enviado no WhatsApp",
+            automation_type="bill_alert",
+            payload={"bills_count": len(bills), "total": total},
+        )
 
     async def _maybe_send_due_reminders(self, identity: dict, *, dedupe_key: str) -> None:
         if await self._has_log(dedupe_key):
@@ -171,6 +210,12 @@ class NanoSchedulerService:
             automation_type="reminder_alert",
             payload={"reminders_count": len(reminders)},
         )
+        await self._save_task(
+            identity=identity,
+            title="Alerta de lembretes enviado no WhatsApp",
+            automation_type="reminder_alert",
+            payload={"reminders_count": len(reminders)},
+        )
 
     async def _maybe_send_weekly_review(self, identity: dict, *, dedupe_key: str) -> None:
         if await self._has_log(dedupe_key):
@@ -189,6 +234,12 @@ class NanoSchedulerService:
         await self._save_log(
             workspace_id=workspace_id,
             dedupe_key=dedupe_key,
+            automation_type="weekly_review",
+            payload={"open_bills": open_bills, "accounts": account_count},
+        )
+        await self._save_task(
+            identity=identity,
+            title="Revisão semanal enviada no WhatsApp",
             automation_type="weekly_review",
             payload={"open_bills": open_bills, "accounts": account_count},
         )

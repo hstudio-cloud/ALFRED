@@ -1,5 +1,7 @@
 import logging
 import os
+import hmac
+import hashlib
 from typing import Optional
 
 import httpx
@@ -104,12 +106,24 @@ async def send_whatsapp_message(*, to: str, text: str) -> dict:
         return {"ok": True, "provider_response": response.json()}
 
 
-def verify_whatsapp_signature(signature: Optional[str]) -> bool:
-    """
-    Signature verification placeholder.
-    Add official provider signature validation here.
-    """
-    expected = os.getenv("WHATSAPP_WEBHOOK_SECRET", "").strip()
-    if not expected:
+def verify_whatsapp_signature(signature: Optional[str], raw_body: bytes | None = None) -> bool:
+    app_secret = (
+        os.getenv("WHATSAPP_APP_SECRET", "").strip()
+        or os.getenv("WHATSAPP_WEBHOOK_SECRET", "").strip()
+    )
+    if not app_secret:
         return True
-    return signature == expected
+    if not signature or not raw_body:
+        return False
+
+    normalized_signature = signature.strip()
+    if normalized_signature.startswith("sha256="):
+        digest = hmac.new(
+            app_secret.encode("utf-8"),
+            raw_body,
+            hashlib.sha256,
+        ).hexdigest()
+        expected_signature = f"sha256={digest}"
+        return hmac.compare_digest(normalized_signature, expected_signature)
+
+    return hmac.compare_digest(normalized_signature, app_secret)
