@@ -38,13 +38,13 @@ class OpenAIVoiceProvider(VoiceProviderBase):
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.voice_model = os.getenv("OPENAI_VOICE_MODEL", "gpt-4o-mini-tts")
-        self.voice_name = os.getenv("OPENAI_VOICE_NAME", "ash")
+        self.voice_name = os.getenv("OPENAI_VOICE_NAME", "onyx")
         self.transcribe_model = os.getenv("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-transcribe")
         self.voice_instructions = os.getenv(
             "OPENAI_VOICE_INSTRUCTIONS",
             (
-                "Fale em portugues do Brasil com voz mais encorpada, sofisticada e segura, "
-                "lembrando um assistente executivo premium. "
+                "Fale em portugues do Brasil com voz grave, encorpada, sofisticada e segura, "
+                "com presenca de um assistente executivo premium de tecnologia, sem soar robótico. "
                 "Use diccao muito clara, pausas naturais, ritmo calmo e tom confiante. "
                 "Leia valores monetarios de forma natural e sem soletrar digitos desnecessariamente."
             ),

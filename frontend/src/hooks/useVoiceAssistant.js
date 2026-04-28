@@ -396,6 +396,32 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     );
   }, [isWakeArmed, resumeRecognitionAfterAssistant, updateVoiceState, wakeWord]);
 
+  const speakFallbackMessage = useCallback(
+    async (text) => {
+      try {
+        await providerRef.current?.speak?.(text, {
+          preferPremium: true,
+          onStart: () => {
+            setIsSpeaking(true);
+          },
+          onEnd: () => {
+            setIsSpeaking(false);
+            resumeRecognitionAfterAssistant();
+          },
+          onError: () => {
+            setIsSpeaking(false);
+            resumeRecognitionAfterAssistant();
+          }
+        });
+      } catch (speechError) {
+        void speechError;
+        setIsSpeaking(false);
+        resumeRecognitionAfterAssistant();
+      }
+    },
+    [resumeRecognitionAfterAssistant]
+  );
+
   const handleRealtimeTurn = useCallback(async (content, options = {}) => {
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -500,21 +526,28 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       }
     } catch (requestError) {
       setChatError(requestError);
+      const fallbackMessage =
+        requestError?.response?.data?.detail
+        || 'Nao consegui concluir esse pedido agora. Tente novamente ou reformule o comando.';
       setChatHistory((prev) => [
         ...prev,
         {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'Nao consegui concluir esse pedido agora. Tente novamente ou reformule o comando.',
+          content: fallbackMessage,
           created_at: new Date().toISOString()
         }
       ]);
       updateVoiceState('error', 'Nao consegui enviar sua mensagem ao Nano.');
+      if (options.source === 'voice') {
+        pauseRecognitionForAssistant();
+        await speakFallbackMessage(fallbackMessage);
+      }
       throw requestError;
     } finally {
       setIsProcessing(false);
     }
-  }, [isWakeArmed, onAfterMessage, onAssistantAction, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
+  }, [isWakeArmed, onAfterMessage, onAssistantAction, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, speakFallbackMessage, updateVoiceState, wakeWord]);
 
   const processVoiceTranscript = useCallback(async (transcript) => {
     const cleanedTranscript = (transcript || '').trim();

@@ -625,8 +625,9 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
       currentUtterance = new SpeechSynthesisUtterance(speechText);
       const voices = window.speechSynthesis.getVoices?.() || [];
       const preferredVoice =
-        voices.find((voice) => /pt-BR/i.test(voice.lang) && /(maria|francisca|luciana|google|microsoft)/i.test(voice.name))
+        voices.find((voice) => /pt-BR/i.test(voice.lang) && /(daniel|antonio|carlos|felipe|ricardo|microsoft|google)/i.test(voice.name))
         || voices.find((voice) => /pt-BR/i.test(voice.lang))
+        || voices.find((voice) => /en-(US|GB)/i.test(voice.lang) && /(david|mark|guy|james|daniel)/i.test(voice.name))
         || null;
 
       if (preferredVoice) {
@@ -635,7 +636,7 @@ const buildBrowserVoiceProvider = ({ apiBase }) => {
 
       currentUtterance.lang = preferredVoice?.lang || 'pt-BR';
       currentUtterance.rate = 0.9;
-      currentUtterance.pitch = 0.98;
+      currentUtterance.pitch = 0.82;
       currentUtterance.onend = () => {
         currentUtterance = null;
         onEnd?.('browser');

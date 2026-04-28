@@ -26,6 +26,18 @@ class NanoActionRunner:
     """Executes validated Nano actions against the current backend data model."""
 
     @staticmethod
+    def _missing_required_fields(data: Dict[str, Any], required_fields: List[str]) -> List[str]:
+        missing = []
+        for field in required_fields:
+            value = data.get(field)
+            if value is None:
+                missing.append(field)
+                continue
+            if isinstance(value, str) and not value.strip():
+                missing.append(field)
+        return missing
+
+    @staticmethod
     def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
         if not value:
             return None
@@ -91,7 +103,9 @@ class NanoActionRunner:
         action: Dict[str, Any],
     ) -> Dict[str, Any]:
         data = action.get("data", {})
-        missing_fields = data.get("missing_fields", [])
+        missing_fields = list(data.get("missing_fields", []))
+        missing_fields.extend(self._missing_required_fields(data, ["category", "type", "amount"]))
+        missing_fields = list(dict.fromkeys(missing_fields))
         if missing_fields:
             return {
                 "type": "create_transaction",
@@ -626,24 +640,44 @@ class NanoActionRunner:
         results = []
         for action in actions:
             action_type = action.get("type")
-            if action_type == "create_transaction":
-                results.append(await self._execute_transaction_action(workspace_id, current_user, action))
-            elif action_type == "create_bill":
-                results.append(await self._execute_bill_action(workspace_id, current_user, action))
-            elif action_type == "create_reminder":
-                results.append(await self._execute_reminder_action(workspace_id, current_user, action))
-            elif action_type == "analyze_spending":
-                results.append(await self._execute_analysis_action(workspace_id, action))
-            elif action_type == "navigate":
-                results.append(await self._execute_navigation_action(action))
-            elif action_type == "check_agenda":
-                results.append(await self._execute_agenda_action(workspace_id, current_user, action))
-            elif action_type == "create_employee":
-                results.append(await self._execute_create_employee_action(workspace_id, current_user, action))
-            elif action_type == "register_attendance":
-                results.append(await self._execute_register_attendance_action(workspace_id, current_user, action))
-            elif action_type == "generate_payroll_report":
-                results.append(await self._execute_generate_payroll_report_action(workspace_id, action))
+            try:
+                if action_type == "create_transaction":
+                    results.append(await self._execute_transaction_action(workspace_id, current_user, action))
+                elif action_type == "create_bill":
+                    results.append(await self._execute_bill_action(workspace_id, current_user, action))
+                elif action_type == "create_reminder":
+                    results.append(await self._execute_reminder_action(workspace_id, current_user, action))
+                elif action_type == "analyze_spending":
+                    results.append(await self._execute_analysis_action(workspace_id, action))
+                elif action_type == "navigate":
+                    results.append(await self._execute_navigation_action(action))
+                elif action_type == "check_agenda":
+                    results.append(await self._execute_agenda_action(workspace_id, current_user, action))
+                elif action_type == "create_employee":
+                    results.append(await self._execute_create_employee_action(workspace_id, current_user, action))
+                elif action_type == "register_attendance":
+                    results.append(await self._execute_register_attendance_action(workspace_id, current_user, action))
+                elif action_type == "generate_payroll_report":
+                    results.append(await self._execute_generate_payroll_report_action(workspace_id, action))
+                else:
+                    results.append(
+                        {
+                            "type": action_type or "unknown_action",
+                            "status": "failed",
+                            "message": "Ainda nao sei executar essa acao automaticamente.",
+                            "data": action.get("data") or {},
+                        }
+                    )
+            except Exception as exc:
+                results.append(
+                    {
+                        "type": action_type or "unknown_action",
+                        "status": "failed",
+                        "message": "Encontrei uma falha ao executar essa etapa. Posso tentar de novo com mais detalhes.",
+                        "data": action.get("data") or {},
+                        "error": str(exc),
+                    }
+                )
         return results
 
     def compose_assistant_reply(

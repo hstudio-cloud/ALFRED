@@ -31,6 +31,17 @@ _orchestrator = AgentOrchestrator(api_key=_api_key)
 _action_service = AssistantActionService(api_key=_api_key)
 
 
+def _build_action_failure_reply(executed_actions: List[Dict[str, Any]], fallback_reply: str) -> str:
+    failure_messages = [
+        item.get("message")
+        for item in executed_actions
+        if item.get("status") in {"failed", "needs_input"} and item.get("message")
+    ]
+    if failure_messages:
+        return " ".join(failure_messages[:2])
+    return fallback_reply or "Encontrei uma falha ao executar essa tarefa. Posso tentar de novo com um pedido mais especifico."
+
+
 def _serialize(document: Dict[str, Any]) -> Dict[str, Any]:
     payload = dict(document)
     payload.pop("_id", None)
@@ -308,15 +319,18 @@ async def route_channel_message(
             current_user=user,
             actions=agent_result.actions,
         )
-        if executed_actions and executed_actions[0].get("message"):
-            reply = executed_actions[0]["message"]
+        if executed_actions:
+            if any(item.get("status") in {"failed", "needs_input"} for item in executed_actions):
+                reply = _build_action_failure_reply(executed_actions, reply)
+            elif executed_actions[0].get("message"):
+                reply = executed_actions[0]["message"]
         await _register_task(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
             title=normalized_content[:100],
             task_type="automation" if source_channel == "whatsapp" else "followup",
-            status="completed",
+            status="canceled" if any(item.get("status") == "failed" for item in executed_actions) else "completed",
             risk_level=risk_policy["risk_level"],
             requires_confirmation=False,
             metadata={"declared_actions": agent_result.actions, "executed_actions": executed_actions},
@@ -326,7 +340,7 @@ async def route_channel_message(
             workspace_id=workspace_id,
             source_channel=source_channel,
             event_type="action_executed",
-            status="completed",
+            status="failed" if any(item.get("status") == "failed" for item in executed_actions) else "completed",
             risk_level=risk_policy["risk_level"],
             action_type=(agent_result.actions[0] or {}).get("type"),
             message=normalized_content,
