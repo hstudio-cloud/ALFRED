@@ -28,8 +28,14 @@ import workspaceService from "../services/workspaceService";
 import { API_BASE_URL } from "../config/env";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import { Calendar } from "../components/ui/calendar";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
 import { Textarea } from "../components/ui/textarea";
 import {
   Area,
@@ -42,6 +48,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ptBR } from "date-fns/locale";
 import {
   dashboardClass,
   dashboardTheme,
@@ -304,8 +311,48 @@ const actionButtonClass = dashboardClass.buttonPrimary;
 const REQUEST_TIMEOUT_MS = 15000;
 const THEME_STORAGE_KEY = "nano_theme_mode";
 const CURSOR_MODE_STORAGE_KEY = "nano_cursor_mode";
+const BRAZIL_TIME_ZONE = "America/Sao_Paulo";
 const resolveCursorMode = (value) =>
   value === "default" ? "default" : "custom";
+const getBrazilDateParts = () => {
+  const now = new Date();
+  const dateValue = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: BRAZIL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const monthValue = dateValue.slice(0, 7);
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: BRAZIL_TIME_ZONE,
+    month: "long",
+    year: "numeric",
+  }).format(now);
+  return { dateValue, monthValue, monthLabel };
+};
+const dateValueToCalendarDate = (value) => {
+  if (!value) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day, 12, 0, 0);
+};
+const calendarDateToDateValue = (value) => {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+const formatBrazilDateLabel = (value) => {
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) return "";
+  return `${day}/${month}/${year}`;
+};
+const dateValueToBrazilIso = (value) => {
+  if (!value) return "";
+  return `${value}T12:00:00-03:00`;
+};
 const billingStatusLabels = {
   active: "acesso ativo",
   trialing: "periodo de teste",
@@ -392,7 +439,10 @@ const Dashboard = () => {
   const [profileForm, setProfileForm] = useState(initialProfileForm);
   const [settingsForm, setSettingsForm] = useState(initialSettingsForm);
   const [employeeForm, setEmployeeForm] = useState(initialEmployeeForm);
-  const [attendanceForm, setAttendanceForm] = useState(initialAttendanceForm);
+  const [attendanceForm, setAttendanceForm] = useState(() => ({
+    ...initialAttendanceForm,
+    date: getBrazilDateParts().dateValue,
+  }));
 
   const [reportPeriod, setReportPeriod] = useState("30d");
   const [transactionSearch, setTransactionSearch] = useState("");
@@ -402,8 +452,9 @@ const Dashboard = () => {
   const [statementFile, setStatementFile] = useState(null);
   const [statementImportResult, setStatementImportResult] = useState(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
+  const [brazilClock, setBrazilClock] = useState(() => getBrazilDateParts());
   const [payrollMonth, setPayrollMonth] = useState(() =>
-    new Date().toISOString().slice(0, 7),
+    getBrazilDateParts().monthValue,
   );
   const [payrollEmployeeTypeFilter, setPayrollEmployeeTypeFilter] =
     useState("all");
@@ -421,12 +472,25 @@ const Dashboard = () => {
   const [whatsappLinkPhone, setWhatsappLinkPhone] = useState("");
   const [whatsappLinkCode, setWhatsappLinkCode] = useState(null);
   const [whatsappLinkCountdown, setWhatsappLinkCountdown] = useState("");
+  const [attendanceCalendarOpen, setAttendanceCalendarOpen] = useState(false);
   const cnpjCardInputRef = useRef(null);
   const payrollSheetInputRef = useRef(null);
 
   useEffect(() => {
     activeSectionRef.current = activeSection;
   }, [activeSection]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const syncBrazilClock = () => {
+      setBrazilClock(getBrazilDateParts());
+    };
+
+    syncBrazilClock();
+    const interval = window.setInterval(syncBrazilClock, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1414,7 +1478,7 @@ const Dashboard = () => {
     try {
       await payrollService.registerAttendance(currentWorkspace.id, {
         employee_id: attendanceForm.employee_id,
-        date: new Date(`${attendanceForm.date}T09:00:00`).toISOString(),
+        date: dateValueToBrazilIso(attendanceForm.date),
         status: attendanceForm.status,
         notes: attendanceForm.notes,
       });
@@ -2099,7 +2163,7 @@ const Dashboard = () => {
     "O Nano cruza receitas, despesas, contas e recorrências para sugerir ajustes de rota no financeiro.";
   const payrollSummary = payrollReport?.summary || {};
   const payrollGroups = payrollReport?.groups || { clt: [], contract: [] };
-  const todayDateValue = new Date().toISOString().slice(0, 10);
+  const todayDateValue = brazilClock.dateValue;
   const overviewHighlights = [
     {
       label: "Posição do mês",
@@ -3045,6 +3109,14 @@ const Dashboard = () => {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
         <SurfacePanel title="Registro de presença/falta">
+          <div className="mb-4 rounded-[24px] border border-[#eadfd6] bg-[#fff8f4] px-4 py-3">
+            <p className="text-sm font-semibold text-[#1f1814]">
+              Mes de referencia: {brazilClock.monthLabel}
+            </p>
+            <p className="mt-1 text-sm text-[#857870]">
+              As datas usam o horario oficial de Brasilia.
+            </p>
+          </div>
           <form
             onSubmit={submitAttendance}
             className="grid gap-3 md:grid-cols-4"
@@ -3066,18 +3138,48 @@ const Dashboard = () => {
                 </option>
               ))}
             </select>
-            <Input
-              type="date"
-              value={attendanceForm.date}
-              onChange={(event) =>
-                setAttendanceForm({
-                  ...attendanceForm,
-                  date: event.target.value,
-                })
-              }
-              max={todayDateValue}
-              className={pageFieldClass}
-            />
+            <Popover
+              open={attendanceCalendarOpen}
+              onOpenChange={setAttendanceCalendarOpen}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 justify-between rounded-2xl border border-[#eadfd6] bg-white px-4 text-left font-normal text-[#1f1814] hover:bg-[#fff8f4]"
+                >
+                  <span>
+                    {attendanceForm.date
+                      ? formatBrazilDateLabel(attendanceForm.date)
+                      : "Selecione a data"}
+                  </span>
+                  <CalendarDays className="h-4 w-4 text-[#7f1d1d]" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-auto rounded-[24px] border border-[#eadfd6] bg-white p-0 shadow-[0_24px_60px_rgba(31,24,20,0.16)]"
+              >
+                <Calendar
+                  mode="single"
+                  selected={dateValueToCalendarDate(attendanceForm.date)}
+                  defaultMonth={dateValueToCalendarDate(attendanceForm.date)}
+                  onSelect={(value) => {
+                    if (!value) return;
+                    setAttendanceForm((current) => ({
+                      ...current,
+                      date: calendarDateToDateValue(value),
+                    }));
+                    setAttendanceCalendarOpen(false);
+                  }}
+                  disabled={(date) =>
+                    calendarDateToDateValue(date) > todayDateValue
+                  }
+                  locale={ptBR}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             <select
               className={pageFieldClass}
               value={attendanceForm.status}
