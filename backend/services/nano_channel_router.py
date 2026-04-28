@@ -111,6 +111,14 @@ async def _store_message(
     return payload
 
 
+async def _safe_store_message(**kwargs) -> Dict[str, Any] | None:
+    try:
+        return await _store_message(**kwargs)
+    except Exception as exc:
+        logger.exception("Nano failed to persist chat message: %s", exc)
+        return None
+
+
 async def _register_task(
     *,
     user_id: str,
@@ -132,11 +140,27 @@ async def _register_task(
         status=status,
         risk_level=risk_level,
         requires_confirmation=requires_confirmation,
-        metadata=metadata or {},
+        metadata=_sanitize_json_payload(metadata or {}),
     )
     payload = task.dict()
     await nano_tasks_collection.insert_one(payload)
     return payload
+
+
+async def _safe_register_task(**kwargs) -> Dict[str, Any] | None:
+    try:
+        return await _register_task(**kwargs)
+    except Exception as exc:
+        logger.exception("Nano failed to persist task log: %s", exc)
+        return None
+
+
+async def _safe_create_audit_log(**kwargs) -> Dict[str, Any] | None:
+    try:
+        return await create_nano_audit_log(**kwargs)
+    except Exception as exc:
+        logger.exception("Nano failed to persist audit log: %s", exc)
+        return None
 
 
 def _build_confirmation_prompt(actions: List[Dict[str, Any]], reason: str | None) -> str:
@@ -178,7 +202,7 @@ async def route_channel_message(
             reply = "Confirmacao recebida. Executei a acao pendente."
             if executed_actions and executed_actions[0].get("message"):
                 reply = f"{reply} {executed_actions[0]['message']}"
-            await _register_task(
+            await _safe_register_task(
                 user_id=user_id,
                 workspace_id=workspace_id,
                 source_channel=source_channel,
@@ -189,7 +213,7 @@ async def route_channel_message(
                 requires_confirmation=False,
                 metadata={"pending_confirmation_id": pending["id"], "executed_actions": executed_actions},
             )
-            await create_nano_audit_log(
+            await _safe_create_audit_log(
                 user_id=user_id,
                 workspace_id=workspace_id,
                 source_channel=source_channel,
@@ -201,7 +225,7 @@ async def route_channel_message(
                 metadata={"pending_confirmation_id": pending["id"], "executed_actions": executed_actions},
             )
             if persist_history:
-                assistant_message_payload = await _store_message(
+                assistant_message_payload = await _safe_store_message(
                     user_id=user_id,
                     role="assistant",
                     content=reply,
@@ -224,7 +248,7 @@ async def route_channel_message(
             }
         if is_rejection_message(normalized_content):
             await mark_confirmation_status(pending["id"], "canceled")
-            await create_nano_audit_log(
+            await _safe_create_audit_log(
                 user_id=user_id,
                 workspace_id=workspace_id,
                 source_channel=source_channel,
@@ -236,7 +260,7 @@ async def route_channel_message(
             )
             reply = "Confirmacao cancelada. Nao executei a acao pendente."
             if persist_history:
-                assistant_message_payload = await _store_message(
+                assistant_message_payload = await _safe_store_message(
                     user_id=user_id,
                     role="assistant",
                     content=reply,
@@ -257,7 +281,7 @@ async def route_channel_message(
 
     conversation_context = await _load_conversation_context(user_id=user_id, workspace_id=workspace_id)
     if persist_history:
-        await _store_message(
+        await _safe_store_message(
             user_id=user_id,
             role="user",
             content=normalized_content,
@@ -266,14 +290,63 @@ async def route_channel_message(
             metadata={"contact_name": contact_name},
         )
 
-    agent_result = await _orchestrator.handle_message(
-        user=user,
-        workspace=workspace,
-        message=normalized_content,
-        conversation_history=conversation_context,
-        execute_actions=False,
-        source_channel=source_channel,
-    )
+    try:
+        agent_result = await _orchestrator.handle_message(
+            user=user,
+            workspace=workspace,
+            message=normalized_content,
+            conversation_history=conversation_context,
+            execute_actions=False,
+            source_channel=source_channel,
+        )
+    except Exception as exc:
+        logger.exception("Nano orchestrator failed for channel=%s: %s", source_channel, exc)
+        fallback_reply = (
+            "Encontrei uma falha temporaria ao interpretar esse pedido. "
+            "Posso tentar de novo se voce me disser o valor e a categoria de forma direta."
+        )
+        fallback_actions: List[Dict[str, Any]] = []
+        try:
+            detected = await _action_service.detect_actions_from_text(
+                user_id=user_id,
+                message=normalized_content,
+            )
+            fallback_actions = _sanitize_json_payload(detected.get("actions") or [])
+            if detected.get("fallback_response"):
+                fallback_reply = detected["fallback_response"]
+        except Exception as fallback_exc:
+            logger.exception("Nano action fallback also failed: %s", fallback_exc)
+
+        if persist_history:
+            assistant_message_payload = await _safe_store_message(
+                user_id=user_id,
+                role="assistant",
+                content=fallback_reply,
+                workspace_id=workspace_id,
+                source_channel=source_channel,
+                metadata={
+                    "intent": "orchestration_error",
+                    "actions": fallback_actions,
+                    "executed_actions": [],
+                    "execution_status": "failed",
+                    "error": str(exc),
+                },
+            )
+
+        return {
+            "reply": fallback_reply,
+            "intent": "orchestration_error",
+            "actions": fallback_actions,
+            "executed_actions": [],
+            "used_tools": [],
+            "tool_results": {},
+            "risk_level": "low_risk",
+            "requires_confirmation": False,
+            "followup_needed": False,
+            "missing_fields": [],
+            "metadata": {"source_channel": source_channel, "error": str(exc)},
+            "assistant_message": _sanitize_json_payload(assistant_message_payload) if assistant_message_payload else None,
+        }
 
     risk_policy = evaluate_execution_policy(
         agent_result.actions or [],
@@ -281,7 +354,7 @@ async def route_channel_message(
         user_message=normalized_content,
     )
     if agent_result.actions:
-        await create_nano_audit_log(
+        await _safe_create_audit_log(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -307,7 +380,7 @@ async def route_channel_message(
             source_channel=source_channel,
         )
         reply = _build_confirmation_prompt(agent_result.actions, risk_policy.get("reason"))
-        await _register_task(
+        await _safe_register_task(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -318,7 +391,7 @@ async def route_channel_message(
             requires_confirmation=True,
             metadata={"pending_confirmation_id": pending_record["id"], "actions": agent_result.actions},
         )
-        await create_nano_audit_log(
+        await _safe_create_audit_log(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -340,7 +413,7 @@ async def route_channel_message(
                 reply = _build_action_failure_reply(executed_actions, reply)
             elif executed_actions[0].get("message"):
                 reply = executed_actions[0]["message"]
-        await _register_task(
+        await _safe_register_task(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -351,7 +424,7 @@ async def route_channel_message(
             requires_confirmation=False,
             metadata={"declared_actions": agent_result.actions, "executed_actions": executed_actions},
         )
-        await create_nano_audit_log(
+        await _safe_create_audit_log(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -363,7 +436,7 @@ async def route_channel_message(
             metadata={"declared_actions": agent_result.actions, "executed_actions": executed_actions},
         )
     else:
-        await _register_task(
+        await _safe_register_task(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -374,7 +447,7 @@ async def route_channel_message(
             requires_confirmation=False,
             metadata={"intent": agent_result.intent, "used_tools": list((agent_result.tool_results or {}).keys())},
         )
-        await create_nano_audit_log(
+        await _safe_create_audit_log(
             user_id=user_id,
             workspace_id=workspace_id,
             source_channel=source_channel,
@@ -386,7 +459,7 @@ async def route_channel_message(
         )
 
     if persist_history:
-        assistant_message_payload = await _store_message(
+        assistant_message_payload = await _safe_store_message(
             user_id=user_id,
             role="assistant",
             content=reply,

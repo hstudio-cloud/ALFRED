@@ -137,6 +137,39 @@ async def _legacy_orchestrator_fallback(*, content: str, current_user: dict):
     }
 
 
+async def _build_safe_assistant_failure_response(*, content: str, current_user: dict, detail: str):
+    workspace = await _resolve_workspace(current_user)
+    workspace_id = workspace["id"] if workspace else None
+    message_payload = {
+        "id": str(ObjectId()),
+        "user_id": current_user["id"],
+        "role": "assistant",
+        "content": detail,
+        "metadata": {
+            "intent": "orchestration_error",
+            "actions": [],
+            "executed_actions": [],
+            "tool_results": {},
+            "execution_status": "failed",
+            "workspace_id": workspace_id,
+        },
+    }
+    return {
+        "intent": "orchestration_error",
+        "used_tools": [],
+        "tool_results": {},
+        "message": _sanitize_json_payload(message_payload),
+        "followup_needed": False,
+        "missing_fields": [],
+        "actions": [],
+        "executed_actions": [],
+        "execution_status": "failed",
+        "workspace_id": workspace_id,
+        "risk_level": "low_risk",
+        "requires_confirmation": False,
+    }
+
+
 @router.post("/message")
 async def assistant_message(message_data: ChatMessageCreate, current_user: dict = Depends(get_current_user)):
     try:
@@ -148,7 +181,7 @@ async def assistant_message(message_data: ChatMessageCreate, current_user: dict 
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Error processing assistant message: %s", exc)
+        logger.exception("Error processing assistant message: %s", exc)
         # Compatibility fallback: legacy orchestrator path.
         try:
             return await _legacy_orchestrator_fallback(
@@ -156,8 +189,12 @@ async def assistant_message(message_data: ChatMessageCreate, current_user: dict 
                 current_user=current_user,
             )
         except Exception as fallback_exc:
-            logger.error("Legacy fallback failed: %s", fallback_exc)
-            raise HTTPException(status_code=500, detail="Erro ao processar comando do Nano")
+            logger.exception("Legacy fallback failed: %s", fallback_exc)
+            return await _build_safe_assistant_failure_response(
+                content=message_data.content,
+                current_user=current_user,
+                detail="Encontrei uma falha temporaria no Nano. O chat por texto continua disponivel.",
+            )
 
 
 @router.post("/orchestrate")
@@ -174,15 +211,19 @@ async def assistant_orchestrate(payload: AssistantOrchestrateRequest, current_us
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("Error in /assistant/orchestrate: %s", exc)
+        logger.exception("Error in /assistant/orchestrate: %s", exc)
         try:
             return await _legacy_orchestrator_fallback(
                 content=(payload.content or payload.message or "").strip(),
                 current_user=current_user,
             )
         except Exception as fallback_exc:
-            logger.error("Legacy fallback failed in /assistant/orchestrate: %s", fallback_exc)
-            raise HTTPException(status_code=500, detail="Erro ao orquestrar comando do Nano")
+            logger.exception("Legacy fallback failed in /assistant/orchestrate: %s", fallback_exc)
+            return await _build_safe_assistant_failure_response(
+                content=(payload.content or payload.message or "").strip(),
+                current_user=current_user,
+                detail="Encontrei uma falha temporaria no Nano. Me envie o valor e a categoria de forma mais direta que eu tento de novo.",
+            )
 
 
 async def _process_orchestrated_message(

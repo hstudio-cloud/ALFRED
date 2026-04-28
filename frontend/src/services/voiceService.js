@@ -73,7 +73,7 @@ const stopMiniMaxSpeech = () => {
 };
 
 const isMiniMaxConfigured = () =>
-  (VOICE_PROVIDER === 'minimax' || Boolean(getVoiceApiBase()))
+  VOICE_PROVIDER === 'minimax'
   && Boolean(getVoiceApiBase())
   && minimaxRouteAvailable !== false;
 
