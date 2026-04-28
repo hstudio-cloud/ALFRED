@@ -353,6 +353,24 @@ async def route_channel_message(
         intent_confidence=float((agent_result.metadata or {}).get("intent_confidence") or 0),
         user_message=normalized_content,
     )
+    if not agent_result.actions:
+        try:
+            detected = await _action_service.detect_actions_from_text(
+                user_id=user_id,
+                message=normalized_content,
+            )
+            detected_actions = _sanitize_json_payload(detected.get("actions") or [])
+            if detected_actions and detected_actions[0].get("type") == "create_activity":
+                agent_result.actions = detected_actions
+                if detected.get("fallback_response"):
+                    agent_result.message = detected["fallback_response"]
+                risk_policy = evaluate_execution_policy(
+                    agent_result.actions or [],
+                    intent_confidence=0.84,
+                    user_message=normalized_content,
+                )
+        except Exception as fallback_exc:
+            logger.exception("Nano activity fallback failed: %s", fallback_exc)
     if agent_result.actions:
         await _safe_create_audit_log(
             user_id=user_id,

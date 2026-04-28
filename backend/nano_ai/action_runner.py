@@ -6,12 +6,20 @@ from database import (
     bills_collection,
     categories_collection,
     employees_collection,
+    nano_activities_collection,
     reminders_collection,
     tasks_collection,
     transactions_collection,
 )
 from models import Transaction
-from models_extended import AttendanceRecord, Bill, Employee, FinancialCategory, ReminderFinancial
+from models_extended import (
+    AttendanceRecord,
+    Bill,
+    Employee,
+    FinancialCategory,
+    NanoActivity,
+    ReminderFinancial,
+)
 from payroll_service import (
     build_payroll_report,
     month_window,
@@ -19,6 +27,12 @@ from payroll_service import (
     normalize_employee_type,
     normalize_payment_cycle,
     truncate_day,
+)
+from services.nano_activity_service import (
+    normalize_activity_recurrence,
+    normalize_activity_scope,
+    normalize_reminder_minutes,
+    normalize_weekdays,
 )
 
 
@@ -234,6 +248,65 @@ class NanoActionRunner:
             "assumptions": data.get("assumptions", []),
         }
 
+    async def _execute_activity_action(
+        self,
+        workspace_id: str,
+        current_user: Dict[str, Any],
+        action: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        data = action.get("data", {})
+        missing_fields = list(data.get("missing_fields", []))
+        missing_fields.extend(self._missing_required_fields(data, ["title", "start_at"]))
+        missing_fields = list(dict.fromkeys(missing_fields))
+        if missing_fields:
+            return {
+                "type": "create_activity",
+                "status": "needs_input",
+                "message": f"Faltaram dados para registrar a atividade: {', '.join(missing_fields)}.",
+                "data": data,
+            }
+
+        activity = NanoActivity(
+            workspace_id=workspace_id,
+            user_id=current_user["id"],
+            title=data.get("title") or "Atividade",
+            description=data.get("description"),
+            account_scope=normalize_activity_scope(data.get("account_scope")),
+            start_at=self._parse_iso_datetime(data.get("start_at")) or datetime.utcnow(),
+            recurrence=normalize_activity_recurrence(data.get("recurrence")),
+            weekdays=normalize_weekdays(
+                data.get("weekdays"),
+                normalize_activity_recurrence(data.get("recurrence")),
+            ),
+            reminder_minutes_before=normalize_reminder_minutes(
+                data.get("reminder_minutes_before")
+            ),
+            notify_web=bool(data.get("notify_web", True)),
+            notify_whatsapp=bool(data.get("notify_whatsapp", True)),
+            is_active=bool(data.get("is_active", True)),
+        )
+        await nano_activities_collection.insert_one(activity.dict())
+
+        recurrence_label_map = {
+            "once": "uma vez",
+            "daily": "todos os dias",
+            "weekdays": "dias uteis",
+            "weekly": "semanal",
+            "custom": "dias selecionados",
+        }
+        recurrence_label = recurrence_label_map.get(activity.recurrence, activity.recurrence)
+        scope_label = "empresa" if activity.account_scope == "business" else "pessoal"
+        return {
+            "type": "create_activity",
+            "status": "executed",
+            "message": (
+                f"Registrei a atividade {activity.title} para {self._format_datetime_label(activity.start_at)}, "
+                f"no escopo {scope_label}, com recorrencia {recurrence_label} e aviso {activity.reminder_minutes_before} minuto(s) antes."
+            ),
+            "data": activity.dict(),
+            "assumptions": data.get("assumptions", []),
+        }
+
     async def _execute_analysis_action(
         self,
         workspace_id: str,
@@ -354,6 +427,19 @@ class NanoActionRunner:
             }
         ).sort("due_date", 1).to_list(20)
 
+        raw_activities = await nano_activities_collection.find(
+            {
+                "workspace_id": workspace_id,
+                "user_id": current_user["id"],
+                "is_active": True,
+            }
+        ).sort("start_at", 1).to_list(100)
+        activities = []
+        for item in raw_activities:
+            next_occurrence = compute_next_activity_occurrence(item, now=start)
+            if next_occurrence and start <= next_occurrence < end:
+                activities.append({**item, "next_occurrence_at": next_occurrence})
+
         lines: List[str] = []
         if reminders:
             lines.append(
@@ -379,12 +465,21 @@ class NanoActionRunner:
                 + "; ".join(item.get("title", "Tarefa") for item in tasks[:3])
                 + "."
             )
+        if activities:
+            lines.append(
+                "Atividades: "
+                + "; ".join(
+                    f"{item.get('title', 'Atividade')} as {self._format_datetime_label(item.get('next_occurrence_at') or item.get('start_at'))[-5:]}"
+                    for item in activities[:3]
+                )
+                + "."
+            )
 
-        total_items = len(reminders) + len(bills) + len(tasks)
+        total_items = len(reminders) + len(bills) + len(tasks) + len(activities)
         if not total_items:
             message = (
-                f"Por enquanto, nao encontrei compromissos, contas ou lembretes para {period_label}. "
-                "Se quiser, posso criar um lembrete ou revisar suas proximas contas."
+                f"Por enquanto, nao encontrei compromissos, contas, lembretes ou atividades para {period_label}. "
+                "Se quiser, posso criar uma atividade, um lembrete ou revisar suas proximas contas."
             )
         else:
             message = (
@@ -402,6 +497,7 @@ class NanoActionRunner:
                 "reminders": reminders,
                 "bills": bills,
                 "tasks": tasks,
+                "activities": activities,
                 "total_items": total_items,
             },
         }
@@ -647,6 +743,8 @@ class NanoActionRunner:
                     results.append(await self._execute_bill_action(workspace_id, current_user, action))
                 elif action_type == "create_reminder":
                     results.append(await self._execute_reminder_action(workspace_id, current_user, action))
+                elif action_type == "create_activity":
+                    results.append(await self._execute_activity_action(workspace_id, current_user, action))
                 elif action_type == "analyze_spending":
                     results.append(await self._execute_analysis_action(workspace_id, action))
                 elif action_type == "navigate":

@@ -621,6 +621,152 @@ class ReminderSpecialist(SpecialistBase):
         ]
 
 
+class ActivitySpecialist(SpecialistBase):
+    name = "activities"
+
+    weekday_map = {
+        "segunda": 0,
+        "terca": 1,
+        "quarta": 2,
+        "quinta": 3,
+        "sexta": 4,
+        "sabado": 5,
+        "domingo": 6,
+    }
+
+    def _extract_title(self, cleaned_message: str) -> str:
+        title = re.sub(
+            r"(?i)\b(registre|registrar|crie|criar|adicione|adicionar|nova|novo|uma|um|atividade|lembrete|quero|eu quero|nano)\b",
+            "",
+            cleaned_message,
+        ).strip(" ,.-:")
+        title = re.sub(r"(?i)\b(a partir de|apartir de)\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\btodos?\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\bno mesmo horario\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\bas\s+\d{1,2}(?::\d{2}|h\d{0,2})?\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"\s+", " ", title).strip(" ,.-:")
+        return title or "Atividade"
+
+    def _extract_weekdays(self, message_lower: str) -> list[int]:
+        weekdays = [
+            day_number
+            for day_name, day_number in self.weekday_map.items()
+            if re.search(rf"\b{day_name}\b", message_lower)
+        ]
+        if "dia util" in message_lower or "dias uteis" in message_lower:
+            return [0, 1, 2, 3, 4]
+        return sorted(set(weekdays))
+
+    def _extract_recurrence(self, message_lower: str) -> str:
+        if "dias uteis" in message_lower or "todo dia util" in message_lower:
+            return "weekdays"
+        if "todos os dias" in message_lower or "todo dia" in message_lower:
+            return "daily"
+        if "toda semana" in message_lower or "semanal" in message_lower:
+            return "weekly"
+        weekdays = self._extract_weekdays(message_lower)
+        if len(weekdays) > 1:
+            return "custom"
+        return "once"
+
+    def _extract_reminder_minutes(self, message_lower: str) -> int:
+        if any(token in message_lower for token in ["30 minutos antes", "meia hora antes"]):
+            return 30
+        if "1 hora antes" in message_lower or "uma hora antes" in message_lower:
+            return 60
+        return 60
+
+    def _next_named_weekday(self, message_lower: str, hour: int, minute: int) -> Optional[datetime]:
+        now = datetime.utcnow()
+        for day_name, day_number in self.weekday_map.items():
+            if not re.search(rf"\b{day_name}\b", message_lower):
+                continue
+            delta = (day_number - now.weekday()) % 7
+            if delta == 0:
+                delta = 7
+            return (now + timedelta(days=delta)).replace(
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+            )
+        return None
+
+    def _extract_start_at(self, cleaned_message: str) -> Optional[datetime]:
+        parsed = self.extract_datetime(cleaned_message)
+        if parsed:
+            return parsed
+        message_lower = self.normalize_text(cleaned_message)
+        time_match = re.search(r"\b(?:as|a)\s*(\d{1,2})(?:[:h](\d{1,2}))?\b", message_lower)
+        hour = int(time_match.group(1)) if time_match else 9
+        minute = int(time_match.group(2) or 0) if time_match else 0
+        if "segunda" in message_lower or "terca" in message_lower or "quarta" in message_lower or "quinta" in message_lower or "sexta" in message_lower or "sabado" in message_lower or "domingo" in message_lower:
+            return self._next_named_weekday(message_lower, hour, minute)
+        return None
+
+    def detect(self, message: str) -> List[NanoAction]:
+        cleaned_message = self.clean_command_prefix(message)
+        message_lower = self.normalize_text(cleaned_message)
+        intent_keywords = [
+            "atividade",
+            "rotina",
+            "academia",
+            "treino",
+            "estudar",
+            "estudo",
+            "caminhada",
+            "corrida",
+        ]
+        create_keywords = [
+            "registr",
+            "criar",
+            "crie",
+            "adicionar",
+            "adicione",
+            "agendar",
+            "agende",
+        ]
+        if not any(keyword in message_lower for keyword in intent_keywords):
+            return []
+        if not any(keyword in message_lower for keyword in create_keywords):
+            return []
+
+        start_at = self._extract_start_at(cleaned_message)
+        missing_fields = []
+        assumptions = []
+        if start_at is None:
+            missing_fields.append("start_at")
+        recurrence = self._extract_recurrence(message_lower)
+        weekdays = self._extract_weekdays(message_lower)
+        if recurrence == "weekdays" and not weekdays:
+            weekdays = [0, 1, 2, 3, 4]
+        if recurrence == "once" and not weekdays and "todo" in message_lower:
+            recurrence = "daily"
+            assumptions.append("Recorrencia assumida como diaria.")
+
+        return [
+            NanoAction(
+                type="create_activity",
+                data={
+                    "title": self._extract_title(cleaned_message),
+                    "description": cleaned_message,
+                    "account_scope": self.detect_account_scope(message_lower),
+                    "start_at": start_at.isoformat() if start_at else None,
+                    "recurrence": recurrence,
+                    "weekdays": weekdays,
+                    "reminder_minutes_before": self._extract_reminder_minutes(message_lower),
+                    "notify_web": True,
+                    "notify_whatsapp": True,
+                    "missing_fields": missing_fields,
+                    "assumptions": assumptions,
+                    "detected": True,
+                },
+                assumptions=assumptions,
+                confidence=0.83,
+            )
+        ]
+
+
 class PayrollSpecialist(SpecialistBase):
     name = "payroll"
 

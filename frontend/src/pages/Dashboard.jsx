@@ -19,6 +19,7 @@ import {
   ReportsSection,
 } from "../components/DashboardFinanceSections";
 import financeService from "../services/financeService";
+import activityService from "../services/activityService";
 import nanoOpsService from "../services/nanoOpsService";
 import openFinanceService from "../services/openFinanceService";
 import payrollService from "../services/payrollService";
@@ -62,6 +63,7 @@ import {
   BrainCircuit,
   Building2,
   CalendarDays,
+  Clock3,
   ChevronLeft,
   ChevronRight,
   CreditCard,
@@ -80,6 +82,7 @@ import {
   ShieldCheck,
   Sun,
   Target,
+  Trash2,
   TrendingDown,
   UserRound,
   Users2,
@@ -155,6 +158,13 @@ const navigationItems = [
     icon: FileBarChart2,
     description: "Análises e demonstrativos",
     group: "Negócio",
+  },
+  {
+    id: "activities",
+    label: "Atividades",
+    icon: Target,
+    description: "Rotinas pessoais e da empresa com avisos do Nano",
+    group: "NegÃ³cio",
   },
   {
     id: "automations",
@@ -251,6 +261,17 @@ const initialReminder = {
   title: "",
   remind_at: "",
   description: "",
+};
+
+const initialActivityForm = {
+  title: "",
+  description: "",
+  account_scope: "personal",
+  start_at: "",
+  recurrence: "once",
+  reminder_minutes_before: 60,
+  notify_web: true,
+  notify_whatsapp: true,
 };
 
 const initialEmployeeForm = {
@@ -412,6 +433,7 @@ const Dashboard = () => {
   const [bills, setBills] = useState([]);
   const [categories, setCategories] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [statementImports, setStatementImports] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -433,6 +455,7 @@ const Dashboard = () => {
   const [billForm, setBillForm] = useState(initialBill);
   const [categoryForm, setCategoryForm] = useState(initialCategory);
   const [reminderForm, setReminderForm] = useState(initialReminder);
+  const [activityForm, setActivityForm] = useState(initialActivityForm);
   const [accountForm, setAccountForm] = useState(initialAccount);
   const [cardForm, setCardForm] = useState(initialCard);
   const [companyForm, setCompanyForm] = useState(initialCompanyForm);
@@ -479,6 +502,24 @@ const Dashboard = () => {
   useEffect(() => {
     activeSectionRef.current = activeSection;
   }, [activeSection]);
+
+  useEffect(() => {
+    if (!visibleNavigationItems.some((item) => item.id === activeSection)) {
+      setActiveSection(visibleNavigationItems[0]?.id || "overview");
+    }
+  }, [activeSection, visibleNavigationItems]);
+
+  useEffect(() => {
+    setActivityForm((current) => {
+      if (current.title || current.description || current.start_at) {
+        return current;
+      }
+      return {
+        ...current,
+        account_scope: financialView === "business" ? "business" : "personal",
+      };
+    });
+  }, [financialView]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -560,6 +601,14 @@ const Dashboard = () => {
           ),
           withTimeout(financeService.getReminders(workspaceId)),
           withTimeout(
+            activityService.getActivities(
+              workspaceId,
+              financialView === "general"
+                ? {}
+                : { account_scope: financialView },
+            ),
+          ),
+          withTimeout(
             financeService.getAccounts(workspaceId, {
               account_scope: financialView,
             }),
@@ -639,17 +688,18 @@ const Dashboard = () => {
         const billRes = getValue(3, []);
         const categoryRes = getValue(4, []);
         const reminderRes = getValue(5, []);
-        const accountRes = getValue(6, []);
-        const cardRes = getValue(7, []);
-        const reportOverviewRes = getValue(8, null);
-        const monthlyReportRes = getValue(9, { months: [] });
-        const categoryReportRes = getValue(10, { categories: [] });
-        const accountReportRes = getValue(11, { accounts: [] });
-        const cashflowRes = getValue(12, null);
-        const statementImportsRes = getValue(13, { data: [] });
-        const dashboardInsightsRes = getValue(14, { data: { insights: [] } });
-        const openFinanceConnectionsRes = getValue(15, { items: [] });
-        const openFinanceAccountsRes = getValue(16, { items: [] });
+        const activityRes = getValue(6, { items: [] });
+        const accountRes = getValue(7, []);
+        const cardRes = getValue(8, []);
+        const reportOverviewRes = getValue(9, null);
+        const monthlyReportRes = getValue(10, { months: [] });
+        const categoryReportRes = getValue(11, { categories: [] });
+        const accountReportRes = getValue(12, { accounts: [] });
+        const cashflowRes = getValue(13, null);
+        const statementImportsRes = getValue(14, { data: [] });
+        const dashboardInsightsRes = getValue(15, { data: { insights: [] } });
+        const openFinanceConnectionsRes = getValue(16, { items: [] });
+        const openFinanceAccountsRes = getValue(17, { items: [] });
 
         const normalizeCollection = (value) => {
           if (Array.isArray(value)) return value;
@@ -668,6 +718,7 @@ const Dashboard = () => {
         setBills(billRes || []);
         setCategories(categoryRes || []);
         setReminders(reminderRes || []);
+        setActivities(activityRes?.items || []);
         setAccounts(accountRes || []);
         setCards(cardRes || []);
         setReportOverview(reportOverviewRes || null);
@@ -1016,6 +1067,28 @@ const Dashboard = () => {
     }
   };
 
+  const submitActivity = async (event) => {
+    event.preventDefault();
+    try {
+      await activityService.createActivity(currentWorkspace.id, activityForm);
+      setActivityForm({
+        ...initialActivityForm,
+        account_scope: financialView === "business" ? "business" : "personal",
+      });
+      loadAll(currentWorkspace.id);
+      toast({
+        title: "Atividade criada",
+        description: "O Nano vai acompanhar essa rotina e avisar no horario configurado.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao criar atividade",
+        description: "Nao consegui salvar essa atividade agora.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const submitWorkspace = async (event) => {
     event.preventDefault();
     const result = await createWorkspace(
@@ -1061,6 +1134,38 @@ const Dashboard = () => {
       toast({
         title: "Erro ao atualizar lembrete",
         description: "Não foi possível trocar o status desse lembrete.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleActivity = async (activity) => {
+    try {
+      await activityService.updateActivity(currentWorkspace.id, activity.id, {
+        is_active: !activity.is_active,
+      });
+      loadAll(currentWorkspace.id);
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar atividade",
+        description: "Nao foi possivel trocar o status dessa atividade.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeActivity = async (activityId) => {
+    try {
+      await activityService.deleteActivity(currentWorkspace.id, activityId);
+      loadAll(currentWorkspace.id);
+      toast({
+        title: "Atividade removida",
+        description: "A rotina deixou de ser monitorada pelo Nano.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao remover atividade",
+        description: "Nao consegui excluir essa atividade agora.",
         variant: "destructive",
       });
     }
@@ -1882,9 +1987,41 @@ const Dashboard = () => {
 
   const scopeLabel =
     scopeOptions.find((scope) => scope.id === financialView)?.label || "Geral";
+  const visibleNavigationItems = useMemo(() => {
+    if (financialView !== "personal") {
+      return navigationItems;
+    }
+    const personalHidden = new Set(["contacts", "employees", "company"]);
+    return navigationItems.filter((item) => !personalHidden.has(item.id));
+  }, [financialView]);
   const activeSectionMeta =
-    navigationItems.find((section) => section.id === activeSection) ||
-    navigationItems[0];
+    visibleNavigationItems.find((section) => section.id === activeSection) ||
+    visibleNavigationItems[0];
+  const whatsappSetupChecklist = useMemo(() => {
+    const setup = nanoOpsStatus?.whatsapp_setup || {};
+    return [
+      {
+        label: "Salvar numero no painel",
+        done: Boolean(setup.linked_phone_saved),
+      },
+      {
+        label: "Gerar e enviar codigo de conexao",
+        done: Boolean(nanoOpsStatus?.whatsapp_connected),
+      },
+      {
+        label: "Configurar token de verificacao do webhook",
+        done: Boolean(setup.webhook_verify_ready),
+      },
+      {
+        label: "Configurar assinatura segura do webhook",
+        done: Boolean(setup.signature_ready),
+      },
+      {
+        label: "Habilitar envio de mensagens do provider",
+        done: Boolean(setup.outbound_ready),
+      },
+    ];
+  }, [nanoOpsStatus]);
 
   const totalIncome = summary?.income || 0;
   const totalExpenses = summary?.expenses || 0;
@@ -4469,6 +4606,215 @@ const Dashboard = () => {
     </SectionLayout>
   );
 
+  const renderActivities = () => (
+    <SectionLayout>
+      <PageHeader
+        eyebrow="Atividades"
+        title="Rotinas pessoais e da empresa com acompanhamento do Nano"
+        description="Crie atividades recorrentes, escolha o escopo e deixe o Nano avisar no painel e no WhatsApp com antecedencia."
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <SurfacePanel title="Nova atividade">
+          <form onSubmit={submitActivity} className="grid gap-3">
+            <Input
+              placeholder="Ex.: Academia, revisar caixa, estudar ingles"
+              value={activityForm.title}
+              onChange={(event) =>
+                setActivityForm({
+                  ...activityForm,
+                  title: event.target.value,
+                })
+              }
+              className={pageFieldClass}
+            />
+            <Textarea
+              placeholder="Detalhes opcionais"
+              value={activityForm.description}
+              onChange={(event) =>
+                setActivityForm({
+                  ...activityForm,
+                  description: event.target.value,
+                })
+              }
+              className={textAreaClass}
+            />
+            <div className="grid gap-3 md:grid-cols-2">
+              <select
+                value={activityForm.account_scope}
+                onChange={(event) =>
+                  setActivityForm({
+                    ...activityForm,
+                    account_scope: event.target.value,
+                  })
+                }
+                className={pageFieldClass}
+              >
+                <option value="personal">Pessoal</option>
+                <option value="business">Empresa</option>
+              </select>
+              <select
+                value={activityForm.recurrence}
+                onChange={(event) =>
+                  setActivityForm({
+                    ...activityForm,
+                    recurrence: event.target.value,
+                  })
+                }
+                className={pageFieldClass}
+              >
+                <option value="once">Uma vez</option>
+                <option value="daily">Todos os dias</option>
+                <option value="weekdays">Dias uteis</option>
+                <option value="weekly">Semanal</option>
+              </select>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Input
+                type="datetime-local"
+                value={activityForm.start_at}
+                onChange={(event) =>
+                  setActivityForm({
+                    ...activityForm,
+                    start_at: event.target.value,
+                  })
+                }
+                className={pageFieldClass}
+              />
+              <select
+                value={String(activityForm.reminder_minutes_before)}
+                onChange={(event) =>
+                  setActivityForm({
+                    ...activityForm,
+                    reminder_minutes_before: Number(event.target.value),
+                  })
+                }
+                className={pageFieldClass}
+              >
+                <option value="30">Avisar 30 min antes</option>
+                <option value="60">Avisar 1h antes</option>
+                <option value="120">Avisar 2h antes</option>
+              </select>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={activityForm.notify_web}
+                  onChange={(event) =>
+                    setActivityForm({
+                      ...activityForm,
+                      notify_web: event.target.checked,
+                    })
+                  }
+                />
+                Avisar no painel
+              </label>
+              <label className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={activityForm.notify_whatsapp}
+                  onChange={(event) =>
+                    setActivityForm({
+                      ...activityForm,
+                      notify_whatsapp: event.target.checked,
+                    })
+                  }
+                />
+                Avisar no WhatsApp
+              </label>
+            </div>
+            <Button type="submit" className={`h-12 ${actionButtonClass}`}>
+              Salvar atividade
+            </Button>
+          </form>
+        </SurfacePanel>
+
+        <SurfacePanel title="Agenda de atividades">
+          {activities.length ? (
+            <div className="space-y-3">
+              {activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="rounded-[24px] border border-white/10 bg-black/20 p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-zinc-100">
+                        {activity.title}
+                      </p>
+                      <p className="text-sm text-zinc-400">
+                        {activity.description || "Sem detalhes adicionais"}
+                      </p>
+                    </div>
+                    <Badge className="border border-white/10 bg-black/30 text-zinc-200">
+                      {activity.account_scope === "business" ? "Empresa" : "Pessoal"}
+                    </Badge>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <StatMiniCard
+                      label="Inicio"
+                      value={new Date(activity.start_at).toLocaleString("pt-BR")}
+                    />
+                    <StatMiniCard
+                      label="Recorrencia"
+                      value={
+                        activity.recurrence === "weekdays"
+                          ? "Dias uteis"
+                          : activity.recurrence === "daily"
+                            ? "Diaria"
+                            : activity.recurrence === "weekly"
+                              ? "Semanal"
+                              : "Uma vez"
+                      }
+                    />
+                    <StatMiniCard
+                      label="Proxima execucao"
+                      value={
+                        activity.next_occurrence_at
+                          ? new Date(activity.next_occurrence_at).toLocaleString("pt-BR")
+                          : "-"
+                      }
+                    />
+                    <StatMiniCard
+                      label="Aviso"
+                      value={`${activity.reminder_minutes_before || 60} min antes`}
+                    />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => toggleActivity(activity)}
+                      className="h-10 rounded-2xl border border-white/12 bg-black/20 px-4 text-sm text-zinc-100 hover:bg-white/5"
+                    >
+                      {activity.is_active ? "Pausar" : "Ativar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => removeActivity(activity.id)}
+                      className="h-10 rounded-2xl border border-red-500/18 bg-red-500/10 px-4 text-sm text-red-100 hover:bg-red-500/20"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <CenteredEmptyState
+              icon={Clock3}
+              title="Nenhuma atividade cadastrada"
+              description="Crie rotinas pessoais ou da empresa para o Nano acompanhar e lembrar."
+            />
+          )}
+        </SurfacePanel>
+      </div>
+    </SectionLayout>
+  );
+
   const renderNanoWhatsapp = () => (
     <SectionLayout>
       <PageHeader
@@ -4562,6 +4908,41 @@ const Dashboard = () => {
           )}
         </SurfacePanel>
       </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1fr]">
+        <SurfacePanel title="O que falta para finalizar">
+          <div className="space-y-3">
+            {whatsappSetupChecklist.map((item) => (
+              <InfoRow
+                key={item.label}
+                title={item.label}
+                subtitle="Checklist operacional do WhatsApp do Nano"
+                value={item.done ? "OK" : "Pendente"}
+              />
+            ))}
+          </div>
+        </SurfacePanel>
+
+        <SurfacePanel title="Leitura do canal">
+          <div className="space-y-3">
+            <InfoRow
+              title="Provider atual"
+              subtitle="Detectado a partir das variaveis de ambiente do backend."
+              value={nanoOpsStatus?.whatsapp_setup?.provider || "generic"}
+            />
+            <InfoRow
+              title="Envio para o usuario"
+              subtitle="As atividades e automacoes podem avisar no WhatsApp quando o canal estiver pronto."
+              value={nanoOpsStatus?.whatsapp_setup?.outbound_ready ? "Pronto" : "Bloqueado"}
+            />
+            <InfoRow
+              title="Numero vinculado"
+              subtitle="O usuario precisa concluir o codigo enviado pelo painel para operar pelo celular."
+              value={nanoOpsStatus?.whatsapp_connected ? "Vinculado" : "Aguardando"}
+            />
+          </div>
+        </SurfacePanel>
+      </div>
     </SectionLayout>
   );
 
@@ -4617,6 +4998,7 @@ const Dashboard = () => {
     ),
     contacts: renderContacts(),
     employees: renderEmployees(),
+    activities: renderActivities(),
     automations: renderAutomations(),
     nano_whatsapp: renderNanoWhatsapp(),
     reports: (
@@ -4739,7 +5121,7 @@ const Dashboard = () => {
       }`}
     >
       <Sidebar
-        items={navigationItems}
+        items={visibleNavigationItems}
         activeItem={activeSection}
         onSelectItem={setActiveSection}
         workspaceName={currentWorkspace.name}

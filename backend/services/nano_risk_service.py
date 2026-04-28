@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 LOW_RISK_TYPES = {
     "create_transaction",
     "create_reminder",
+    "create_activity",
     "check_agenda",
     "generate_payroll_report",
     "analyze_spending",

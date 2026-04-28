@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager  # Adicionado para gerenciar o Lifesp
 
 # Import routes
 from routes import (
+    activities_routes,
     accounts_routes,
     assistant_routes,
     auth_routes,
@@ -168,6 +169,7 @@ app.include_router(task_routes.router)
 app.include_router(tasks_enhanced_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(assistant_routes.router)
+app.include_router(activities_routes.router)
 app.include_router(dashboard_routes.router)
 app.include_router(habit_routes.router)
 app.include_router(payroll_routes.router)

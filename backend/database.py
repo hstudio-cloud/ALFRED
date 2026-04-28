@@ -39,3 +39,4 @@ pending_confirmations_collection = db.pending_confirmations
 whatsapp_link_codes_collection = db.whatsapp_link_codes
 nano_automation_configs_collection = db.nano_automation_configs
 nano_audit_logs_collection = db.nano_audit_logs
+nano_activities_collection = db.nano_activities

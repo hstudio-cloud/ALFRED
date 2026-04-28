@@ -487,6 +487,54 @@ class NanoTask(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class NanoActivityCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    account_scope: str = "personal"  # personal, business
+    start_at: datetime
+    recurrence: str = "once"  # once, daily, weekdays, weekly, custom
+    weekdays: List[int] = Field(default_factory=list)
+    reminder_minutes_before: int = 60
+    is_active: bool = True
+    notify_web: bool = True
+    notify_whatsapp: bool = True
+
+
+class NanoActivityUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    account_scope: Optional[str] = None
+    start_at: Optional[datetime] = None
+    recurrence: Optional[str] = None
+    weekdays: Optional[List[int]] = None
+    reminder_minutes_before: Optional[int] = None
+    is_active: Optional[bool] = None
+    notify_web: Optional[bool] = None
+    notify_whatsapp: Optional[bool] = None
+    last_notified_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+
+
+class NanoActivity(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    workspace_id: str
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    account_scope: str = "personal"  # personal, business
+    start_at: datetime
+    recurrence: str = "once"  # once, daily, weekdays, weekly, custom
+    weekdays: List[int] = Field(default_factory=list)
+    reminder_minutes_before: int = 60
+    is_active: bool = True
+    notify_web: bool = True
+    notify_whatsapp: bool = True
+    last_notified_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class PendingConfirmation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str

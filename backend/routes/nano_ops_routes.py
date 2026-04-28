@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Optional
 
@@ -53,6 +54,28 @@ async def get_nano_ops_status(
     )
     tasks_count = await nano_tasks_collection.count_documents({"workspace_id": workspace_id})
     return {
+        "whatsapp_setup": {
+            "provider": (
+                os.getenv("WHATSAPP_PROVIDER", "").strip().lower()
+                or ("meta_cloud" if os.getenv("WHATSAPP_META_PHONE_NUMBER_ID", "").strip() else "generic")
+            ),
+            "webhook_verify_ready": bool(
+                os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "").strip()
+                or os.getenv("WHATSAPP_WEBHOOK_SECRET", "").strip()
+            ),
+            "signature_ready": bool(
+                os.getenv("WHATSAPP_APP_SECRET", "").strip()
+                or os.getenv("WHATSAPP_WEBHOOK_SECRET", "").strip()
+            ),
+            "outbound_ready": bool(
+                os.getenv("WHATSAPP_PROVIDER_TOKEN", "").strip()
+                and (
+                    os.getenv("WHATSAPP_PROVIDER_URL", "").strip()
+                    or os.getenv("WHATSAPP_META_PHONE_NUMBER_ID", "").strip()
+                )
+            ),
+            "linked_phone_saved": bool(identity and identity.get("phone_number")),
+        },
         "workspace_id": workspace_id,
         "whatsapp_connected": bool(identity and identity.get("status") == "linked"),
         "whatsapp_identity": identity,

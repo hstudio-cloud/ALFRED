@@ -39,6 +39,7 @@ class NanoFinanceEngine:
             "create_transaction": "Perfeito. Entendi a movimentacao e vou registrar agora.",
             "create_bill": "Perfeito. Vou criar essa conta e deixar o vencimento organizado.",
             "create_reminder": "Perfeito. Vou deixar esse lembrete preparado para voce.",
+            "create_activity": "Perfeito. Vou registrar essa atividade e organizar os avisos para voce.",
             "analyze_spending": "Perfeito. Vou analisar seus gastos e te devolver os pontos principais.",
             "check_agenda": "Claro. Vou conferir sua agenda financeira e operacional.",
             "create_employee": "Perfeito. Vou cadastrar esse funcionario agora.",
