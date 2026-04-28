@@ -498,6 +498,13 @@ const Dashboard = () => {
   const [attendanceCalendarOpen, setAttendanceCalendarOpen] = useState(false);
   const cnpjCardInputRef = useRef(null);
   const payrollSheetInputRef = useRef(null);
+  const visibleNavigationItems = useMemo(() => {
+    if (financialView !== "personal") {
+      return navigationItems;
+    }
+    const personalHidden = new Set(["contacts", "employees", "company"]);
+    return navigationItems.filter((item) => !personalHidden.has(item.id));
+  }, [financialView]);
 
   useEffect(() => {
     activeSectionRef.current = activeSection;
@@ -1987,13 +1994,6 @@ const Dashboard = () => {
 
   const scopeLabel =
     scopeOptions.find((scope) => scope.id === financialView)?.label || "Geral";
-  const visibleNavigationItems = useMemo(() => {
-    if (financialView !== "personal") {
-      return navigationItems;
-    }
-    const personalHidden = new Set(["contacts", "employees", "company"]);
-    return navigationItems.filter((item) => !personalHidden.has(item.id));
-  }, [financialView]);
   const activeSectionMeta =
     visibleNavigationItems.find((section) => section.id === activeSection) ||
     visibleNavigationItems[0];
