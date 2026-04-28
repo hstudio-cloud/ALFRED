@@ -141,6 +141,7 @@ const NanoChatPanel = ({
     nanoState === "thinking" ||
     nanoState === "executing" ||
     nanoState === "speaking";
+  const shouldShowExecutionPanel = shouldShowOverlay;
 
   const showMobileCore =
     nanoState !== "idle" || chatHistory.length === 0 || isWakeArmed || isListening;
@@ -257,9 +258,9 @@ const NanoChatPanel = ({
         }
       `}</style>
 
-      <div className="nano-premium-shell relative flex h-full min-h-0 overflow-hidden rounded-[30px] border border-white/8 shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
-        <div className="relative z-10 grid h-full min-h-0 w-full grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="relative flex min-h-0 flex-col overflow-hidden">
+      <div className="nano-premium-shell relative flex h-full min-h-0 overflow-hidden rounded-[30px] shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
+        <div className="relative z-10 h-full min-h-0 w-full">
+          <div className="relative flex min-h-0 h-full flex-col overflow-hidden">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute left-1/2 top-[18%] hidden -translate-x-1/2 lg:block">
                 <NanoCoreAnimation
@@ -271,7 +272,11 @@ const NanoChatPanel = ({
             </div>
 
             <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-              <div className="shrink-0 px-5 pb-3 pt-5 md:px-8 md:pb-4 md:pt-7">
+              <div
+                className={`shrink-0 px-5 pb-3 pt-5 transition-all duration-500 md:px-8 md:pb-4 md:pt-7 ${
+                  shouldShowExecutionPanel ? "lg:pr-[26rem]" : ""
+                }`}
+              >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="text-[11px] font-medium uppercase tracking-[0.26em] text-zinc-600">
@@ -306,13 +311,17 @@ const NanoChatPanel = ({
                 </div>
               ) : null}
 
-              <div
-                ref={scrollRef}
+                <div
+                  ref={scrollRef}
                 className={`nano-premium-scroll relative min-h-0 flex-1 overflow-y-auto px-5 pb-56 pt-3 transition duration-500 md:px-8 ${
                   shouldShowOverlay ? "blur-[2px] saturate-75" : ""
                 }`}
               >
-                <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+                <div
+                  className={`mx-auto flex w-full max-w-4xl flex-col gap-5 transition-all duration-500 ${
+                    shouldShowExecutionPanel ? "lg:max-w-[860px] lg:pr-[26rem]" : ""
+                  }`}
+                >
                   <div className="inline-flex w-fit max-w-[520px] items-center gap-2 rounded-full border border-red-500/12 bg-red-500/[0.07] px-4 py-2.5 text-sm text-zinc-100 shadow-[0_14px_38px_rgba(127,29,29,0.16)] backdrop-blur-sm">
                     <span className="h-2 w-2 rounded-full bg-red-300 shadow-[0_0_16px_rgba(255,42,42,0.85)]" />
                     {voiceStatus ||
@@ -322,7 +331,7 @@ const NanoChatPanel = ({
 
                   {chatHistory.length === 0 && !liveStatus ? (
                     <div className="space-y-6 pt-3">
-                      <div className="max-w-[620px] rounded-[28px] border border-white/8 bg-white/[0.04] px-6 py-5 text-sm leading-7 text-zinc-300 shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+                      <div className="max-w-[620px] rounded-[28px] bg-white/[0.04] px-6 py-5 text-sm leading-7 text-zinc-300 shadow-[0_18px_60px_rgba(0,0,0,0.24)] backdrop-blur-xl">
                         Posso registrar uma despesa, criar uma conta, organizar
                         um Pix, resumir sua agenda financeira ou analisar seus
                         gastos do mes. A logica continua a mesma, mas agora voce
@@ -337,7 +346,7 @@ const NanoChatPanel = ({
                             onClick={() =>
                               onQuickPrompt(nanoQuickPromptMap[prompt] || prompt)
                             }
-                            className="rounded-[18px] border border-white/8 bg-white/[0.03] px-4 py-3 text-left text-sm text-zinc-300 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:-translate-y-0.5 hover:border-red-500/18 hover:bg-red-500/[0.05] hover:text-white"
+                            className="rounded-[18px] bg-white/[0.03] px-4 py-3 text-left text-sm text-zinc-300 shadow-[0_10px_26px_rgba(0,0,0,0.14)] transition duration-300 hover:-translate-y-0.5 hover:bg-red-500/[0.05] hover:text-white"
                           >
                             {prompt}
                           </button>
@@ -363,16 +372,16 @@ const NanoChatPanel = ({
                           }`}
                         >
                           {!isUser ? (
-                            <div className="mt-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-red-500/16 bg-black/24 shadow-[0_0_24px_rgba(255,42,42,0.12)] backdrop-blur-sm">
+                            <div className="mt-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-black/24 shadow-[0_0_24px_rgba(255,42,42,0.12)] backdrop-blur-sm">
                               <NanoMark className="h-[18px] w-[18px]" />
                             </div>
                           ) : null}
 
                           <div
-                            className={`max-w-[720px] rounded-[28px] border px-5 py-4 shadow-[0_18px_54px_rgba(0,0,0,0.24)] backdrop-blur-xl ${
+                            className={`max-w-[720px] rounded-[28px] px-5 py-4 shadow-[0_18px_54px_rgba(0,0,0,0.24)] backdrop-blur-xl ${
                               isUser
-                                ? "border-red-500/16 bg-[linear-gradient(180deg,rgba(120,12,18,0.52),rgba(76,10,14,0.34))] text-red-50"
-                                : "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] text-zinc-100"
+                                ? "bg-[linear-gradient(180deg,rgba(120,12,18,0.52),rgba(76,10,14,0.34))] text-red-50"
+                                : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] text-zinc-100"
                             }`}
                           >
                             <p className="whitespace-pre-wrap text-sm leading-7">
@@ -387,7 +396,7 @@ const NanoChatPanel = ({
                                 {formatTime(item.created_at)}
                               </p>
                               {item.metadata?.executed_actions?.length ? (
-                                <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+                                <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-300">
                                   {item.metadata.executed_actions.length} acao(oes)
                                 </span>
                               ) : null}
@@ -400,7 +409,7 @@ const NanoChatPanel = ({
 
                   {liveStatus && chatHistory.length > 0 ? (
                     <div className="flex justify-start">
-                      <div className="max-w-[540px] rounded-full border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 shadow-[0_14px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+                      <div className="max-w-[540px] rounded-full bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 shadow-[0_14px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl">
                         {liveStatus}
                       </div>
                     </div>
@@ -408,7 +417,7 @@ const NanoChatPanel = ({
 
                   {chatError ? (
                     <div className="flex justify-start">
-                      <div className="flex max-w-[640px] items-start gap-3 rounded-[24px] border border-rose-400/16 bg-rose-500/[0.08] px-5 py-4 text-sm text-rose-100 shadow-[0_14px_30px_rgba(127,29,29,0.15)] backdrop-blur-xl">
+                      <div className="flex max-w-[640px] items-start gap-3 rounded-[24px] bg-rose-500/[0.08] px-5 py-4 text-sm text-rose-100 shadow-[0_14px_30px_rgba(127,29,29,0.15)] backdrop-blur-xl">
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                         <span>
                           O Nano encontrou uma falha temporaria. O chat por
@@ -448,10 +457,14 @@ const NanoChatPanel = ({
               ) : null}
             </AnimatePresence>
 
-            <div className="absolute bottom-5 left-1/2 z-30 w-[calc(100%-2.5rem)] max-w-[980px] -translate-x-1/2 md:w-[calc(100%-4rem)]">
-              <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
+            <div
+              className={`absolute bottom-5 left-1/2 z-30 w-[calc(100%-2.5rem)] max-w-[980px] -translate-x-1/2 transition-all duration-500 md:w-[calc(100%-4rem)] ${
+                shouldShowExecutionPanel ? "lg:max-w-[860px] lg:-translate-x-[calc(50%+11.5rem)]" : ""
+              }`}
+            >
+              <div className="rounded-[30px] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.03))] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
                 {isWakeArmed && liveTranscript ? (
-                  <div className="mb-2 rounded-2xl border border-white/8 bg-black/18 px-4 py-2.5 text-xs text-zinc-300">
+                  <div className="mb-2 rounded-2xl bg-black/18 px-4 py-2.5 text-xs text-zinc-300">
                     <span className="mr-2 font-medium uppercase tracking-[0.14em] text-zinc-500">
                       Transcricao
                     </span>
@@ -460,7 +473,7 @@ const NanoChatPanel = ({
                 ) : null}
 
                 <div className="flex items-end gap-3">
-                  <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-500/16 bg-red-500/10 text-red-100 shadow-[0_0_30px_rgba(255,42,42,0.18)] md:flex">
+                  <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-100 shadow-[0_0_30px_rgba(255,42,42,0.18)] md:flex">
                     <NanoMark className="h-6 w-6" />
                   </div>
 
@@ -477,10 +490,10 @@ const NanoChatPanel = ({
                       <button
                         type="button"
                         onClick={isWakeArmed ? onStopVoice : onStartVoice}
-                        className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition duration-300 ${
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl transition duration-300 ${
                           isWakeArmed
-                            ? "border-red-400/24 bg-red-500/14 text-red-100 shadow-[0_0_24px_rgba(255,42,42,0.22)]"
-                            : "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-red-500/16 hover:bg-red-500/[0.06] hover:text-white"
+                            ? "bg-red-500/14 text-red-100 shadow-[0_0_24px_rgba(255,42,42,0.22)]"
+                            : "bg-white/[0.03] text-zinc-300 hover:bg-red-500/[0.06] hover:text-white"
                         }`}
                         title={isWakeArmed ? "Desativar voz" : "Ativar voz"}
                       >
@@ -496,7 +509,7 @@ const NanoChatPanel = ({
                       <button
                         type="button"
                         onClick={onInterrupt}
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.06]"
+                        className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.06]"
                         title="Interromper resposta"
                       >
                         <Square className="h-4 w-4" />
@@ -507,7 +520,7 @@ const NanoChatPanel = ({
                       <button
                         type="button"
                         onClick={onCancelVoiceCommand}
-                        className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.06]"
+                        className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.03] text-zinc-200 transition hover:bg-white/[0.06]"
                         title="Cancelar comando de voz"
                       >
                         <X className="h-4 w-4" />
@@ -541,13 +554,24 @@ const NanoChatPanel = ({
             </div>
           </div>
 
-          <div className="relative hidden min-h-0 border-l border-white/6 bg-black/16 lg:block">
-            <NanoExecutionPanel
-              chatHistory={chatHistory}
-              nanoState={nanoState}
-              voiceStatus={voiceStatus}
-            />
-          </div>
+          <AnimatePresence>
+            {shouldShowExecutionPanel ? (
+              <motion.div
+                initial={{ opacity: 0, x: 24, scale: 0.98 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 18, scale: 0.98 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute right-6 top-24 z-40 hidden w-[360px] lg:block"
+              >
+                <NanoExecutionPanel
+                  chatHistory={chatHistory}
+                  nanoState={nanoState}
+                  voiceStatus={voiceStatus}
+                  className="min-h-[620px]"
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
     </section>

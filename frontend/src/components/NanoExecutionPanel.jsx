@@ -3,8 +3,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   LoaderCircle,
-  Radar,
-  Sparkles,
   Waves,
 } from "lucide-react";
 import { Progress } from "./ui/progress";
@@ -159,6 +157,7 @@ const NanoExecutionPanel = ({
   chatHistory = [],
   nanoState = "idle",
   voiceStatus = "",
+  className = "",
 }) => {
   const latestUser = useMemo(
     () => [...chatHistory].reverse().find((item) => item.role === "user"),
@@ -193,17 +192,13 @@ const NanoExecutionPanel = ({
           : "Assistente ativo";
 
   return (
-    <aside className="hidden min-h-[620px] flex-col rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,10,12,0.96),rgba(12,8,10,0.88))] shadow-[0_24px_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl lg:flex">
-      <div className="border-b border-white/8 px-6 py-5">
+    <aside
+      className={`flex flex-col rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,10,12,0.96),rgba(13,8,10,0.92))] shadow-[0_24px_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl ${className}`}
+    >
+      <div className="border-b border-white/6 px-6 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-red-500/18 bg-red-500/10 shadow-[0_0_32px_rgba(255,42,42,0.18)]">
-            {nanoState === "speaking" ? (
-              <Waves className="h-4 w-4 text-red-200" />
-            ) : nanoState === "idle" ? (
-              <Sparkles className="h-4 w-4 text-red-200" />
-            ) : (
-              <Radar className="h-4 w-4 text-red-200" />
-            )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-500/[0.08] shadow-[0_0_32px_rgba(255,42,42,0.12)]">
+            <Waves className="h-4 w-4 text-red-200" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">{panelStatus}</p>
@@ -230,7 +225,7 @@ const NanoExecutionPanel = ({
           {steps.map((step, index) => (
             <div key={step.key} className="relative flex gap-4">
               {index < steps.length - 1 && (
-                <div className="absolute left-[9px] top-6 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-white/18 via-white/8 to-transparent" />
+                <div className="absolute left-[9px] top-6 h-[calc(100%+0.5rem)] w-px bg-gradient-to-b from-red-400/50 via-red-500/18 to-transparent" />
               )}
               <div className="relative z-10 mt-1 flex h-5 w-5 shrink-0 items-center justify-center">
                 <StepIcon status={step.status} />
@@ -257,7 +252,7 @@ const NanoExecutionPanel = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4"
+            className="rounded-[24px] border border-white/6 bg-white/[0.025] p-4"
           >
             <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
               Resumo da operacao
