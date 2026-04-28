@@ -65,6 +65,7 @@ import {
   Landmark,
   LayoutDashboard,
   Moon,
+  MousePointer2,
   Sparkles,
   Plus,
   Search,
@@ -293,6 +294,7 @@ const initialSettingsForm = {
   assistant_voice: true,
   whatsapp_alerts: false,
   theme_mode: "dark",
+  cursor_mode: "custom",
 };
 
 const pageFieldClass = dashboardClass.input;
@@ -301,6 +303,9 @@ const textAreaClass =
 const actionButtonClass = dashboardClass.buttonPrimary;
 const REQUEST_TIMEOUT_MS = 15000;
 const THEME_STORAGE_KEY = "nano_theme_mode";
+const CURSOR_MODE_STORAGE_KEY = "nano_cursor_mode";
+const resolveCursorMode = (value) =>
+  value === "default" ? "default" : "custom";
 const billingStatusLabels = {
   active: "acesso ativo",
   trialing: "periodo de teste",
@@ -794,6 +799,13 @@ const Dashboard = () => {
       currentWorkspace.settings?.features?.assistant_voice ?? true;
     const whatsappAlerts =
       currentWorkspace.settings?.features?.whatsapp_alerts ?? false;
+    const storedCursorMode =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(CURSOR_MODE_STORAGE_KEY)
+        : null;
+    const cursorMode = resolveCursorMode(
+      currentWorkspace.settings?.features?.cursor_mode || storedCursorMode,
+    );
     const storedThemeMode =
       typeof window !== "undefined"
         ? window.localStorage.getItem(THEME_STORAGE_KEY)
@@ -802,6 +814,9 @@ const Dashboard = () => {
       storedThemeMode || user?.settings?.theme || "dark",
     );
     setThemeMode(resolvedThemeMode);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(CURSOR_MODE_STORAGE_KEY, cursorMode);
+    }
 
     setCompanyForm({
       name: currentWorkspace.name || "",
@@ -824,6 +839,7 @@ const Dashboard = () => {
       assistant_voice: assistantVoice,
       whatsapp_alerts: whatsappAlerts,
       theme_mode: resolvedThemeMode,
+      cursor_mode: cursorMode,
     });
   }, [currentWorkspace, user?.settings?.theme]);
 
@@ -1635,6 +1651,7 @@ const Dashboard = () => {
             notifications: settingsForm.notifications,
             assistant_voice: settingsForm.assistant_voice,
             whatsapp_alerts: settingsForm.whatsapp_alerts,
+            cursor_mode: resolveCursorMode(settingsForm.cursor_mode),
           },
         },
       });
@@ -1735,6 +1752,62 @@ const Dashboard = () => {
       description:
         "As configurações visuais e de automação ficaram prontas para a próxima rodada de integração.",
     });
+  };
+
+  const persistPlatformSettings = async (event) => {
+    event.preventDefault();
+    const resolvedMode = resolveDashboardThemeMode(settingsForm.theme_mode);
+    const resolvedCursorMode = resolveCursorMode(settingsForm.cursor_mode);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(THEME_STORAGE_KEY, resolvedMode);
+      window.localStorage.setItem(CURSOR_MODE_STORAGE_KEY, resolvedCursorMode);
+      window.dispatchEvent(
+        new CustomEvent("nano-cursor-mode-change", {
+          detail: { mode: resolvedCursorMode },
+        }),
+      );
+      setThemeMode(resolvedMode);
+    }
+
+    if (!currentWorkspace?.id) {
+      toast({
+        title: "Preferencias atualizadas",
+        description: "O tema e o cursor deste navegador foram ajustados.",
+      });
+      return;
+    }
+
+    try {
+      await axios.put(`${API}/workspaces/${currentWorkspace.id}`, {
+        name: currentWorkspace.name,
+        subdomain: currentWorkspace.subdomain,
+        description: currentWorkspace.description,
+        settings: {
+          ...(currentWorkspace.settings || {}),
+          features: {
+            ...(currentWorkspace.settings?.features || {}),
+            notifications: settingsForm.notifications,
+            assistant_voice: settingsForm.assistant_voice,
+            whatsapp_alerts: settingsForm.whatsapp_alerts,
+            cursor_mode: resolvedCursorMode,
+          },
+        },
+      });
+
+      toast({
+        title: "Preferencias atualizadas",
+        description: "As automacoes e a personalizacao visual foram salvas.",
+      });
+      loadAll(currentWorkspace.id);
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar preferencias",
+        description:
+          "Nao foi possivel atualizar as preferencias da plataforma agora.",
+        variant: "destructive",
+      });
+    }
   };
 
   const refreshAfterAssistantMessage = useCallback(() => {
@@ -3821,7 +3894,7 @@ const Dashboard = () => {
 
       <div className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
         <SurfacePanel title="Preferências da plataforma">
-          <form onSubmit={savePlatformSettings} className="space-y-5">
+          <form onSubmit={persistPlatformSettings} className="space-y-5">
             <ToggleRow
               label="Notificações do sistema"
               helper="Avisos de vencimento, extratos e movimentações importantes."
@@ -3873,6 +3946,90 @@ const Dashboard = () => {
         </SurfacePanel>
 
         <div className="space-y-6">
+          <SurfacePanel title="Personalizacao do site">
+            <form onSubmit={persistPlatformSettings} className="space-y-5">
+              <div className="rounded-[24px] border border-[#eadfd6] bg-[#fff8f4] p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1f1814] text-white">
+                    <MousePointer2 className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-[#1f1814]">
+                      Cursor do site
+                    </p>
+                    <p className="text-sm text-[#857870]">
+                      O cursor customizado agora fica so na pagina inicial e
+                      pode ser trocado pelo cursor padrao quando preferir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                {[
+                  {
+                    id: "custom",
+                    title: "Cursor Nano",
+                    description:
+                      "Ativa o cursor personalizado apenas na home do site.",
+                  },
+                  {
+                    id: "default",
+                    title: "Cursor padrao do PC",
+                    description:
+                      "Mantem o cursor nativo do sistema em todas as paginas.",
+                  },
+                ].map((option) => {
+                  const selected = settingsForm.cursor_mode === option.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() =>
+                        setSettingsForm((current) => ({
+                          ...current,
+                          cursor_mode: option.id,
+                        }))
+                      }
+                      className={`rounded-[24px] border px-5 py-4 text-left transition ${
+                        selected
+                          ? "border-red-500/45 bg-red-500/10 shadow-[0_12px_30px_rgba(185,28,28,0.12)]"
+                          : "border-[#eadfd6] bg-white hover:border-red-300/45"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-[#1f1814]">
+                            {option.title}
+                          </p>
+                          <p className="mt-1 text-sm text-[#857870]">
+                            {option.description}
+                          </p>
+                        </div>
+                        <div
+                          className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                            selected
+                              ? "border-red-600 bg-red-600"
+                              : "border-[#d8c9bf] bg-transparent"
+                          }`}
+                        >
+                          {selected ? (
+                            <div className="h-2 w-2 rounded-full bg-white" />
+                          ) : null}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Button type="submit" className={`h-12 ${actionButtonClass}`}>
+                Salvar personalizacao
+              </Button>
+            </form>
+          </SurfacePanel>
+
           <SurfacePanel title="Categorias">
             <form onSubmit={submitCategory} className="grid gap-3">
               <div className="grid gap-3 md:grid-cols-2">

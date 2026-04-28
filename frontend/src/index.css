@@ -3,19 +3,6 @@
 @tailwind utilities;
 
 /* Ocultando o cursor padrão (presumindo um cursor customizado via JS/React) */
-html,
-body {
-  cursor: none !important;
-}
-
-a,
-button,
-[role="button"],
-input[type="submit"],
-.cursor-pointer {
-  cursor: none !important;
-}
-
 body {
   margin: 0;
   font-family:
@@ -25,7 +12,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body hover {
+[data-cursor-mode="custom"] {
+  cursor: none !important;
+}
+
+[data-cursor-mode="custom"] a,
+[data-cursor-mode="custom"] button,
+[data-cursor-mode="custom"] [role="button"],
+[data-cursor-mode="custom"] input[type="submit"],
+[data-cursor-mode="custom"] .cursor-pointer {
   cursor: none !important;
 }
 
