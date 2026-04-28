@@ -43,6 +43,8 @@ def normalize_attendance_status(status: Optional[str]) -> str:
     value = (status or "present").strip().lower()
     if value in {"falta", "ausente", "absent"}:
         return "absent"
+    if value in {"atestado", "medical_leave", "medical", "sick_leave"}:
+        return "medical_leave"
     return "present"
 
 
@@ -99,8 +101,8 @@ def compute_employee_payroll(
     daily_rate = (salary / 30.0) if employee_type == "clt" else (salary / contract_days_base)
     expected_days = 30 if employee_type == "clt" else contract_days_base
 
-    present_dates: List[datetime] = []
     absent_dates: List[datetime] = []
+    medical_leave_dates: List[datetime] = []
     for record in attendance_records:
         record_date = record.get("date")
         if not isinstance(record_date, datetime):
@@ -109,11 +111,12 @@ def compute_employee_payroll(
         status = normalize_attendance_status(record.get("status"))
         if status == "absent":
             absent_dates.append(day_date)
-        else:
-            present_dates.append(day_date)
+        elif status == "medical_leave":
+            medical_leave_dates.append(day_date)
 
-    present_days = len(present_dates)
     absent_days = len(absent_dates)
+    medical_leave_days = len(medical_leave_dates)
+    present_days = max(expected_days - absent_days - medical_leave_days, 0)
 
     absence_discount = absent_days * daily_rate
     gross_month = salary + salary_family_amount
@@ -152,8 +155,9 @@ def compute_employee_payroll(
         "expected_days": expected_days,
         "present_days": present_days,
         "absent_days": absent_days,
-        "present_dates": _serialize_date_list(present_dates),
         "absent_dates": _serialize_date_list(absent_dates),
+        "medical_leave_days": medical_leave_days,
+        "medical_leave_dates": _serialize_date_list(medical_leave_dates),
         "absence_discount": round(absence_discount, 2),
         "inss_percent": round(inss_percent, 2),
         "inss_discount": round(inss_discount, 2),
@@ -193,6 +197,7 @@ def build_payroll_report(
         "contract_employees": 0,
         "present_days": 0,
         "absent_days": 0,
+        "medical_leave_days": 0,
         "gross_salary": 0.0,
         "salary_family_amount": 0.0,
         "absence_discount": 0.0,
@@ -212,6 +217,7 @@ def build_payroll_report(
         totals["employees"] += 1
         totals["present_days"] += row["present_days"]
         totals["absent_days"] += row["absent_days"]
+        totals["medical_leave_days"] += row["medical_leave_days"]
         totals["gross_salary"] += row["salary"]
         totals["salary_family_amount"] += row["salary_family_amount"]
         totals["absence_discount"] += row["absence_discount"]
@@ -235,6 +241,7 @@ def build_payroll_report(
             "contract_employees": totals["contract_employees"],
             "present_days": totals["present_days"],
             "absent_days": totals["absent_days"],
+            "medical_leave_days": totals["medical_leave_days"],
             "gross_salary": round(totals["gross_salary"], 2),
             "salary_family_amount": round(totals["salary_family_amount"], 2),
             "absence_discount": round(totals["absence_discount"], 2),

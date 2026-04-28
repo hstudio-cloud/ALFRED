@@ -439,7 +439,7 @@ class Employee(BaseModel):
 class AttendanceRecordCreate(BaseModel):
     employee_id: str
     date: datetime
-    status: str = "present"  # present, absent
+    status: str = "absent"  # present, absent, medical_leave
     notes: Optional[str] = None
 
 
@@ -455,7 +455,7 @@ class AttendanceRecord(BaseModel):
     user_id: str
     employee_id: str
     date: datetime
-    status: str = "present"  # present, absent
+    status: str = "absent"  # present, absent, medical_leave
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

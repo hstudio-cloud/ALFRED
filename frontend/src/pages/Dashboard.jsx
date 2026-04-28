@@ -269,7 +269,7 @@ const initialEmployeeForm = {
 const initialAttendanceForm = {
   employee_id: "",
   date: "",
-  status: "present",
+  status: "absent",
   notes: "",
 };
 
@@ -3116,6 +3116,10 @@ const Dashboard = () => {
             <p className="mt-1 text-sm text-[#857870]">
               As datas usam o horario oficial de Brasilia.
             </p>
+            <p className="mt-1 text-sm text-[#857870]">
+              Presenca nao precisa ser lancada. Se nao houver registro no dia,
+              o sistema considera presenca automaticamente.
+            </p>
           </div>
           <form
             onSubmit={submitAttendance}
@@ -3190,8 +3194,8 @@ const Dashboard = () => {
                 })
               }
             >
-              <option value="present">Presença</option>
               <option value="absent">Falta</option>
+              <option value="medical_leave">Atestado (CLT)</option>
             </select>
             <Button type="submit" className={`h-12 ${actionButtonClass}`}>
               Registrar
@@ -3214,8 +3218,12 @@ const Dashboard = () => {
             {attendanceRecords.slice(0, 5).map((record) => (
               <InfoRow
                 key={record.id}
-                title={`${record.employee_name || "Funcionário"} - ${
-                  record.status === "absent" ? "Falta" : "Presença"
+                title={`${record.employee_name || "Funcionario"} - ${
+                  record.status === "absent"
+                    ? "Falta"
+                    : record.status === "medical_leave"
+                      ? "Atestado"
+                      : "Presenca"
                 }`}
                 subtitle={new Date(record.date).toLocaleDateString("pt-BR")}
                 value={record.employee_type === "clt" ? "CLT" : "Contrato"}
@@ -3224,8 +3232,8 @@ const Dashboard = () => {
             {!attendanceRecords.length && (
               <CenteredEmptyState
                 icon={CalendarDays}
-                title="Sem registros no período"
-                description="Registre presença e falta para alimentar o cálculo da folha."
+                title="Sem registros no periodo"
+                description="Registre apenas faltas ou atestados para alimentar o calculo da folha."
               />
             )}
           </div>
@@ -3245,6 +3253,10 @@ const Dashboard = () => {
               <StatMiniCard
                 label="Faltas no mês"
                 value={String(payrollSummary.absent_days || 0)}
+              />
+              <StatMiniCard
+                label="Atestados"
+                value={String(payrollSummary.medical_leave_days || 0)}
               />
               <StatMiniCard
                 label="Bruto"
@@ -3383,7 +3395,7 @@ const Dashboard = () => {
               {payrollGroups.clt.map((item) => (
                 <InfoRow
                   key={item.employee_id}
-                  title={`${item.name} • Presenças: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  title={`${item.name} - Faltas: ${item.absent_days} | Atestados: ${item.medical_leave_days || 0}`}
                   subtitle={`INSS ${item.inss_percent}% • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}
@@ -3407,7 +3419,7 @@ const Dashboard = () => {
               {payrollGroups.contract.map((item) => (
                 <InfoRow
                   key={item.employee_id}
-                  title={`${item.name} • Presenças: ${item.present_days} | Faltas: ${item.absent_days}`}
+                  title={`${item.name} - Faltas: ${item.absent_days}`}
                   subtitle={`Diaria ${currencyFormatter.format(item.daily_rate || 0)} • Desconto faltas ${currencyFormatter.format(
                     item.absence_discount || 0,
                   )}`}

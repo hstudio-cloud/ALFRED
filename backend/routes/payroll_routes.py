@@ -269,10 +269,28 @@ async def create_or_update_attendance(
 
     day = truncate_day(payload.date)
     status = normalize_attendance_status(payload.status)
+    if status == "medical_leave" and normalize_employee_type(employee.get("employee_type")) != "clt":
+        raise HTTPException(
+            status_code=400,
+            detail="Atestado so pode ser registrado para funcionario CLT.",
+        )
 
     existing = await attendance_collection.find_one(
         {"workspace_id": workspace_id, "employee_id": payload.employee_id, "date": day}
     )
+    if status == "present":
+        if existing:
+            await attendance_collection.delete_one(
+                {"workspace_id": workspace_id, "id": existing["id"]}
+            )
+        return {
+            "employee_id": payload.employee_id,
+            "date": day,
+            "status": "present",
+            "notes": payload.notes,
+            "implicit": True,
+        }
+
     if existing:
         await attendance_collection.update_one(
             {"workspace_id": workspace_id, "id": existing["id"]},
@@ -310,8 +328,33 @@ async def update_attendance(
     update_data = {key: value for key, value in payload.dict(exclude_none=True).items()}
     if not update_data:
         raise HTTPException(status_code=400, detail="Nenhuma alteracao enviada.")
+    existing = await attendance_collection.find_one({"workspace_id": workspace_id, "id": attendance_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Registro de ponto nao encontrado.")
     if "status" in update_data:
         update_data["status"] = normalize_attendance_status(update_data["status"])
+        employee = await employees_collection.find_one(
+            {"workspace_id": workspace_id, "id": existing["employee_id"]}
+        )
+        if (
+            update_data["status"] == "medical_leave"
+            and normalize_employee_type((employee or {}).get("employee_type")) != "clt"
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Atestado so pode ser registrado para funcionario CLT.",
+            )
+        if update_data["status"] == "present":
+            await attendance_collection.delete_one(
+                {"workspace_id": workspace_id, "id": attendance_id}
+            )
+            return {
+                "employee_id": existing["employee_id"],
+                "date": existing["date"],
+                "status": "present",
+                "notes": update_data.get("notes"),
+                "implicit": True,
+            }
     if "date" in update_data:
         update_data["date"] = truncate_day(update_data["date"])
     update_data["updated_at"] = datetime.utcnow()
@@ -320,8 +363,6 @@ async def update_attendance(
         {"workspace_id": workspace_id, "id": attendance_id},
         {"$set": update_data},
     )
-    if not result.matched_count:
-        raise HTTPException(status_code=404, detail="Registro de ponto nao encontrado.")
     item = await attendance_collection.find_one({"workspace_id": workspace_id, "id": attendance_id})
     return _serialize(item)
 

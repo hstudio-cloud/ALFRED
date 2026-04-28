@@ -147,9 +147,13 @@ const buildAttendanceLookup = (attendanceRecords = []) => {
     if (!byEmployee.has(employeeId)) {
       byEmployee.set(employeeId, new Map());
     }
-    byEmployee
-      .get(employeeId)
-      .set(dateKey, record?.status === "absent" ? "F" : "P");
+    const code =
+      record?.status === "absent"
+        ? "F"
+        : record?.status === "medical_leave"
+          ? "A"
+          : "P";
+    byEmployee.get(employeeId).set(dateKey, code);
   });
   return byEmployee;
 };
@@ -198,8 +202,9 @@ const addSummarySheet = (workbook, context) => {
     ["Funcionarios", toNumber(context.summary.employees)],
     ["Funcionarios CLT", toNumber(context.summary.clt_employees)],
     ["Funcionarios Contrato", toNumber(context.summary.contract_employees)],
-    ["Presencas", toNumber(context.summary.present_days)],
     ["Faltas", toNumber(context.summary.absent_days)],
+    ["Atestados", toNumber(context.summary.medical_leave_days)],
+    ["Dias normais", toNumber(context.summary.present_days)],
     ["Bruto", toNumber(context.summary.gross_salary)],
     ["Salario familia", toNumber(context.summary.salary_family_amount)],
     ["Desconto faltas", toNumber(context.summary.absence_discount)],
@@ -224,7 +229,8 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
     { key: "role", width: 20 },
     { key: "type", width: 12 },
     { key: "fouls", width: 10 },
-    { key: "presents", width: 10 },
+    { key: "medicalLeave", width: 12 },
+    { key: "worked", width: 12 },
     { key: "daily", width: 14 },
     { key: "salary", width: 15 },
     { key: "family", width: 15 },
@@ -233,10 +239,11 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
     { key: "net", width: 15 },
     { key: "half1", width: 15 },
     { key: "half2", width: 15 },
-    { key: "dates", width: 26 },
+    { key: "absenceDates", width: 26 },
+    { key: "medicalDates", width: 26 },
   ];
 
-  styleTitleRow(sheet, 1, 1, 15);
+  styleTitleRow(sheet, 1, 1, 16);
   sheet.getCell("A1").value = `${(context.workspaceName || "Workspace").toUpperCase()} - ${title.toUpperCase()}`;
 
   const metaRow1 = sheet.addRow([
@@ -266,7 +273,8 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
     "FUNCAO",
     "CART/CONT",
     "FALTAS",
-    "PRESENCAS",
+    "ATESTADOS",
+    "DIAS NORMAIS",
     "DIARIA",
     "SALARIO BASE",
     "SAL. FAMILIA",
@@ -276,6 +284,7 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
     "1a QUINZENA",
     "2a QUINZENA",
     "DATAS DE FALTA",
+    "DATAS DE ATESTADO",
   ]);
   styleHeaderRow(header);
 
@@ -286,6 +295,7 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
       item.role || "",
       item.employee_type === "clt" ? "CART" : "CONT",
       toNumber(item.absent_days),
+      toNumber(item.medical_leave_days),
       toNumber(item.present_days),
       toNumber(item.daily_rate),
       toNumber(item.base_salary),
@@ -296,9 +306,10 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
       toNumber(item.biweekly?.first_half_payment),
       toNumber(item.biweekly?.second_half_payment),
       (item.absent_dates || []).join(", "),
+      (item.medical_leave_dates || []).join(", "),
     ]);
     setAllBorders(row);
-    [7, 8, 9, 10, 11, 12, 13, 14].forEach((cellIndex) => {
+    [8, 9, 10, 11, 12, 13, 14, 15].forEach((cellIndex) => {
       styleNumberCell(row.getCell(cellIndex));
     });
   });
@@ -310,6 +321,7 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
       "",
       "TOTAL",
       items.reduce((sum, item) => sum + toNumber(item.absent_days), 0),
+      items.reduce((sum, item) => sum + toNumber(item.medical_leave_days), 0),
       items.reduce((sum, item) => sum + toNumber(item.present_days), 0),
       "",
       items.reduce((sum, item) => sum + toNumber(item.base_salary), 0),
@@ -320,10 +332,11 @@ const addPayrollSheet = (workbook, title, items, employeeTypeLabel, context) => 
       items.reduce((sum, item) => sum + toNumber(item.biweekly?.first_half_payment), 0),
       items.reduce((sum, item) => sum + toNumber(item.biweekly?.second_half_payment), 0),
       "",
+      "",
     ]);
     totalRow.font = { bold: true };
     setAllBorders(totalRow);
-    [8, 9, 10, 11, 12, 13, 14].forEach((cellIndex) => {
+    [9, 10, 11, 12, 13, 14, 15].forEach((cellIndex) => {
       styleNumberCell(totalRow.getCell(cellIndex));
     });
   }
@@ -342,11 +355,12 @@ const addAttendanceSheet = (workbook, context, reportRows, attendanceRecords) =>
   businessDays.forEach(() => {
     columns.push({ width: 6 });
   });
-  columns.push({ key: "present", width: 10 });
+  columns.push({ key: "medicalLeave", width: 10 });
   columns.push({ key: "absent", width: 10 });
+  columns.push({ key: "normal", width: 10 });
   sheet.columns = columns;
 
-  const lastCol = 4 + businessDays.length + 2;
+  const lastCol = 4 + businessDays.length + 3;
   styleTitleRow(sheet, 1, 1, lastCol);
   sheet.getCell("A1").value = "FOLHA DE PONTO";
 
@@ -364,8 +378,9 @@ const addAttendanceSheet = (workbook, context, reportRows, attendanceRecords) =>
     "FUNCAO",
     "TIPO",
     ...businessDays.map(getWeekdayLabel),
-    "PRES.",
+    "ATEST.",
     "FALT.",
+    "NORMAIS",
   ]);
   styleHeaderRow(weekdaysRow);
 
@@ -388,9 +403,12 @@ const addAttendanceSheet = (workbook, context, reportRows, attendanceRecords) =>
       item.name || "",
       item.role || "",
       item.employee_type === "clt" ? "CLT" : "CONT",
-      ...businessDays.map((date) => employeeAttendance.get(normalizeDateKey(date)) || ""),
-      toNumber(item.present_days),
+      ...businessDays.map(
+        (date) => employeeAttendance.get(normalizeDateKey(date)) || "",
+      ),
+      toNumber(item.medical_leave_days),
       toNumber(item.absent_days),
+      toNumber(item.present_days),
     ]);
     setAllBorders(row);
     businessDays.forEach((_, businessIndex) => {
@@ -413,12 +431,25 @@ const addAttendanceSheet = (workbook, context, reportRows, attendanceRecords) =>
         };
         cell.font = { bold: true, color: { argb: "991B1B" } };
       }
+      if (value === "A") {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FEF3C7" },
+        };
+        cell.font = { bold: true, color: { argb: "92400E" } };
+      }
     });
   });
 
   const legendRow = sheet.addRow([]);
   legendRow.commit();
-  const noteRow = sheet.addRow(["Legenda:", "P = Presenca", "F = Falta"]);
+  const noteRow = sheet.addRow([
+    "Legenda:",
+    "Em branco = Presenca implicita",
+    "F = Falta",
+    "A = Atestado",
+  ]);
   noteRow.font = { italic: true, size: 10 };
 };
 
