@@ -91,6 +91,52 @@ async def _load_conversation_context(user_id: str) -> list:
     ]
 
 
+async def _legacy_orchestrator_fallback(*, content: str, current_user: dict):
+    workspace = await _resolve_workspace(current_user)
+    if not workspace:
+        raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
+
+    conversation_context = await _load_conversation_context(current_user["id"])
+    agent_result = await orchestrator.handle_message(
+        user=current_user,
+        workspace=workspace,
+        message=content,
+        conversation_history=conversation_context,
+    )
+    safe_actions = _sanitize_json_payload(agent_result.actions)
+    safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
+    safe_tool_results = _sanitize_json_payload(agent_result.tool_results)
+
+    assistant_message = ChatMessage(
+        user_id=current_user["id"],
+        role="assistant",
+        content=agent_result.message,
+        metadata={
+            "actions": safe_actions,
+            "executed_actions": safe_executed_actions,
+            "intent": agent_result.intent,
+            "tool_results": safe_tool_results,
+            "followup_needed": agent_result.followup_needed,
+            "missing_fields": agent_result.missing_fields,
+            "agent_metadata": _sanitize_json_payload(agent_result.metadata),
+            "workspace_id": workspace["id"],
+            "fallback_mode": "legacy_orchestrator",
+        },
+    )
+    payload = _model_dump(assistant_message)
+    await chat_messages_collection.insert_one(payload)
+    return {
+        "message": payload,
+        "actions": safe_actions,
+        "executed_actions": safe_executed_actions,
+        "intent": agent_result.intent,
+        "tool_results": safe_tool_results,
+        "followup_needed": agent_result.followup_needed,
+        "missing_fields": agent_result.missing_fields,
+        "workspace_id": workspace["id"],
+    }
+
+
 @router.post("/message")
 async def assistant_message(message_data: ChatMessageCreate, current_user: dict = Depends(get_current_user)):
     try:
@@ -105,49 +151,10 @@ async def assistant_message(message_data: ChatMessageCreate, current_user: dict 
         logger.error("Error processing assistant message: %s", exc)
         # Compatibility fallback: legacy orchestrator path.
         try:
-            workspace = await _resolve_workspace(current_user)
-            if not workspace:
-                raise HTTPException(status_code=400, detail="Crie ou acesse um workspace antes de usar o Nano.")
-
-            conversation_context = await _load_conversation_context(current_user["id"])
-            agent_result = await orchestrator.handle_message(
-                user=current_user,
-                workspace=workspace,
-                message=message_data.content,
-                conversation_history=conversation_context,
+            return await _legacy_orchestrator_fallback(
+                content=message_data.content,
+                current_user=current_user,
             )
-            safe_actions = _sanitize_json_payload(agent_result.actions)
-            safe_executed_actions = _sanitize_json_payload(agent_result.executed_actions)
-            safe_tool_results = _sanitize_json_payload(agent_result.tool_results)
-
-            assistant_message = ChatMessage(
-                user_id=current_user["id"],
-                role="assistant",
-                content=agent_result.message,
-                metadata={
-                    "actions": safe_actions,
-                    "executed_actions": safe_executed_actions,
-                    "intent": agent_result.intent,
-                    "tool_results": safe_tool_results,
-                    "followup_needed": agent_result.followup_needed,
-                    "missing_fields": agent_result.missing_fields,
-                    "agent_metadata": _sanitize_json_payload(agent_result.metadata),
-                    "workspace_id": workspace["id"],
-                    "fallback_mode": "legacy_orchestrator",
-                },
-            )
-            payload = _model_dump(assistant_message)
-            await chat_messages_collection.insert_one(payload)
-            return {
-                "message": payload,
-                "actions": safe_actions,
-                "executed_actions": safe_executed_actions,
-                "intent": agent_result.intent,
-                "tool_results": safe_tool_results,
-                "followup_needed": agent_result.followup_needed,
-                "missing_fields": agent_result.missing_fields,
-                "workspace_id": workspace["id"],
-            }
         except Exception as fallback_exc:
             logger.error("Legacy fallback failed: %s", fallback_exc)
             raise HTTPException(status_code=500, detail="Erro ao processar comando do Nano")
@@ -168,7 +175,14 @@ async def assistant_orchestrate(payload: AssistantOrchestrateRequest, current_us
         raise
     except Exception as exc:
         logger.error("Error in /assistant/orchestrate: %s", exc)
-        raise HTTPException(status_code=500, detail="Erro ao orquestrar comando do Nano")
+        try:
+            return await _legacy_orchestrator_fallback(
+                content=(payload.content or payload.message or "").strip(),
+                current_user=current_user,
+            )
+        except Exception as fallback_exc:
+            logger.error("Legacy fallback failed in /assistant/orchestrate: %s", fallback_exc)
+            raise HTTPException(status_code=500, detail="Erro ao orquestrar comando do Nano")
 
 
 async def _process_orchestrated_message(
