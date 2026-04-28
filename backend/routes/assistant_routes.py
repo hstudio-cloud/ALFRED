@@ -221,14 +221,15 @@ async def _process_orchestrated_message(
             "requires_confirmation": routed.get("requires_confirmation", False),
         },
     }
+    message_payload = _sanitize_json_payload(message_payload)
 
     return {
         "intent": routed.get("intent"),
         "used_tools": used_tools,
         "tool_results": safe_tool_results,
         "message": message_payload,
-        "followup_needed": False,
-        "missing_fields": [],
+        "followup_needed": bool(routed.get("followup_needed")),
+        "missing_fields": list(routed.get("missing_fields") or []),
         "actions": safe_actions,
         "executed_actions": safe_executed_actions,
         "execution_status": execution_status,

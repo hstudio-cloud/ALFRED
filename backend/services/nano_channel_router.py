@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
+from bson import ObjectId
 
 from dotenv import load_dotenv
 
@@ -29,6 +30,18 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 _api_key = os.getenv("OPENAI_API_KEY") or os.getenv("EMERGENT_LLM_KEY") or ""
 _orchestrator = AgentOrchestrator(api_key=_api_key)
 _action_service = AssistantActionService(api_key=_api_key)
+
+
+def _sanitize_json_payload(value: Any) -> Any:
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _sanitize_json_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_json_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_json_payload(item) for item in value]
+    return value
 
 
 def _build_action_failure_reply(executed_actions: List[Dict[str, Any]], fallback_reply: str) -> str:
@@ -88,7 +101,7 @@ async def _store_message(
         role=role,
         content=content,
         metadata={
-            **(metadata or {}),
+            **_sanitize_json_payload(metadata or {}),
             "workspace_id": workspace_id,
             "source_channel": source_channel,
         },
@@ -194,7 +207,10 @@ async def route_channel_message(
                     content=reply,
                     workspace_id=workspace_id,
                     source_channel=source_channel,
-                    metadata={"executed_actions": executed_actions, "intent": "confirmation_execution"},
+                    metadata={
+                        "executed_actions": executed_actions,
+                        "intent": "confirmation_execution",
+                    },
                 )
             return {
                 "reply": reply,
@@ -383,6 +399,8 @@ async def route_channel_message(
                 "executed_actions": executed_actions,
                 "risk_level": risk_policy["risk_level"],
                 "requires_confirmation": risk_policy["requires_confirmation"],
+                "followup_needed": agent_result.followup_needed,
+                "missing_fields": agent_result.missing_fields,
                 "agent_metadata": agent_result.metadata,
                 "execution_status": "awaiting_confirmation" if risk_policy["requires_confirmation"] else "executed",
             },
@@ -404,6 +422,8 @@ async def route_channel_message(
         "tool_results": agent_result.tool_results or {},
         "risk_level": risk_policy["risk_level"],
         "requires_confirmation": risk_policy["requires_confirmation"],
+        "followup_needed": agent_result.followup_needed,
+        "missing_fields": agent_result.missing_fields,
         "metadata": {"agent": agent_result.metadata, "source_channel": source_channel},
-        "assistant_message": assistant_message_payload,
+        "assistant_message": _sanitize_json_payload(assistant_message_payload) if assistant_message_payload else None,
     }
