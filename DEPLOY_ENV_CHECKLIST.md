@@ -267,3 +267,51 @@ Legenda:
 - `OPEN_FINANCE_CLIENT_ID` e `OPEN_FINANCE_CLIENT_SECRET` ou aliases do provider
 
 Nao commitar `.env` ou valores reais dessas chaves no repositorio.
+
+## Estado atual no Render
+
+- Backend atual em producao: `https://nano-ia-api.onrender.com`
+- Frontend atual em producao: `https://frontend-two-xi-71.vercel.app`
+
+### Ja configurado no Render
+
+- `ASAAS_API_URL=https://api.asaas.com/v3`
+- `ASAAS_BASE_URL=https://api.asaas.com/v3`
+- `ASAAS_WEBHOOK_SECRET` configurado
+- `ASAAS_WEBHOOK_TOKEN` configurado
+- `WHATSAPP_PROVIDER=meta_cloud`
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` configurado
+- `WHATSAPP_WEBHOOK_SECRET` configurado
+
+### Validado em producao no Render
+
+- `GET https://nano-ia-api.onrender.com/api/health` retorna `200`
+- `GET https://nano-ia-api.onrender.com/api/whatsapp/health` retorna `200`
+- `GET https://nano-ia-api.onrender.com/api/whatsapp/webhook` valida o token corretamente
+
+### Ainda falta para WhatsApp real
+
+- `WHATSAPP_APP_SECRET`
+- `WHATSAPP_PROVIDER_TOKEN`
+- `WHATSAPP_META_PHONE_NUMBER_ID`
+- No painel Meta Developers, apontar o webhook para:
+  - `https://nano-ia-api.onrender.com/api/whatsapp/webhook`
+
+### Ainda falta para Stripe real
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRICE_ID_STARTER`
+- `STRIPE_WEBHOOK_SECRET`
+- Se houver mais planos ativos no frontend:
+  - `STRIPE_PRICE_ID_PRO`
+  - `STRIPE_PRICE_ID_BUSINESS`
+- No painel Stripe, apontar o webhook para:
+  - `https://nano-ia-api.onrender.com/api/webhooks/stripe`
+
+### Ainda falta para Asaas real
+
+- `ASAAS_API_KEY`
+- No painel Asaas, apontar o webhook para:
+  - `https://nano-ia-api.onrender.com/api/webhooks/asaas`
+- Enviar o header `asaas-access-token` com o mesmo valor salvo em:
+  - `ASAAS_WEBHOOK_TOKEN`

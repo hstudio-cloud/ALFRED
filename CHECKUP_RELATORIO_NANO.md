@@ -124,12 +124,12 @@ Warnings nao bloqueantes observados:
   - senha do `MONGO_URL`
   - `OPEN_FINANCE_CLIENT_SECRET`
 - O WhatsApp ainda esta operacionalmente incompleto no ambiente validado:
-  - provider atual aparece como `generic`
-  - webhook verify e assinatura ainda nao estao prontos
-  - token/URL de envio nao estao configurados por completo
+  - provider atual no Render agora aparece como `meta_cloud`
+  - `GET /api/whatsapp/webhook` ja valida o token corretamente
+  - ainda faltam `WHATSAPP_APP_SECRET`, `WHATSAPP_PROVIDER_TOKEN` e `WHATSAPP_META_PHONE_NUMBER_ID`
 - Billing ainda esta operacionalmente incompleto no ambiente validado:
   - Stripe sem `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_STARTER` e `STRIPE_WEBHOOK_SECRET`
-  - Asaas sem `ASAAS_API_KEY` e `ASAAS_WEBHOOK_SECRET`
+  - Asaas sem `ASAAS_API_KEY`
 - Open Finance foi deliberadamente desabilitado e agora responde como indisponivel no momento.
 - Open Finance respondeu nas rotas, mas sem conexoes cadastradas. Falta validacao funcional com conta real conectada.
 - Billing respondeu nas rotas, mas a assinatura atual esta `inactive`. Falta validacao ponta a ponta de checkout e webhooks em ambiente real.
@@ -145,7 +145,7 @@ Warnings nao bloqueantes observados:
    - WhatsApp do Nano
    - billing
    - Open Finance
-3. Completar as envs de producao do WhatsApp e revalidar `GET/POST /api/whatsapp/webhook`.
-4. Completar as envs de producao de Stripe e/ou Asaas antes de liberar checkout real.
+3. Completar as envs de producao do WhatsApp no Render e revalidar `POST /api/whatsapp/webhook`.
+4. Completar as envs de producao de Stripe e/ou Asaas antes de liberar checkout real no backend `https://nano-ia-api.onrender.com`.
 5. Rodar um segundo ciclo de limpeza tecnica para remover os usos restantes de `datetime.utcnow()` e `dict()` sem pressa e com cobertura adicional.
 6. Backend principal ja foi movido para Render; manter o frontend apontando para `https://nano-ia-api.onrender.com/api`.
