@@ -279,6 +279,9 @@ Nao commitar `.env` ou valores reais dessas chaves no repositorio.
 - `ASAAS_BASE_URL=https://api.asaas.com/v3`
 - `ASAAS_WEBHOOK_SECRET` configurado
 - `ASAAS_WEBHOOK_TOKEN` configurado
+- `STRIPE_SECRET_KEY` configurado
+- `STRIPE_WEBHOOK_SECRET` configurado
+- `STRIPE_PRICE_ID_STARTER` configurado
 - `WHATSAPP_PROVIDER=meta_cloud`
 - `WHATSAPP_WEBHOOK_VERIFY_TOKEN` configurado
 - `WHATSAPP_WEBHOOK_SECRET` configurado
@@ -299,14 +302,13 @@ Nao commitar `.env` ou valores reais dessas chaves no repositorio.
 
 ### Ainda falta para Stripe real
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PRICE_ID_STARTER`
-- `STRIPE_WEBHOOK_SECRET`
 - Se houver mais planos ativos no frontend:
   - `STRIPE_PRICE_ID_PRO`
   - `STRIPE_PRICE_ID_BUSINESS`
 - No painel Stripe, apontar o webhook para:
   - `https://nano-ia-api.onrender.com/api/webhooks/stripe`
+- Status atual no backend Render:
+  - `stripe.ready=true`
 
 ### Ainda falta para Asaas real
 
@@ -315,3 +317,6 @@ Nao commitar `.env` ou valores reais dessas chaves no repositorio.
   - `https://nano-ia-api.onrender.com/api/webhooks/asaas`
 - Enviar o header `asaas-access-token` com o mesmo valor salvo em:
   - `ASAAS_WEBHOOK_TOKEN`
+- Status atual no backend Render:
+  - `asaas.ready=false`
+  - `missing_env=["ASAAS_API_KEY"]`
