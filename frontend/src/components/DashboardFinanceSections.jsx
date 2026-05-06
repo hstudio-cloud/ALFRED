@@ -113,6 +113,7 @@ export const BanksSection = ({
   openFinanceConnections = [],
   openFinanceAccounts = [],
   openFinanceSyncingId = null,
+  openFinanceEnabled = false,
   onOpenFinanceConnect,
   onOpenFinanceSync,
 }) => (
@@ -213,13 +214,20 @@ export const BanksSection = ({
               type="button"
               onClick={onOpenFinanceConnect}
               className={`h-11 ${actionButtonClass}`}
+              disabled={!openFinanceEnabled}
             >
               <Landmark className="mr-2 h-4.5 w-4.5" />
-              Conectar banco
+              {openFinanceEnabled ? "Conectar banco" : "Indisponivel"}
             </Button>
           }
         >
-          {openFinanceConnections.length ? (
+          {!openFinanceEnabled ? (
+            <EmptyState
+              icon={Landmark}
+              title="Open Finance indisponivel no momento"
+              description="Essa integracao foi desabilitada temporariamente. O Nano continua operando com contas e extratos cadastrados manualmente."
+            />
+          ) : openFinanceConnections.length ? (
             <div className="space-y-3">
               {openFinanceConnections.map((connection) => (
                 <div

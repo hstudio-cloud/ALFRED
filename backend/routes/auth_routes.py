@@ -46,6 +46,7 @@ async def register(user_data: UserCreate):
 
         existing_user = await users_collection.find_one({"email": normalized_email})
         if existing_user:
+            logger.info("Register blocked: email already exists for %s", normalized_email)
             raise HTTPException(status_code=400, detail="Email ja cadastrado")
 
         user = User(
@@ -81,10 +82,19 @@ async def login(credentials: UserLogin):
         normalized_email = _normalize_email(credentials.email)
         user = await users_collection.find_one({"email": normalized_email})
         if not user:
+            logger.info("Login failed: user not found for %s", normalized_email)
             raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
-        if not verify_password(credentials.password, user.get("password", "")):
+        password_ok = verify_password(credentials.password, user.get("password", ""))
+        if not password_ok:
+            logger.info(
+                "Login failed: password mismatch for %s hash_prefix=%s",
+                normalized_email,
+                (user.get("password", "") or "")[:7],
+            )
             raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+
+        logger.info("Login success for %s", normalized_email)
 
         token = create_access_token(data={"sub": user["id"], "email": user["email"]})
         return {

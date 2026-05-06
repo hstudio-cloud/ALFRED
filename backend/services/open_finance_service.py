@@ -25,9 +25,24 @@ class OpenFinanceService:
 
     def __init__(self) -> None:
         self.provider = os.getenv("OPEN_FINANCE_PROVIDER", "pluggy").strip().lower()
-        self.base_url = os.getenv("OPEN_FINANCE_BASE_URL", "").strip()
-        self.client_id = os.getenv("OPEN_FINANCE_CLIENT_ID", "").strip()
-        self.client_secret = os.getenv("OPEN_FINANCE_CLIENT_SECRET", "").strip()
+        self.base_url = (
+            os.getenv("OPEN_FINANCE_BASE_URL")
+            or os.getenv("PLUGGY_API_URL")
+            or os.getenv("BELVO_API_URL")
+            or ""
+        ).strip()
+        self.client_id = (
+            os.getenv("OPEN_FINANCE_CLIENT_ID")
+            or os.getenv("PLUGGY_CLIENT_ID")
+            or os.getenv("BELVO_SECRET_ID")
+            or ""
+        ).strip()
+        self.client_secret = (
+            os.getenv("OPEN_FINANCE_CLIENT_SECRET")
+            or os.getenv("PLUGGY_CLIENT_SECRET")
+            or os.getenv("BELVO_SECRET_PASSWORD")
+            or ""
+        ).strip()
         self.api_key = os.getenv("OPEN_FINANCE_API_KEY", "").strip()
         self.webhook_secret = os.getenv("OPEN_FINANCE_WEBHOOK_SECRET", "").strip()
 

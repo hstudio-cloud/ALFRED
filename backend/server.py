@@ -1,58 +1,57 @@
-from fastapi import FastAPI, APIRouter, Request, Response
-from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import logging
-import re
+import os
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+import re
 from typing import List
 import uuid
-from datetime import datetime, timezone
-from contextlib import asynccontextmanager  # Adicionado para gerenciar o Lifespan
 
-# Import routes
+from dotenv import load_dotenv
+from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi.responses import JSONResponse
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, ConfigDict, Field
+from starlette.middleware.cors import CORSMiddleware
+
+from auth import get_password_hash
+from database import users_collection
+from models import User
 from routes import (
-    activities_routes,
     accounts_routes,
+    activities_routes,
     assistant_routes,
     auth_routes,
     billing_routes,
     billing_webhook_routes,
-    task_routes,
     chat_routes,
+    client_routes,
     dashboard_routes,
     finance_hub_routes,
+    finance_routes,
     habit_routes,
     nano_ops_routes,
-    payroll_routes,
-    finance_routes,
-    reports_routes,
-    transactions_routes,
     open_finance_routes,
+    payroll_routes,
+    reports_routes,
+    task_routes,
+    tasks_enhanced_routes,
+    transactions_routes,
     whatsapp_routes,
     workspace_routes,
-    client_routes,
-    tasks_enhanced_routes,
 )
-from database import users_collection
-from auth import get_password_hash
-from models import User
 from services.nano_scheduler_service import NanoSchedulerService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
 
-# Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 scheduler_service = NanoSchedulerService(
@@ -60,61 +59,62 @@ scheduler_service = NanoSchedulerService(
 )
 
 
-# --- NOVO GERENCIADOR DE LIFESPAN ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Initialize database with admin user and default workspace on startup, and close DB on shutdown."""
-    logger.info("Starting Nano API...")
+def _env_flag(name: str, default: str) -> bool:
+    return os.environ.get(name, default).strip().lower() == "true"
 
-    # Create admin user if not exists
+
+async def _seed_admin_if_enabled() -> None:
+    if not _env_flag("SEED_ADMIN_ENABLED", "false"):
+        logger.info("SEED_ADMIN_ENABLED=false, skipping default admin seed")
+        return
+
     admin_email = "admin@alfred.com"
     existing_admin = await users_collection.find_one({"email": admin_email})
+    if existing_admin:
+        logger.info("Admin user already exists")
+        return
 
-    if not existing_admin:
-        admin_user = User(
-            email=admin_email,
-            password=get_password_hash("Admin@123456"),
-            name="Admin",
-            role="admin",
-        )
-        await users_collection.insert_one(admin_user.dict())
-        logger.info(f"✅ Admin user created: {admin_email} / Admin@123456")
+    admin_user = User(
+        email=admin_email,
+        password=get_password_hash("Admin@123456"),
+        name="Admin",
+        role="admin",
+    )
+    await users_collection.insert_one(admin_user.dict())
+    logger.warning("Default admin user created because SEED_ADMIN_ENABLED=true")
 
-        # Create default workspace for admin
-        from models_extended import Workspace
+    from models_extended import Workspace
 
-        default_workspace = Workspace(
-            name="Minha Empresa",
-            subdomain="default",
-            description="Workspace padrão",
-            owner_id=admin_user.id,
-            members=[admin_user.id],
-        )
-        await db.workspaces.insert_one(default_workspace.dict())
-        logger.info(f"✅ Default workspace created for admin")
-    else:
-        logger.info("ℹ️  Admin user already exists")
+    default_workspace = Workspace(
+        name="Minha Empresa",
+        subdomain="default",
+        description="Workspace padrao",
+        owner_id=admin_user.id,
+        members=[admin_user.id],
+    )
+    await db.workspaces.insert_one(default_workspace.dict())
+    logger.warning("Default workspace created for seeded admin")
 
-    if os.environ.get("NANO_AUTOMATION_SCHEDULER_ENABLED", "true").strip().lower() == "true":
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting Nano API...")
+    await _seed_admin_if_enabled()
+
+    if _env_flag("NANO_AUTOMATION_SCHEDULER_ENABLED", "true"):
         await scheduler_service.start()
 
-    # A aplicação roda enquanto está pausada neste yield
     yield
 
-    # --- LÓGICA DE SHUTDOWN (Após o yield) ---
     await scheduler_service.stop()
     client.close()
     logger.info("Nano API shutdown")
 
 
-# Create the main app sem prefixo, injetando o lifespan
 app = FastAPI(title="Nano API", version="1.0.0", lifespan=lifespan)
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
 class StatusCheck(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -126,7 +126,6 @@ class StatusCheckCreate(BaseModel):
     client_name: str
 
 
-# Add your routes to the router
 @api_router.get("/")
 async def root():
     return {"message": "Nano API is running"}
@@ -143,7 +142,7 @@ async def create_status_check(input: StatusCheckCreate):
     status_obj = StatusCheck(**status_dict)
     doc = status_obj.model_dump()
     doc["timestamp"] = doc["timestamp"].isoformat()
-    _ = await db.status_checks.insert_one(doc)
+    await db.status_checks.insert_one(doc)
     return status_obj
 
 
@@ -156,10 +155,7 @@ async def get_status_checks():
     return status_checks
 
 
-# Include the router in the main app
 app.include_router(api_router)
-
-# Include all feature routers
 app.include_router(auth_routes.router)
 app.include_router(workspace_routes.router)
 app.include_router(client_routes.router)
@@ -182,10 +178,8 @@ app.include_router(open_finance_routes.router)
 app.include_router(whatsapp_routes.router)
 app.include_router(nano_ops_routes.router)
 
-# CORS configuration:
-# - Keep explicit allowlist via CORS_ORIGINS for fixed domains.
-# - Support Vercel preview deployments for this frontend project via regex.
-cors_allow_all = os.environ.get("CORS_ALLOW_ALL", "true").strip().lower() == "true"
+
+cors_allow_all = _env_flag("CORS_ALLOW_ALL", "false")
 cors_origins = [
     origin.strip()
     for origin in os.environ.get("CORS_ORIGINS", "").split(",")
@@ -194,7 +188,7 @@ cors_origins = [
 if not cors_origins:
     cors_origins = [
         "http://localhost:3000",
-        "https://frontend-six-woad-fz102b0vy8.vercel.app",
+        "https://seudominio.com.br",
     ]
 
 cors_origin_regex = (
@@ -237,15 +231,9 @@ def _attach_cors_headers(response: Response, origin: str) -> Response:
 
 @app.middleware("http")
 async def ensure_cors_headers(request: Request, call_next):
-    """
-    Defensive CORS layer:
-    - answers OPTIONS preflight even if another layer fails;
-    - ensures CORS headers are present on error responses as well.
-    """
     origin = request.headers.get("origin", "")
 
     if request.method == "OPTIONS":
-        # Return explicit preflight response for browser CORS checks.
         return _attach_cors_headers(Response(status_code=200), origin)
 
     try:
@@ -259,9 +247,8 @@ async def ensure_cors_headers(request: Request, call_next):
 
     return _attach_cors_headers(response, origin)
 
+
 if cors_allow_all:
-    # Beta mode: liberamos CORS geral para evitar bloqueio em previews do Vercel.
-    # Authorization via Bearer header continua exigida em todas as rotas protegidas.
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=False,

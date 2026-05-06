@@ -186,6 +186,25 @@ const Billing = () => {
       return;
     }
 
+    const providerHealth = subscriptionState?.provider_health || {};
+    const stripeHealth = providerHealth?.stripe || { ready: false, missing_env: [] };
+    const asaasHealth = providerHealth?.asaas || { ready: false, missing_env: [] };
+    const selectedMethodReady =
+      paymentMethod === "credit_card" ? stripeHealth.ready : asaasHealth.ready;
+    const selectedMethodMissingEnv =
+      paymentMethod === "credit_card"
+        ? stripeHealth.missing_env || []
+        : asaasHealth.missing_env || [];
+
+    if (!selectedMethodReady) {
+      toast({
+        title: "Pagamento indisponivel",
+        description: `Faltam configuracoes no backend para ${paymentMethod === "credit_card" ? "Stripe" : "Asaas"}: ${selectedMethodMissingEnv.join(", ")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await billingService.createCheckout({
@@ -261,6 +280,15 @@ const Billing = () => {
   const subscription = subscriptionState?.subscription;
   const latestPayment =
     subscriptionState?.latest_payment || checkoutResult?.payment;
+  const providerHealth = subscriptionState?.provider_health || {};
+  const stripeHealth = providerHealth?.stripe || { ready: false, missing_env: [] };
+  const asaasHealth = providerHealth?.asaas || { ready: false, missing_env: [] };
+  const selectedMethodReady =
+    selectedMethod.key === "credit_card" ? stripeHealth.ready : asaasHealth.ready;
+  const selectedMethodMissingEnv =
+    selectedMethod.key === "credit_card"
+      ? stripeHealth.missing_env || []
+      : asaasHealth.missing_env || [];
   const accessLabel =
     accessStatusLabels[access?.status] || "Pagamento aguardando confirmacao";
   const selectedFlowLabel =
@@ -392,16 +420,19 @@ const Billing = () => {
                   {methods.map((method) => {
                     const Icon = method.icon;
                     const isActive = paymentMethod === method.key;
+                    const methodReady =
+                      method.key === "credit_card" ? stripeHealth.ready : asaasHealth.ready;
                     return (
                       <button
                         key={method.key}
                         type="button"
                         onClick={() => setPaymentMethod(method.key)}
+                        disabled={!methodReady}
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           isActive
                             ? "border-red-500/50 bg-red-500/10 shadow-[0_0_30px_rgba(239,68,68,0.12)]"
                             : "border-slate-700/30 bg-slate-950/30 hover:border-slate-600/50"
-                        }`}
+                        } ${!methodReady ? "cursor-not-allowed opacity-55" : ""}`}
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-5 w-5 text-red-300" />
@@ -415,6 +446,11 @@ const Billing = () => {
                         <p className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
                           {method.provider}
                         </p>
+                        {!methodReady ? (
+                          <p className="mt-2 text-xs text-amber-300">
+                            Provider ainda nao configurado
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -431,13 +467,19 @@ const Billing = () => {
                 <p className="mt-2 text-sm leading-7 text-slate-400">
                   {selectedMethod.description}
                 </p>
+                {!selectedMethodReady ? (
+                  <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/8 p-4 text-sm text-amber-200">
+                    Esse fluxo ainda nao esta pronto em producao. Faltam{" "}
+                    {selectedMethodMissingEnv.join(", ")}.
+                  </div>
+                ) : null}
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button
                     type="button"
                     className="bg-white text-slate-950 hover:bg-slate-100"
                     onClick={handleCheckout}
-                    disabled={submitting || !currentWorkspace?.id}
+                    disabled={submitting || !currentWorkspace?.id || !selectedMethodReady}
                   >
                     {submitting ? "Processando..." : "Continuar para o pagamento"}
                   </Button>

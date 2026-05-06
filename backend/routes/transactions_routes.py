@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -44,7 +44,7 @@ def _period_start(period: Optional[str]) -> Optional[datetime]:
     days = mapping.get(period)
     if not days:
         return None
-    return datetime.utcnow() - timedelta(days=days)
+    return datetime.now(timezone.utc) - timedelta(days=days)
 
 
 @router.get("")
@@ -104,9 +104,9 @@ async def create_transaction(
         installment_number=payload.installment_number,
         installment_total=payload.installment_total,
         competency_date=payload.competency_date,
-        date=payload.date or datetime.utcnow(),
+        date=payload.date or datetime.now(timezone.utc),
     )
-    document = transaction.dict()
+    document = transaction.model_dump()
     document["workspace_id"] = workspace_id
     await transactions_collection.insert_one(document)
     return document

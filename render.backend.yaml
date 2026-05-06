@@ -1,0 +1,66 @@
+services:
+  - type: web
+    runtime: python
+    name: nano-ia-api
+    plan: starter
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: alfred
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_TEXT_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_VOICE_MODEL
+        value: gpt-4o-mini-tts
+      - key: OPENAI_VOICE_NAME
+        value: alloy
+      - key: CORS_ALLOW_ALL
+        value: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: NANO_LLM_PROVIDER
+        value: auto
+      - key: NANO_VOICE_PROVIDER
+        value: auto
+      - key: NANO_AUTOMATION_SCHEDULER_ENABLED
+        value: true
+      - key: NANO_AUTOMATION_INTERVAL_SECONDS
+        value: 60
+      - key: SEED_ADMIN_ENABLED
+        value: false
+      - key: OPEN_FINANCE_ENABLED
+        value: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_ID_STARTER
+        sync: false
+      - key: ASAAS_API_KEY
+        sync: false
+      - key: ASAAS_WEBHOOK_SECRET
+        sync: false
+      - key: WHATSAPP_PROVIDER
+        value: meta_cloud
+      - key: WHATSAPP_PROVIDER_TOKEN
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_META_PHONE_NUMBER_ID
+        sync: false

@@ -10,6 +10,14 @@ from fastapi import HTTPException
 STRIPE_API_VERSION = "2026-02-25.clover"
 
 
+def _default_frontend_url() -> str:
+    return (
+        (os.getenv("FRONTEND_URL") or "").strip()
+        or (os.getenv("APP_URL") or "").strip()
+        or "https://frontend-six-woad-fz102b0vy8.vercel.app"
+    ).rstrip("/")
+
+
 def get_stripe_client():
     secret_key = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
     if not secret_key:
@@ -34,15 +42,16 @@ def resolve_price_id(plan_code: Optional[str], explicit_price_id: Optional[str] 
 
 
 def resolve_checkout_urls(success_url: Optional[str], cancel_url: Optional[str]) -> tuple[str, str]:
+    frontend_url = _default_frontend_url()
     resolved_success = (
         success_url
         or (os.getenv("STRIPE_CHECKOUT_SUCCESS_URL") or "").strip()
-        or "https://frontend-six-woad-fz102b0vy8.vercel.app/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"
+        or f"{frontend_url}/billing?checkout=success&session_id={{CHECKOUT_SESSION_ID}}"
     )
     resolved_cancel = (
         cancel_url
         or (os.getenv("STRIPE_CHECKOUT_CANCEL_URL") or "").strip()
-        or "https://frontend-six-woad-fz102b0vy8.vercel.app/billing?checkout=cancelled"
+        or f"{frontend_url}/billing?checkout=cancelled"
     )
     return resolved_success, resolved_cancel
 
@@ -51,7 +60,7 @@ def resolve_portal_return_url(return_url: Optional[str]) -> str:
     return (
         return_url
         or (os.getenv("STRIPE_CUSTOMER_PORTAL_RETURN_URL") or "").strip()
-        or "https://frontend-six-woad-fz102b0vy8.vercel.app/billing"
+        or f"{_default_frontend_url()}/billing"
     )
 
 

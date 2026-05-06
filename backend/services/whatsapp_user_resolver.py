@@ -10,6 +10,14 @@ def normalize_phone_number(raw_phone: str) -> str:
     return re.sub(r"\D", "", raw_phone or "")
 
 
+async def _load_workspace_identity(identity: dict) -> Optional[dict]:
+    user = await users_collection.find_one({"id": identity["user_id"]}, {"_id": 0})
+    workspace = await db.workspaces.find_one({"id": identity["workspace_id"]}, {"_id": 0})
+    if user and workspace:
+        return {"user": user, "workspace": workspace, "identity": identity, "resolution_source": "identity"}
+    return None
+
+
 async def resolve_user_workspace_by_phone(phone_number: str) -> Optional[dict]:
     normalized = normalize_phone_number(phone_number)
     if not normalized:
@@ -18,28 +26,29 @@ async def resolve_user_workspace_by_phone(phone_number: str) -> Optional[dict]:
     identity = await whatsapp_identities_collection.find_one(
         {
             "phone_number": normalized,
-            "status": {"$in": ["linked", "pending"]},
+            "status": "linked",
         },
         {"_id": 0},
     )
     if identity:
-        user = await users_collection.find_one({"id": identity["user_id"]}, {"_id": 0})
-        workspace = await db.workspaces.find_one({"id": identity["workspace_id"]}, {"_id": 0})
-        if user and workspace:
-            return {"user": user, "workspace": workspace, "identity": identity}
+        return await _load_workspace_identity(identity)
 
-    user = await users_collection.find_one(
+    if len(normalized) < 8:
+        return None
+
+    matches = await users_collection.find(
         {
             "$or": [
-                {"phone": {"$regex": normalized[-8:]}},
-                {"profile.phone": {"$regex": normalized[-8:]}},
-                {"settings.phone": {"$regex": normalized[-8:]}},
+                {"phone": {"$regex": f"{normalized[-8:]}$"}},
+                {"profile.phone": {"$regex": f"{normalized[-8:]}$"}},
+                {"settings.phone": {"$regex": f"{normalized[-8:]}$"}},
             ]
         },
         {"_id": 0},
-    )
-    if not user:
+    ).to_list(5)
+    if len(matches) != 1:
         return None
+    user = matches[0]
 
     workspace = await db.workspaces.find_one(
         {"$or": [{"owner_id": user["id"]}, {"members": user["id"]}]},
@@ -48,4 +57,4 @@ async def resolve_user_workspace_by_phone(phone_number: str) -> Optional[dict]:
     if not workspace:
         return None
 
-    return {"user": user, "workspace": workspace, "identity": None}
+    return {"user": user, "workspace": workspace, "identity": None, "resolution_source": "user_phone_fallback"}

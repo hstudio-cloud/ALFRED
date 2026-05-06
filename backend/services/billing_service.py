@@ -97,6 +97,39 @@ def _plan_amount(plan_code: str) -> float:
         return 49.90
 
 
+def _is_configured(env_key: str) -> bool:
+    return bool((os.getenv(env_key) or "").strip())
+
+
+def _billing_provider_health(plan_code: str) -> Dict[str, Any]:
+    normalized_plan = (plan_code or "starter").strip().lower().replace("-", "_")
+    stripe_price_key = f"STRIPE_PRICE_ID_{normalized_plan.upper()}"
+    stripe_missing = []
+    if not _is_configured("STRIPE_SECRET_KEY"):
+        stripe_missing.append("STRIPE_SECRET_KEY")
+    if not (_is_configured(stripe_price_key) or _is_configured("STRIPE_DEFAULT_PRICE_ID")):
+        stripe_missing.append(stripe_price_key)
+    if not _is_configured("STRIPE_WEBHOOK_SECRET"):
+        stripe_missing.append("STRIPE_WEBHOOK_SECRET")
+
+    asaas_missing = []
+    if not _is_configured("ASAAS_API_KEY"):
+        asaas_missing.append("ASAAS_API_KEY")
+    if not (_is_configured("ASAAS_WEBHOOK_SECRET") or _is_configured("ASAAS_WEBHOOK_TOKEN")):
+        asaas_missing.append("ASAAS_WEBHOOK_SECRET")
+
+    return {
+        "stripe": {
+            "ready": len(stripe_missing) == 0,
+            "missing_env": stripe_missing,
+        },
+        "asaas": {
+            "ready": len(asaas_missing) == 0,
+            "missing_env": asaas_missing,
+        },
+    }
+
+
 async def create_checkout(
     *,
     current_user: dict,
@@ -246,12 +279,14 @@ async def create_stripe_portal(*, current_user: dict, workspace_id: Optional[str
 async def get_subscription_state(*, current_user: dict, workspace_id: Optional[str]) -> Dict[str, Any]:
     workspace = await resolve_workspace(current_user, workspace_id)
     subscription = await get_subscription_by_workspace(workspace["id"])
+    provider_health = _billing_provider_health((subscription or {}).get("plan_code") or "starter")
     if not subscription:
         return {
             "workspace_id": workspace["id"],
             "subscription": None,
             "latest_payment": None,
             "access": build_access_snapshot(None),
+            "provider_health": provider_health,
         }
 
     latest_payment = await get_latest_payment(subscription["id"])
@@ -260,6 +295,7 @@ async def get_subscription_state(*, current_user: dict, workspace_id: Optional[s
         "subscription": subscription,
         "latest_payment": latest_payment,
         "access": build_access_snapshot(subscription),
+        "provider_health": provider_health,
     }
 
 

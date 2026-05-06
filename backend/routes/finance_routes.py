@@ -487,8 +487,9 @@ async def create_reminder(
         linked_type=payload.linked_type,
         linked_id=payload.linked_id,
     )
-    await reminders_collection.insert_one(reminder.dict())
-    return reminder.dict()
+    reminder_payload = reminder.model_dump()
+    await reminders_collection.insert_one(reminder_payload)
+    return reminder_payload
 
 
 @router.put("/reminders/{reminder_id}")

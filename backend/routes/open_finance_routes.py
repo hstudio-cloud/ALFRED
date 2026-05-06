@@ -22,6 +22,15 @@ class OpenFinanceSyncRequest(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
 
 
+def _open_finance_enabled() -> bool:
+    return str(os.getenv("OPEN_FINANCE_ENABLED") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _ensure_open_finance_enabled() -> None:
+    if not _open_finance_enabled():
+        raise HTTPException(status_code=503, detail="Open Finance indisponivel no momento.")
+
+
 def _verify_open_finance_webhook_secret(secret: str | None) -> bool:
     expected = (os.getenv("OPEN_FINANCE_WEBHOOK_SECRET") or "").strip()
     if not expected:
@@ -35,6 +44,7 @@ async def create_connect_token(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.create_connect_token(
         user_id=current_user["id"],
@@ -50,6 +60,7 @@ async def connect_callback(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     connection = await open_finance_service.save_connection(
         user_id=current_user["id"],
@@ -76,6 +87,8 @@ async def open_finance_webhook(
         alias="X-Open-Finance-Webhook-Secret",
     ),
 ):
+    if not _open_finance_enabled():
+        return {"received": True, "ignored": True, "reason": "open_finance_disabled"}
     if not _verify_open_finance_webhook_secret(x_open_finance_webhook_secret):
         raise HTTPException(status_code=401, detail="Webhook secret invalido.")
 
@@ -125,6 +138,7 @@ async def list_connections(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_connections(workspace_id=workspace_id)
 
@@ -136,6 +150,7 @@ async def sync_connection(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     result = await open_finance_sync_service.sync_connection(
         workspace_id=workspace_id,
@@ -152,6 +167,7 @@ async def list_external_accounts(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_accounts(workspace_id=workspace_id)
 
@@ -163,6 +179,7 @@ async def list_external_transactions(
     limit: int = Query(200, ge=1, le=5000),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     return await open_finance_service.list_transactions(
         workspace_id=workspace_id,
@@ -177,6 +194,7 @@ async def delete_connection(
     workspace_id: str = Query(...),
     current_user: dict = Depends(get_current_user),
 ):
+    _ensure_open_finance_enabled()
     await verify_workspace_access(workspace_id, current_user)
     deleted = await open_finance_service.delete_connection(
         workspace_id=workspace_id,

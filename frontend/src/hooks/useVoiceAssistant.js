@@ -254,10 +254,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         const backendTranscriptionAvailable = Boolean(status?.transcription_available) && backendFallbackSupported;
         setVoiceProviderType(status?.provider || provider.type);
         backendTranscriptionAvailableRef.current = backendTranscriptionAvailable;
-        // Mantem a escuta continua do navegador como caminho principal.
-        // A captura com transcricao backend fica como fallback quando o SpeechRecognition falha
-        // ou quando o navegador nao oferece suporte nativo.
-        preferBackendTranscriptionRef.current = backendTranscriptionAvailable && !recognitionSupported;
+        // Em producao a transcricao backend e mais consistente do que o
+        // SpeechRecognition nativo, que varia bastante entre navegadores.
+        // Mantemos o reconhecimento do navegador apenas como fallback.
+        preferBackendTranscriptionRef.current = backendTranscriptionAvailable;
         setAssistantRuntime({
           runtimeMode: status?.runtime_mode || 'browser_fallback',
           llmProvider: status?.llm_provider || 'rule_based',
@@ -729,14 +729,14 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
     setError(null);
     keepListeningRef.current = true;
-    awaitingCommandRef.current = false;
-    setIsAwaitingVoiceCommand(false);
+    awaitingCommandRef.current = true;
+    setIsAwaitingVoiceCommand(true);
     setIsWakeArmed(true);
     setPartialTranscript('');
     setFinalTranscript('');
-    updateVoiceState('processing', 'Ativando microfone do Nano...');
+    updateVoiceState('processing', 'Ativando microfone do Nano. Pode falar seu comando...');
 
-      if (preferBackendTranscriptionRef.current && backendTranscriptionAvailableRef.current) {
+      if (backendTranscriptionAvailableRef.current && preferBackendTranscriptionRef.current) {
         backendCaptureStarterRef.current?.();
         return;
       }
@@ -753,7 +753,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
               if (backendTranscriptionAvailableRef.current) {
                 preferBackendTranscriptionRef.current = true;
                 backendCaptureStarterRef.current?.();
-                updateVoiceState('listening', 'Ativei o modo alternativo de escuta do Nano.');
+                updateVoiceState('listening', 'Microfone ativo. Pode falar seu comando.');
                 return;
               }
 
@@ -767,6 +767,13 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
           }, 4500);
           return;
         } catch (startError) {
+          if (backendTranscriptionAvailableRef.current) {
+            preferBackendTranscriptionRef.current = true;
+            backendCaptureStarterRef.current?.();
+            updateVoiceState('listening', 'Microfone ativo. Pode falar seu comando.');
+            return;
+          }
+
           setError(startError);
           updateVoiceState('error', 'Nao consegui iniciar o microfone do navegador.');
           keepListeningRef.current = false;

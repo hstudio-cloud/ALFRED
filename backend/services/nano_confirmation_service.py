@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from database import pending_confirmations_collection
@@ -38,14 +38,15 @@ async def create_pending_confirmation(
         workspace_id=workspace_id,
         action=action,
         source_channel=source_channel,
-        expires_at=datetime.utcnow() + timedelta(minutes=expires_in_minutes),
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes),
     )
-    await pending_confirmations_collection.insert_one(record.dict())
-    return record.dict()
+    record_payload = record.model_dump()
+    await pending_confirmations_collection.insert_one(record_payload)
+    return record_payload
 
 
 async def get_latest_pending_confirmation(*, user_id: str, workspace_id: str) -> Optional[Dict[str, Any]]:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     record = await pending_confirmations_collection.find_one(
         {
             "user_id": user_id,
@@ -69,7 +70,7 @@ async def get_latest_pending_confirmation(*, user_id: str, workspace_id: str) ->
 async def mark_confirmation_status(confirmation_id: str, status: str) -> None:
     await pending_confirmations_collection.update_one(
         {"id": confirmation_id},
-        {"$set": {"status": status, "updated_at": datetime.utcnow()}},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}},
     )
 
 

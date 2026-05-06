@@ -9,7 +9,11 @@ from fastapi import HTTPException
 
 
 def _base_url() -> str:
-    return (os.getenv("ASAAS_BASE_URL") or "https://api-sandbox.asaas.com/v3").strip().rstrip("/")
+    return (
+        os.getenv("ASAAS_BASE_URL")
+        or os.getenv("ASAAS_API_URL")
+        or "https://api-sandbox.asaas.com/v3"
+    ).strip().rstrip("/")
 
 
 def _headers() -> Dict[str, str]:
@@ -111,7 +115,11 @@ async def create_boleto_charge(
 
 
 def verify_webhook_signature(header_token: str | None) -> bool:
-    expected = (os.getenv("ASAAS_WEBHOOK_TOKEN") or "").strip()
+    expected = (
+        os.getenv("ASAAS_WEBHOOK_TOKEN")
+        or os.getenv("ASAAS_WEBHOOK_SECRET")
+        or ""
+    ).strip()
     if not expected:
         return True
     return (header_token or "").strip() == expected

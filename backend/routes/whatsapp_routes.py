@@ -2,15 +2,12 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from services.whatsapp_message_router import route_whatsapp_message
+from nano_ops.whatsapp_channel import handle_incoming_whatsapp_message
 from services.whatsapp_service import (
     extract_whatsapp_message,
-    send_whatsapp_message,
     verify_whatsapp_signature,
     verify_whatsapp_webhook,
 )
-from services.whatsapp_link_service import consume_link_code
-from services.whatsapp_user_resolver import resolve_user_workspace_by_phone
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -61,31 +58,8 @@ async def whatsapp_webhook(
     if not sender or not message_text:
         return {"ok": True, "ignored": True, "reason": "no_supported_message"}
 
-    resolved = await resolve_user_workspace_by_phone(sender)
-    if not resolved or not resolved.get("identity"):
-        linked = await consume_link_code(code=message_text, phone_number=sender)
-        if linked:
-            reply = "Número vinculado com sucesso ao Nano. Pode me enviar comandos financeiros por aqui."
-            delivery = await send_whatsapp_message(to=sender, text=reply)
-            return {"ok": True, "resolved": True, "linked": True, "reply": reply, "delivery": delivery}
-
-        reply = "Nao encontrei este numero vinculado ao Nano. Gere um codigo no painel e envie esse codigo aqui para conectar o WhatsApp."
-        delivery = await send_whatsapp_message(to=sender, text=reply)
-        return {"ok": True, "resolved": False, "reply": reply, "delivery": delivery}
-
-    routed = await route_whatsapp_message(
-        user=resolved["user"],
-        workspace=resolved["workspace"],
-        content=message_text,
-        contact_name=incoming.get("profile_name"),
+    return await handle_incoming_whatsapp_message(
+        sender=sender,
+        message_text=message_text,
+        incoming=incoming,
     )
-    delivery = await send_whatsapp_message(to=sender, text=routed["reply"])
-    return {
-        "ok": True,
-        "resolved": True,
-        "intent": routed.get("intent"),
-        "risk_level": routed.get("risk_level"),
-        "requires_confirmation": routed.get("requires_confirmation"),
-        "used_tools": routed.get("used_tools", []),
-        "delivery": delivery,
-    }
