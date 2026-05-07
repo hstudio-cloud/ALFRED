@@ -14,6 +14,7 @@ from models_extended import ReminderFinancialCreate  # noqa: E402
 from routes import auth_routes, dashboard_routes, finance_routes, transactions_routes  # noqa: E402
 from services import nano_channel_router, subscription_access_service  # noqa: E402
 from nano_ops import whatsapp_channel  # noqa: E402
+from nano_ai.specialists import ActivitySpecialist  # noqa: E402
 from tools import open_finance_tools  # noqa: E402
 
 
@@ -190,6 +191,20 @@ def test_nano_agenda_question_sanity(monkeypatch):
 
     assert result["intent"] == "agenda_summary"
     assert "agenda" in result["reply"].lower()
+
+
+def test_activity_specialist_understands_natural_gym_request():
+    specialist = ActivitySpecialist()
+
+    actions = specialist.detect("nano quero voltar pra academia dia 11 desse mes as 18h todo dia")
+
+    assert actions
+    action = actions[0]
+    assert action.type == "create_activity"
+    assert action.data["recurrence"] == "daily"
+    assert action.data["title"].lower() == "academia"
+    assert action.data["start_at"] is not None
+    assert "18:00:00" in action.data["start_at"]
 
 
 def test_whatsapp_webhook_without_link_sanity(monkeypatch):

@@ -247,6 +247,43 @@ class SpecialistBase:
             except ValueError:
                 return None
 
+        relative_month_match = re.search(
+            r"\bdia\s+(\d{1,2})\s+(?:desse|deste|do)\s+mes\b",
+            message_lower,
+        )
+        if relative_month_match:
+            day = int(relative_month_match.group(1))
+            month = now.month
+            year = now.year
+            try:
+                parsed = datetime(year, month, day, default_hour, default_minute, 0)
+                if parsed < now:
+                    if month == 12:
+                        year += 1
+                        month = 1
+                    else:
+                        month += 1
+                    parsed = datetime(year, month, day, default_hour, default_minute, 0)
+                parsed_base = parsed
+            except ValueError:
+                return None
+
+        next_month_match = re.search(
+            r"\bdia\s+(\d{1,2})\s+(?:do|de)\s+mes\s+que\s+vem\b",
+            message_lower,
+        )
+        if next_month_match:
+            day = int(next_month_match.group(1))
+            month = now.month + 1
+            year = now.year
+            if month > 12:
+                month = 1
+                year += 1
+            try:
+                parsed_base = datetime(year, month, day, default_hour, default_minute, 0)
+            except ValueError:
+                return None
+
         if parsed_base is None:
             return None
 
@@ -636,13 +673,16 @@ class ActivitySpecialist(SpecialistBase):
 
     def _extract_title(self, cleaned_message: str) -> str:
         title = re.sub(
-            r"(?i)\b(registre|registrar|crie|criar|adicione|adicionar|nova|novo|uma|um|atividade|lembrete|quero|eu quero|nano)\b",
+            r"(?i)\b(registre|registrar|crie|criar|adicione|adicionar|nova|novo|uma|um|atividade|lembrete|quero|eu quero|nano|preciso|voltar|retomar|comecar|comecar a|voltar a)\b",
             "",
             cleaned_message,
         ).strip(" ,.-:")
+        title = re.sub(r"(?i)\b(pra|para)\b", " ", title).strip(" ,.-:")
         title = re.sub(r"(?i)\b(a partir de|apartir de)\b.*$", "", title).strip(" ,.-:")
         title = re.sub(r"(?i)\btodos?\b.*$", "", title).strip(" ,.-:")
         title = re.sub(r"(?i)\bno mesmo horario\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\bdia\s+\d{1,2}\s+(?:desse|deste|do)\s+mes\b.*$", "", title).strip(" ,.-:")
+        title = re.sub(r"(?i)\bdia\s+\d{1,2}\s+(?:do|de)\s+mes\s+que\s+vem\b.*$", "", title).strip(" ,.-:")
         title = re.sub(r"(?i)\bas\s+\d{1,2}(?::\d{2}|h\d{0,2})?\b.*$", "", title).strip(" ,.-:")
         title = re.sub(r"\s+", " ", title).strip(" ,.-:")
         return title or "Atividade"
@@ -725,6 +765,13 @@ class ActivitySpecialist(SpecialistBase):
             "adicione",
             "agendar",
             "agende",
+            "quero",
+            "preciso",
+            "voltar",
+            "retomar",
+            "comecar",
+            "todo dia",
+            "todos os dias",
         ]
         if not any(keyword in message_lower for keyword in intent_keywords):
             return []
