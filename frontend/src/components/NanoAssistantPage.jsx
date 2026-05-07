@@ -1,17 +1,13 @@
 import React from "react";
-import { useVoiceAssistant } from "../hooks/useVoiceAssistant";
+import { useNanoAssistant } from "../context/NanoAssistantContext";
 import NanoChatPanel from "./NanoChatPanel";
 import { nanoQuickPromptMap } from "../lib/nanoTheme";
 
 const NanoAssistantPage = ({
-  financialView = "general",
-  onAfterMessage,
   userName = "Heitor",
   transactions = [],
   reminders = [],
   bills = [],
-  onNavigateSection,
-  onNavigateRoute,
 }) => {
   const {
     chatHistory,
@@ -37,20 +33,7 @@ const NanoAssistantPage = ({
     cancelVoiceCommand,
     interruptSpeaking,
     sendMessage,
-  } = useVoiceAssistant({
-    onAfterMessage,
-    onAssistantAction: (action) => {
-      if (action?.type === "navigate") {
-        if (action?.data?.route && action.data.route !== "/dashboard") {
-          onNavigateRoute?.(action.data.route);
-          return;
-        }
-        if (action?.data?.section) {
-          onNavigateSection?.(action.data.section);
-        }
-      }
-    },
-  });
+  } = useNanoAssistant();
 
   const handleQuickPrompt = (prompt) => {
     setMessage(nanoQuickPromptMap[prompt] || prompt);

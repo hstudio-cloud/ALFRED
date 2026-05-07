@@ -1758,10 +1758,41 @@ const Dashboard = () => {
     }
   };
 
-  const refreshAfterAssistantMessage = useCallback(() => {
-    if (currentWorkspace?.id) {
-      loadAll(currentWorkspace.id);
-    }
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleAssistantRefresh = () => {
+      if (currentWorkspace?.id) {
+        loadAll(currentWorkspace.id);
+      }
+    };
+
+    const handleSectionRequest = (event) => {
+      const requestedSection = event.detail?.section;
+      if (requestedSection) {
+        setActiveSection(requestedSection);
+      }
+    };
+
+    window.addEventListener(
+      "nano-assistant-after-message",
+      handleAssistantRefresh,
+    );
+    window.addEventListener(
+      "nano-dashboard-section-request",
+      handleSectionRequest,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "nano-assistant-after-message",
+        handleAssistantRefresh,
+      );
+      window.removeEventListener(
+        "nano-dashboard-section-request",
+        handleSectionRequest,
+      );
+    };
   }, [currentWorkspace?.id, loadAll]);
 
   const scopeLabel =
@@ -4799,11 +4830,7 @@ const Dashboard = () => {
     assistant: (
       <DashboardAssistant
         bills={bills}
-        financialView={financialView}
-        navigate={navigate}
-        onAfterMessage={refreshAfterAssistantMessage}
         reminders={reminders}
-        setActiveSection={setActiveSection}
         transactions={transactions}
         userName={user?.name}
       />

@@ -4,8 +4,15 @@ import assistantService from '../services/assistantService';
 import { API_BASE_URL, VOICE_PROVIDER } from '../config/env';
 
 const API = API_BASE_URL;
+const GLOBAL_VOICE_ENABLED_STORAGE_KEY = 'nano_voice_auto_enabled';
+const MICROPHONE_PERMISSION_STORAGE_KEY = 'nano_voice_permission_granted';
 
-export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssistantAction } = {}) => {
+export const useVoiceAssistant = ({
+  wakeWord = 'nano',
+  autoStart = false,
+  onAfterMessage,
+  onAssistantAction
+} = {}) => {
   const [chatHistory, setChatHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [partialTranscript, setPartialTranscript] = useState('');
@@ -55,6 +62,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   const lastSpeechActivityRef = useRef(0);
   const lastInputLevelRef = useRef(0.08);
   const lastInputLevelPushRef = useRef(0);
+  const autoStartAttemptedRef = useRef(false);
 
   const updateVoiceState = useCallback((nextState, nextStatus) => {
     setVoiceState(nextState);
@@ -75,84 +83,21 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     lastSpeechActivityRef.current = Date.now();
   }, []);
 
+  const persistVoiceActivation = useCallback((enabled) => {
+    if (typeof window === 'undefined') return;
+    if (enabled) {
+      window.localStorage.setItem(GLOBAL_VOICE_ENABLED_STORAGE_KEY, 'true');
+      window.dispatchEvent(new CustomEvent('nano-voice-enabled-change', { detail: { enabled: true } }));
+      return;
+    }
+    window.localStorage.removeItem(GLOBAL_VOICE_ENABLED_STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent('nano-voice-enabled-change', { detail: { enabled: false } }));
+  }, []);
+
   const looksLikeWakeWord = useCallback((text) => {
     const lowered = (text || '').toLowerCase().trim();
     if (!lowered) return false;
     return /\b(nano|nanno|nanu|na no)\b/.test(lowered);
-  }, []);
-
-  const looksLikeDirectFinancialCommand = useCallback((text) => {
-    const lowered = (text || '').toLowerCase().trim();
-    if (!lowered) return false;
-    const commandHints = [
-      'criar despesa',
-      'crie uma despesa',
-      'despesa',
-      'gasto',
-      'gastei',
-      'paguei',
-      'comprei',
-      'registrar pix',
-      'pix',
-      'boleto',
-      'conta',
-      'fatura',
-      'vencimento',
-      'lembrete',
-      'lembrar',
-      'receita',
-      'recebi',
-      'ganhei',
-      'fluxo de caixa',
-      'analisar gastos',
-      'gastos do mes',
-      'mostrar gastos',
-      'categoria',
-      'combustivel',
-      'alimentacao',
-      'fornecedor',
-      'empresa',
-      'pessoal'
-    ];
-    return commandHints.some((hint) => lowered.includes(hint));
-  }, []);
-
-  const looksLikeNaturalVoiceQuestion = useCallback((text) => {
-    const lowered = (text || '').toLowerCase().trim();
-    if (!lowered || lowered.length < 4) return false;
-
-    const hints = [
-      'tem ',
-      'tenho ',
-      'qual ',
-      'quanto ',
-      'como ',
-      'por que',
-      'porque',
-      'quem ',
-      'quando ',
-      'onde ',
-      'me explica',
-      'explique',
-      'quero saber',
-      'me mostra',
-      'mostrar ',
-      'agenda',
-      'hoje',
-      'amanha',
-      'essa semana',
-      'me ajuda',
-      'preciso',
-      'quero',
-      'pode',
-      'alguma sugest',
-      'alguma recomend',
-      'o que voce acha',
-      'o que acha',
-      'me recomenda',
-    ];
-
-    return hints.some((hint) => lowered.includes(hint)) || /\?$/.test(lowered);
   }, []);
 
   useEffect(() => {
@@ -208,6 +153,31 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
   useEffect(() => {
     wakeWordRef.current = wakeWord;
   }, [wakeWord]);
+
+  const acknowledgeWakeWord = useCallback(async () => {
+    awaitingCommandRef.current = true;
+    setIsAwaitingVoiceCommand(true);
+    updateVoiceState('listening', 'Estou aqui. Pode falar.');
+    pauseRecognitionForAssistant();
+    await providerRef.current?.speak?.('Estou aqui.', {
+      preferPremium: true,
+      onStart: () => {
+        setError(null);
+        setIsSpeaking(true);
+      },
+      onEnd: () => {
+        setIsSpeaking(false);
+        setError(null);
+        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
+        resumeRecognitionAfterAssistant();
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
+        resumeRecognitionAfterAssistant();
+      }
+    });
+  }, [pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, updateVoiceState]);
 
   const pauseRecognitionForAssistant = useCallback(() => {
     if (!keepListeningRef.current) return;
@@ -459,11 +429,32 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       if (onAfterMessage) {
         onAfterMessage();
       }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('nano-assistant-after-message', {
+            detail: {
+              response,
+              assistantMessage,
+              source: options.source || 'text'
+            }
+          })
+        );
+      }
 
       const executedActions = response.executed_actions || assistantMessage?.metadata?.executed_actions || [];
       const declaredActions = response.actions || assistantMessage?.metadata?.actions || [];
       [...declaredActions, ...executedActions].forEach((action) => {
         onAssistantAction?.(action);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('nano-assistant-action', {
+              detail: {
+                action,
+                source: options.source || 'text'
+              }
+            })
+          );
+        }
       });
 
       const intent = response.intent || assistantMessage?.metadata?.intent;
@@ -562,6 +553,10 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     const wakeMatch = lowered.match(wakeRegex);
 
     if (awaitingCommandRef.current) {
+      if (looksLikeWakeWord(cleanedTranscript)) {
+        await acknowledgeWakeWord();
+        return;
+      }
       awaitingCommandRef.current = false;
       setIsAwaitingVoiceCommand(false);
       updateVoiceState('processing', `Comando recebido: "${cleanedTranscript}"`);
@@ -570,15 +565,6 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     }
 
     if (!wakeMatch) {
-      if (
-        isWakeArmed
-        && (looksLikeDirectFinancialCommand(cleanedTranscript) || looksLikeNaturalVoiceQuestion(cleanedTranscript))
-      ) {
-        updateVoiceState('processing', `Comando recebido: "${cleanedTranscript}"`);
-        await handleRealtimeTurn(cleanedTranscript, { source: 'voice' });
-        return;
-      }
-
       updateVoiceState(
         isWakeArmed ? 'listening' : 'idle',
         isWakeArmed
@@ -596,29 +582,8 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       return;
     }
 
-    awaitingCommandRef.current = true;
-    setIsAwaitingVoiceCommand(true);
-    updateVoiceState('listening', 'Em que posso ajudar, senhor? Estou ouvindo.');
-    pauseRecognitionForAssistant();
-    await providerRef.current?.speak?.('Em que posso ajudar, senhor?', {
-      preferPremium: true,
-      onStart: () => {
-        setError(null);
-        setIsSpeaking(true);
-      },
-      onEnd: () => {
-        setIsSpeaking(false);
-        setError(null);
-        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
-        resumeRecognitionAfterAssistant();
-      },
-      onError: () => {
-        setIsSpeaking(false);
-        updateVoiceState('listening', 'Pode falar. Vou continuar com a voz local ou texto.');
-        resumeRecognitionAfterAssistant();
-      }
-    });
-  }, [handleRealtimeTurn, isWakeArmed, looksLikeDirectFinancialCommand, looksLikeNaturalVoiceQuestion, pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
+    await acknowledgeWakeWord();
+  }, [acknowledgeWakeWord, handleRealtimeTurn, isWakeArmed, looksLikeWakeWord, scheduleTranscriptCleanup, updateVoiceState, wakeWord]);
 
   useEffect(() => {
     transcriptProcessorRef.current = processVoiceTranscript;
@@ -634,6 +599,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         onStart: () => {
           setError(null);
           setIsListening(true);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(MICROPHONE_PERMISSION_STORAGE_KEY, 'true');
+          }
           markSpeechActivity();
           if (listeningActivationTimerRef.current) {
             clearTimeout(listeningActivationTimerRef.current);
@@ -729,12 +697,13 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
     setError(null);
     keepListeningRef.current = true;
-    awaitingCommandRef.current = true;
-    setIsAwaitingVoiceCommand(true);
+    awaitingCommandRef.current = false;
+    setIsAwaitingVoiceCommand(false);
     setIsWakeArmed(true);
     setPartialTranscript('');
     setFinalTranscript('');
-    updateVoiceState('processing', 'Ativando microfone do Nano. Pode falar seu comando...');
+    persistVoiceActivation(true);
+    updateVoiceState('processing', `Ativando microfone do Nano. Diga ${wakeWord} para chamar.`);
 
       if (backendTranscriptionAvailableRef.current && preferBackendTranscriptionRef.current) {
         backendCaptureStarterRef.current?.();
@@ -745,6 +714,9 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
         try {
           preferBackendTranscriptionRef.current = false;
           recognizerRef.current.start();
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(MICROPHONE_PERMISSION_STORAGE_KEY, 'true');
+          }
           if (listeningActivationTimerRef.current) {
             clearTimeout(listeningActivationTimerRef.current);
           }
@@ -788,7 +760,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     }
 
     updateVoiceState('error', 'Nao consegui iniciar o reconhecimento de voz neste navegador.');
-  }, [updateVoiceState, voiceSupported]);
+  }, [persistVoiceActivation, updateVoiceState, voiceSupported, wakeWord]);
 
   const stopListening = useCallback(() => {
     keepListeningRef.current = false;
@@ -799,6 +771,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     setPartialTranscript('');
     setFinalTranscript('');
     setError(null);
+    persistVoiceActivation(false);
     lastInputLevelRef.current = 0.08;
     lastInputLevelPushRef.current = Date.now();
     setInputLevel(0.08);
@@ -822,7 +795,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
 
     pausedForAssistantRef.current = false;
     updateVoiceState('idle', 'Escuta de voz desativada.');
-  }, [updateVoiceState]);
+  }, [persistVoiceActivation, updateVoiceState]);
 
   const cancelVoiceCommand = useCallback(() => {
     keepListeningRef.current = false;
@@ -834,6 +807,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     setPartialTranscript('');
     setFinalTranscript('');
     setError(null);
+    persistVoiceActivation(false);
     lastInputLevelRef.current = 0.08;
     lastInputLevelPushRef.current = Date.now();
     setInputLevel(0.08);
@@ -859,7 +833,7 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
     }
 
     updateVoiceState('idle', 'Comando de voz cancelado.');
-  }, [updateVoiceState]);
+  }, [persistVoiceActivation, updateVoiceState]);
 
   useEffect(() => {
     if (!isWakeArmed) {
@@ -900,6 +874,40 @@ export const useVoiceAssistant = ({ wakeWord = 'nano', onAfterMessage, onAssista
       }
     };
   }, [isWakeArmed, updateVoiceState, wakeWord]);
+
+  useEffect(() => {
+    if (!autoStart || autoStartAttemptedRef.current || isWakeArmed || !voiceSupported) {
+      return;
+    }
+
+    if (typeof window === 'undefined' || !window.isSecureContext) {
+      return;
+    }
+
+    const persistedEnabled = window.localStorage.getItem(GLOBAL_VOICE_ENABLED_STORAGE_KEY) === 'true';
+    const persistedPermission = window.localStorage.getItem(MICROPHONE_PERMISSION_STORAGE_KEY) === 'true';
+    if (!persistedEnabled || !persistedPermission) {
+      return;
+    }
+
+    autoStartAttemptedRef.current = true;
+
+    const tryAutoStart = async () => {
+      try {
+        if (navigator?.permissions?.query) {
+          const permission = await navigator.permissions.query({ name: 'microphone' });
+          if (permission.state !== 'granted') {
+            return;
+          }
+        }
+        startListening();
+      } catch (permissionError) {
+        void permissionError;
+      }
+    };
+
+    void tryAutoStart();
+  }, [autoStart, isWakeArmed, startListening, voiceSupported]);
 
   return {
     apiBase: API,

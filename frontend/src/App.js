@@ -1,10 +1,12 @@
 import './App.css';
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
+import { NanoAssistantProvider } from './context/NanoAssistantContext';
 import { Toaster } from './components/ui/toaster';
 import ProtectedRoute from './components/ProtectedRoute';
+import GlobalNanoVoiceBridge from './components/GlobalNanoVoiceBridge';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -84,60 +86,81 @@ function CursorRouteController() {
 }
 
 function App() {
+  const AppRoutes = () => {
+    const { isAuthenticated } = useAuth();
+
+    const routes = (
+      <>
+        <CursorRouteController />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          <Route
+            path="/billing"
+            element={(
+              <ProtectedRoute>
+                <Billing />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/dashboard"
+            element={(
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/analytics"
+            element={(
+              <ProtectedRoute>
+                <DashboardEnhanced />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/clients"
+            element={(
+              <ProtectedRoute>
+                <Clients />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/tasks"
+            element={(
+              <ProtectedRoute>
+                <TasksKanban />
+              </ProtectedRoute>
+            )}
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </>
+    );
+
+    if (!isAuthenticated) {
+      return routes;
+    }
+
+    return (
+      <NanoAssistantProvider>
+        <GlobalNanoVoiceBridge />
+        {routes}
+      </NanoAssistantProvider>
+    );
+  };
+
   return (
     <div className="App">
       <AuthProvider>
         <WorkspaceProvider>
           <BrowserRouter>
-            <CursorRouteController />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              <Route
-                path="/billing"
-                element={(
-                  <ProtectedRoute>
-                    <Billing />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/dashboard"
-                element={(
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/analytics"
-                element={(
-                  <ProtectedRoute>
-                    <DashboardEnhanced />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/clients"
-                element={(
-                  <ProtectedRoute>
-                    <Clients />
-                  </ProtectedRoute>
-                )}
-              />
-              <Route
-                path="/tasks"
-                element={(
-                  <ProtectedRoute>
-                    <TasksKanban />
-                  </ProtectedRoute>
-                )}
-              />
-
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
           <Toaster />
         </WorkspaceProvider>
