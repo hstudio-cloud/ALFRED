@@ -136,11 +136,15 @@ class LLMService:
 
         system_prompt = (
             "Voce e Nano, assistente financeiro e operacional do usuario. "
-            "Responda em portugues do Brasil, com clareza, utilidade e senso pratico. "
+            "Responda em portugues do Brasil, com clareza, utilidade, naturalidade e senso pratico. "
             "Nunca escreva em ingles, chines ou qualquer outro idioma. "
             "Nunca misture idiomas. Nunca devolva caracteres corrompidos. "
             "Se houver dados reais de tools ou acoes executadas, use isso como verdade principal. "
-            "Evite respostas vazias, vagas ou muito genericas."
+            "Evite respostas vazias, vagas ou muito genericas. "
+            "Nao responda como um menu de funcionalidades. "
+            "Comece pelo que voce entendeu da fala atual. "
+            "Se o pedido estiver vago, assuma a interpretacao mais provavel e peca apenas o dado minimo faltante. "
+            "So liste capacidades quando o usuario pedir isso explicitamente."
         )
         user_prompt = (
             f"Mensagem do usuario:\n{message}\n\n"
@@ -335,11 +339,13 @@ class LLMService:
                     {
                         "role": "system",
                         "content": (
-                            "Voce e Nano IA. Responda em pt-BR, direto, claro e util. "
+                            "Voce e Nano IA. Responda em pt-BR, direto, claro, util e natural. "
                             "Baseie a resposta estritamente em resultados reais de tools e acoes executadas. "
                             "Evite inventar dados e evite respostas genericas. "
                             "Nunca use markdown pesado quando uma resposta simples resolver. "
-                            "Nunca escreva em outro idioma."
+                            "Nunca escreva em outro idioma. "
+                            "Nao transforme a resposta em menu de funcionalidades. "
+                            "Diga primeiro o que voce entendeu ou fez; depois, se faltar algo, peca so o minimo necessario."
                         ),
                     },
                     {
@@ -504,6 +510,8 @@ class LLMService:
             "posso responder perguntas gerais",
             "estou com voce",
             "posso responder, analisar",
+            "me diga o objetivo ou a duvida",
+            "consultar sua agenda e executar tarefas",
         )
         if any(fragment in lower for fragment in generic_fragments) and len(candidate) < 220:
             return True
@@ -526,14 +534,8 @@ class LLMService:
         if intent.label == "web_research":
             return f"Pesquisei isso para voce. {tool_results.get('web_summary', '')}".strip()
         if intent.label == "general_chat":
-            return (
-                "Estou com voce. Posso responder perguntas gerais, analisar seu financeiro, "
-                "organizar sua agenda e executar tarefas no sistema. Me diga o objetivo ou a duvida."
-            )
-        return fallback_response or (
-            "Entendi seu pedido. Posso registrar movimentacoes, analisar seu financeiro, "
-            "consultar agenda e pesquisar na web quando voce pedir."
-        )
+            return self._general_chat_fallback(message)
+        return fallback_response or self._general_chat_fallback(message)
 
     def _fallback_tool_response(
         self,
@@ -549,22 +551,41 @@ class LLMService:
             if executed_lines:
                 return "\n".join(executed_lines)
         if intent == "general_chat":
-            return (
-                "Estou com voce. Posso responder perguntas, analisar seu financeiro, "
-                "consultar sua agenda e executar tarefas no sistema agora."
-            )
+            return self._general_chat_fallback(fallback_response or "")
         if not tool_results:
             if intent in {"system_action", "system_query", "financial_analysis"}:
                 return (
                     fallback_response
-                    or "Entendi seu pedido, mas nao consegui dados suficientes para executar com seguranca. "
-                    "Pode me passar mais detalhes?"
+                    or "Entendi a direcao do pedido, mas ainda faltou um dado importante para eu executar com seguranca. Me passe so esse ponto e eu continuo."
                 )
             if intent == "web_research":
                 return "Tentei pesquisar agora, mas a busca externa falhou temporariamente. Posso tentar de novo em seguida."
-            return "Entendi. Pode me passar um pouco mais de contexto que eu resolvo para voce."
+            return self._general_chat_fallback(fallback_response or "")
         if intent in {"system_action", "system_query", "financial_analysis", "knowledge_lookup"}:
             return "Conclui seu pedido com dados reais do sistema e deixei tudo registrado."
         if intent == "web_research":
             return "Pesquisei na web e trouxe resultados atualizados para voce."
         return "Conclui seu pedido com sucesso."
+
+    def _general_chat_fallback(self, message: str) -> str:
+        text = self._normalize_text_response(message).lower()
+        if not text:
+            return "Entendi. Me diga em uma frase o que voce quer resolver agora que eu sigo por esse caminho."
+        if any(token in text for token in ("atividade", "rotina", "academia", "treino", "agenda", "todo dia")):
+            return (
+                "Entendi que voce quer organizar sua rotina. Posso interpretar isso como atividade ou lembrete recorrente; "
+                "se faltar alguma coisa, me diga so a data inicial ou o horario."
+            )
+        if any(token in text for token in ("despesa", "gasto", "receita", "pix", "boleto", "cartao", "financeiro")):
+            return (
+                "Entendi o contexto financeiro. Se eu ainda nao executei, provavelmente faltou um dado objetivo como valor, categoria ou data. "
+                "Me manda so essa parte e eu continuo sem voce precisar repetir tudo."
+            )
+        if any(token in text for token in ("analisa", "analise", "melhorar", "sugestao", "recomendacao", "estrategia")):
+            return (
+                "Entendi que voce quer uma leitura mais consultiva. Me diga se quer foco em caixa, gastos, lucro ou prioridades do mes que eu sigo nessa linha."
+            )
+        return (
+            "Entendi sua ideia. Pode falar do jeito mais natural possivel; "
+            "se faltar alguma coisa, eu peço so o minimo necessario em vez de te fazer repetir tudo."
+        )

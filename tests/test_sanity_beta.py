@@ -15,6 +15,9 @@ from routes import auth_routes, dashboard_routes, finance_routes, transactions_r
 from services import nano_channel_router, subscription_access_service  # noqa: E402
 from nano_ops import whatsapp_channel  # noqa: E402
 from nano_ai.specialists import ActivitySpecialist  # noqa: E402
+from nano_ai.finance_engine import NanoFinanceEngine  # noqa: E402
+from services.llm_service import LLMService  # noqa: E402
+from agent.types import IntentClassification  # noqa: E402
 from tools import open_finance_tools  # noqa: E402
 
 
@@ -205,6 +208,29 @@ def test_activity_specialist_understands_natural_gym_request():
     assert action.data["title"].lower() == "academia"
     assert action.data["start_at"] is not None
     assert "18:00:00" in action.data["start_at"]
+
+
+def test_llm_general_chat_fallback_is_not_capability_menu():
+    service = LLMService()
+    reply = service._fallback_answer(  # noqa: SLF001
+        "quero melhorar minha rotina",
+        IntentClassification(label="general_chat", confidence=0.9),
+        {},
+        [],
+        "",
+    )
+
+    assert "me diga o objetivo ou a duvida" not in reply.lower()
+    assert "posso responder perguntas gerais" not in reply.lower()
+    assert "rotina" in reply.lower()
+
+
+def test_finance_engine_empty_fallback_is_more_conversational():
+    engine = NanoFinanceEngine()
+    reply = engine.fallback_reply([])
+
+    assert "posso registrar movimentacoes" not in reply.lower()
+    assert "mais natural possivel" in reply.lower()
 
 
 def test_whatsapp_webhook_without_link_sanity(monkeypatch):

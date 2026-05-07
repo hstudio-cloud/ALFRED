@@ -30,9 +30,8 @@ class NanoFinanceEngine:
     def fallback_reply(self, actions: List[NanoAction]) -> str:
         if not actions:
             return (
-                "Entendi. Me diga o que voce quer fazer no financeiro e eu conduzo por aqui. "
-                "Posso registrar movimentacoes, criar contas, abrir areas do painel, montar lembretes "
-                "ou analisar seus gastos."
+                "Entendi a direcao da conversa. Me fala do jeito mais natural possivel o que voce quer resolver agora; "
+                "se faltar um dado importante, eu te peço so essa parte."
             )
 
         fallback_map = {
