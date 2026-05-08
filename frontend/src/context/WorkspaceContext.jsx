@@ -25,17 +25,31 @@ export const WorkspaceProvider = ({ children }) => {
   const fetchWorkspaces = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/workspaces`);
-      setWorkspaces(response.data);
-      
-      // Set first workspace as current if not set
-      if (response.data.length > 0 && !currentWorkspace) {
-        const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
-        const workspace = savedWorkspaceId 
-          ? response.data.find(w => w.id === savedWorkspaceId) || response.data[0]
-          : response.data[0];
-        setCurrentWorkspace(workspace);
-        localStorage.setItem('currentWorkspaceId', workspace.id);
+      const nextWorkspaces = Array.isArray(response.data) ? response.data : [];
+      setWorkspaces(nextWorkspaces);
+
+      if (nextWorkspaces.length === 0) {
+        setCurrentWorkspace(null);
+        localStorage.removeItem('currentWorkspaceId');
+        return;
       }
+
+      const savedWorkspaceId = localStorage.getItem('currentWorkspaceId');
+      const currentWorkspaceStillAccessible = currentWorkspace
+        ? nextWorkspaces.find((workspace) => workspace.id === currentWorkspace.id)
+        : null;
+      const savedWorkspaceStillAccessible = savedWorkspaceId
+        ? nextWorkspaces.find((workspace) => workspace.id === savedWorkspaceId)
+        : null;
+      const resolvedWorkspace =
+        currentWorkspaceStillAccessible
+        || savedWorkspaceStillAccessible
+        || nextWorkspaces[0];
+
+      if (!currentWorkspace || currentWorkspace.id !== resolvedWorkspace.id) {
+        setCurrentWorkspace(resolvedWorkspace);
+      }
+      localStorage.setItem('currentWorkspaceId', resolvedWorkspace.id);
     } catch (error) {
       console.error('Error fetching workspaces:', error);
     } finally {
@@ -45,8 +59,14 @@ export const WorkspaceProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      setLoading(true);
       fetchWorkspaces();
+      return;
     }
+    setWorkspaces([]);
+    setCurrentWorkspace(null);
+    setLoading(false);
+    localStorage.removeItem('currentWorkspaceId');
   }, [isAuthenticated, fetchWorkspaces]);
 
   const switchWorkspace = (workspace) => {
