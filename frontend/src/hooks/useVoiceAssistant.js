@@ -154,31 +154,6 @@ export const useVoiceAssistant = ({
     wakeWordRef.current = wakeWord;
   }, [wakeWord]);
 
-  const acknowledgeWakeWord = useCallback(async () => {
-    awaitingCommandRef.current = true;
-    setIsAwaitingVoiceCommand(true);
-    updateVoiceState('listening', 'Estou aqui. Pode falar.');
-    pauseRecognitionForAssistant();
-    await providerRef.current?.speak?.('Estou aqui.', {
-      preferPremium: true,
-      onStart: () => {
-        setError(null);
-        setIsSpeaking(true);
-      },
-      onEnd: () => {
-        setIsSpeaking(false);
-        setError(null);
-        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
-        resumeRecognitionAfterAssistant();
-      },
-      onError: () => {
-        setIsSpeaking(false);
-        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
-        resumeRecognitionAfterAssistant();
-      }
-    });
-  }, [pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, updateVoiceState]);
-
   const pauseRecognitionForAssistant = useCallback(() => {
     if (!keepListeningRef.current) return;
     pausedForAssistantRef.current = true;
@@ -206,6 +181,31 @@ export const useVoiceAssistant = ({
       updateVoiceState('error', 'Nao consegui retomar o microfone do navegador.');
     }
   }, [updateVoiceState]);
+
+  const acknowledgeWakeWord = useCallback(async () => {
+    awaitingCommandRef.current = true;
+    setIsAwaitingVoiceCommand(true);
+    updateVoiceState('listening', 'Estou aqui. Pode falar.');
+    pauseRecognitionForAssistant();
+    await providerRef.current?.speak?.('Estou aqui.', {
+      preferPremium: true,
+      onStart: () => {
+        setError(null);
+        setIsSpeaking(true);
+      },
+      onEnd: () => {
+        setIsSpeaking(false);
+        setError(null);
+        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
+        resumeRecognitionAfterAssistant();
+      },
+      onError: () => {
+        setIsSpeaking(false);
+        updateVoiceState('listening', 'Pode falar. Estou aguardando seu pedido.');
+        resumeRecognitionAfterAssistant();
+      }
+    });
+  }, [pauseRecognitionForAssistant, resumeRecognitionAfterAssistant, updateVoiceState]);
 
   useEffect(() => {
     const provider = createVoiceProvider({
