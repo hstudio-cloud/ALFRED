@@ -224,10 +224,11 @@ export const useVoiceAssistant = ({
         const backendTranscriptionAvailable = Boolean(status?.transcription_available) && backendFallbackSupported;
         setVoiceProviderType(status?.provider || provider.type);
         backendTranscriptionAvailableRef.current = backendTranscriptionAvailable;
-        // Em producao a transcricao backend e mais consistente do que o
-        // SpeechRecognition nativo, que varia bastante entre navegadores.
-        // Mantemos o reconhecimento do navegador apenas como fallback.
-        preferBackendTranscriptionRef.current = backendTranscriptionAvailable;
+        // Para wake word e transcricao visivel em tempo real, priorizamos o
+        // reconhecimento nativo do navegador quando ele existe.
+        // A transcricao backend continua como fallback para navegadores sem
+        // SpeechRecognition ou quando o recognizer falha durante a sessao.
+        preferBackendTranscriptionRef.current = !recognitionSupported && backendTranscriptionAvailable;
         setAssistantRuntime({
           runtimeMode: status?.runtime_mode || 'browser_fallback',
           llmProvider: status?.llm_provider || 'rule_based',
@@ -297,6 +298,12 @@ export const useVoiceAssistant = ({
           setIsListening(false);
           setError(event);
           updateVoiceState('error', 'Permissao do microfone negada. Libere o acesso para usar a voz.');
+          return;
+        }
+
+        if (backendTranscriptionAvailableRef.current) {
+          preferBackendTranscriptionRef.current = true;
+          backendCaptureStarterRef.current?.();
           return;
         }
 
