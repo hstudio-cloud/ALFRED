@@ -865,6 +865,26 @@ export const useVoiceAssistant = ({
       if (isProcessingRef.current || isSpeakingRef.current) return;
 
       const idleForMs = Date.now() - lastSpeechActivityRef.current;
+      if (
+        idleForMs >= 8000
+        && !preferBackendTranscriptionRef.current
+        && backendTranscriptionAvailableRef.current
+      ) {
+        preferBackendTranscriptionRef.current = true;
+        lastSpeechActivityRef.current = Date.now();
+        updateVoiceState(
+          'processing',
+          'Reconhecimento do navegador instavel. Vou trocar para a transcricao do Nano.'
+        );
+        try {
+          recognizerRef.current?.stop?.();
+        } catch (stopError) {
+          void stopError;
+        }
+        backendCaptureStarterRef.current?.();
+        return;
+      }
+
       if (idleForMs < 16000) return;
 
       updateVoiceState(
