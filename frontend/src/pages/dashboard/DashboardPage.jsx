@@ -52,6 +52,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { motion } from "framer-motion";
 import { ptBR } from "date-fns/locale";
 import {
   dashboardClass,
@@ -862,7 +863,7 @@ const Dashboard = () => {
       workspaceForm.description,
     );
     if (result.success) {
-      setWorkspaceForm({ name: "", subdomain: "", description: "" });
+      setWorkspaceForm({ name: "", subdomain: "", description: ""});
       toast({
         title: "Workspace criado",
         description: "Sua nova empresa já está pronta para uso.",
@@ -1370,7 +1371,7 @@ const Dashboard = () => {
         status: attendanceForm.status,
         notes: attendanceForm.notes,
       });
-      setAttendanceForm((prev) => ({ ...prev, notes: "" }));
+      setAttendanceForm((prev) => ({ ...prev, notes: ""}));
       await loadPayrollData(currentWorkspace.id);
       toast({
         title: "Ponto registrado",
@@ -1917,7 +1918,7 @@ const Dashboard = () => {
 
   const filteredTransactions = sortedTransactions.filter((transaction) => {
     const text =
-      `${transaction.description || ""} ${transaction.category || ""}`.toLowerCase();
+      `${transaction.description || "} ${transaction.category || "}`.toLowerCase();
     const searchMatch = text.includes(transactionSearch.toLowerCase());
     const typeMatch =
       transactionTypeFilter === "all" ||
@@ -2137,26 +2138,220 @@ const Dashboard = () => {
     },
   ];
 
+  const userFirstName = useMemo(() => {
+    const source =
+      user?.name || currentWorkspace?.name || user?.email?.split("@")[0] || "voce";
+    return source.split(" ")[0];
+  }, [currentWorkspace?.name, user?.email, user?.name]);
+  const currentWeekDays = useMemo(() => {
+    if (!calendarDays.length) return [];
+    const anchorIndex = calendarDays.findIndex(
+      (day) => day.date === activeCalendarDay?.date,
+    );
+    const safeIndex = anchorIndex >= 0 ? anchorIndex : 0;
+    const startIndex = safeIndex - (safeIndex % 7);
+    return calendarDays.slice(startIndex, startIndex + 7);
+  }, [activeCalendarDay?.date, calendarDays]);
+  const agendaItems = useMemo(() => {
+    if (!activeCalendarDay) return [];
+
+    const reminderItems = (activeCalendarDay.reminders || []).map((item) => ({
+      id: `reminder-${item.id || item.title}`,
+      time: new Date(item.remind_at).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      title: item.title || "Lembrete do dia",
+      subtitle: item.description || "Acompanhamento organizado pelo Nano",
+      tone: "warning",
+    }));
+
+    const billItems = (activeCalendarDay.bills || []).map((item) => ({
+      id: `bill-${item.id || item.title}`,
+      time: "Hoje",
+      title: item.title || "Conta com vencimento",
+      subtitle: `${currencyFormatter.format(item.amount || 0)} • ${
+        item.type === "receivable" ? "recebimento" : "pagamento"
+      }`,
+      tone: item.type === "receivable" ? "positive" : "danger",
+    }));
+
+    return [...reminderItems, ...billItems].slice(0, 3);
+  }, [activeCalendarDay]);
+  const smartAlerts = useMemo(() => {
+    const alerts = [];
+    const nextBill = [...openBills]
+      .filter((item) => item?.due_date)
+      .sort((left, right) => new Date(left.due_date) - new Date(right.due_date))[0];
+
+    if (nextBill) {
+      alerts.push({
+        id: `bill-${nextBill.id}`,
+        title: nextBill.title || "Boleto proximo",
+        message: `${currencyFormatter.format(nextBill.amount || 0)} ${
+          nextBill.type === "receivable" ? "entra" : "vence"
+        } em ${new Date(nextBill.due_date).toLocaleDateString("pt-BR")}.`,
+        tone: nextBill.type === "receivable" ? "positive" : "warning",
+      });
+    }
+
+    if (topExpenses[0]) {
+      alerts.push({
+        id: `expense-${topExpenses[0].category}`,
+        title: `Maior pressao em ${topExpenses[0].category}`,
+        message: `${currencyFormatter.format(
+          topExpenses[0].amount || 0,
+        )} concentrados nessa categoria no periodo atual.`,
+        tone: "danger",
+      });
+    }
+
+    alerts.push({
+      id: "result",
+      title:
+        monthlyResult >= 0 ? "Caixa sob controle" : "Atencao ao caixa do mes",
+      message:
+        monthlyResult >= 0
+          ? "O resultado segue positivo. O melhor movimento agora e consolidar reservas e rotinas."
+          : "As saidas passaram das entradas. O Nano recomenda reduzir vazamentos e revisar proximos vencimentos.",
+      tone: monthlyResult >= 0 ? "positive" : "warning",
+    });
+
+    return alerts.slice(0, 3);
+  }, [monthlyResult, openBills, topExpenses]);
+  const quickNanoActions = [
+    "Analisar despesas",
+    "Ver proximos boletos",
+    "Planejar metas",
+    "Resumo do dia",
+  ];
+
   const renderOverview = () => (
     <SectionLayout
       rail={
-        <OnboardingRail
-          steps={onboardingSteps}
-          percent={completionPercent}
-          completedSteps={completedSteps}
-        />
+        <div className="space-y-5">
+          <OnboardingRail
+            steps={onboardingSteps}
+            percent={completionPercent}
+            completedSteps={completedSteps}
+          />
+
+          <SurfacePanel
+            title="Agenda de hoje"
+            action={<GhostChip>{activeCalendarDay?.isToday ? "Hoje" : "Agenda"}</GhostChip>}
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400">
+                {activeCalendarDay
+                  ? new Date(`${activeCalendarDay.date}T12:00:00`).toLocaleDateString(
+                      "pt-BR",
+                      { day: "numeric", month: "long" },
+                    )
+                  : "Sem data selecionada"}
+              </p>
+
+              <CalendarPanel
+                days={currentWeekDays}
+                selectedDate={activeCalendarDay?.date || null}
+                onDaySelect={setSelectedCalendarDate}
+                formatter={currencyFormatter}
+                compact
+              />
+
+              <div className="space-y-3">
+                {agendaItems.length ? (
+                  agendaItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p
+                            className={`text-sm font-semibold ${
+                              item.tone === "positive"
+                                ? "text-emerald-300"
+                                : item.tone === "danger"
+                                  ? "text-red-200"
+                                  : "text-amber-200"
+                            }`}
+                          >
+                            {item.time}
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-white">
+                            {item.title}
+                          </p>
+                          <p className="mt-1 text-xs leading-6 text-slate-400">
+                            {item.subtitle}
+                          </p>
+                        </div>
+                        <span className="mt-1 h-2 w-2 rounded-full bg-red-400/80 shadow-[0_0_14px_rgba(248,113,113,0.8)]" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm leading-7 text-slate-400">
+                    O Nano nao encontrou compromissos relevantes para esta janela.
+                  </p>
+                )}
+              </div>
+            </div>
+          </SurfacePanel>
+
+          <SurfacePanel title="Alertas inteligentes">
+            <div className="space-y-3">
+              {smartAlerts.map((item) => (
+                <AlertRow
+                  key={item.id}
+                  title={item.title}
+                  message={item.message}
+                  tone={item.tone}
+                />
+              ))}
+            </div>
+          </SurfacePanel>
+
+          <SurfacePanel title="Insights para voce">
+            <div className="space-y-3">
+              {topNanoInsights.map((item, index) => (
+                <div
+                  key={`${item.label || "insight"}-${index}`}
+                  className="rounded-[24px] border border-red-500/12 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.18),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-4"
+                >
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-red-200/70">
+                    {item.label || "Leitura do Nano"}
+                  </p>
+                  <p className="mt-3 text-sm leading-7 text-zinc-200">
+                    {item.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </SurfacePanel>
+        </div>
       }
     >
       <PageHeader
-        eyebrow="Resumo executivo"
-        title="O que está acontecendo no seu financeiro agora"
-        description="Aqui o Nano resume a posição do mês, destaca a principal prioridade e abre o cockpit completo logo abaixo."
+        eyebrow="Assistente ativo"
+        title={`Boa tarde, ${userFirstName}.`}
+        description="Estou aqui para cuidar da sua vida financeira. Em que posso te ajudar hoje?"
+        action={
+          <div className="flex min-h-[58px] w-full max-w-[420px] items-center justify-between rounded-full border border-white/10 bg-black/35 px-5 text-sm text-slate-400 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+            <span>Fale com o Nano...</span>
+            <Search className="h-4.5 w-4.5 text-zinc-200" />
+          </div>
+        }
       />
-      <div className="grid gap-3 lg:grid-cols-3">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="grid gap-3 lg:grid-cols-3"
+      >
         {overviewHighlights.map((item, index) => (
           <div
             key={`${item.label}-${index}`}
-            className={`${dashboardTheme.panelSecondary} px-4 py-3`}
+            className="rounded-[28px] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] px-5 py-5 shadow-[0_24px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl"
           >
             <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-red-200/70">
               {item.label}
@@ -2169,13 +2364,18 @@ const Dashboard = () => {
             </p>
           </div>
         ))}
-      </div>
+      </motion.div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
+      <motion.div
+        initial={{ opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.08, ease: "easeOut" }}
+        className="grid gap-4 xl:grid-cols-4"
+      >
         {metrics.map((item) => (
           <StatCard key={item.title} trendData={monthlyTrend} {...item} />
         ))}
-      </div>
+      </motion.div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
         <SurfacePanel
@@ -2321,36 +2521,45 @@ const Dashboard = () => {
         </SurfacePanel>
       </div>
 
-      <SurfacePanel title="Alertas e Pendências">
-        {openBills.length || insights.length || automationInsights.length ? (
-          <div className="space-y-3">
-            {openBills.slice(0, 4).map((bill) => (
-              <AlertRow
-                key={bill.id}
-                title={bill.title}
-                message={`${bill.type === "receivable" ? "Receber" : "Pagar"} ${currencyFormatter.format(bill.amount)} em ${new Date(bill.due_date).toLocaleDateString("pt-BR")}`}
-                tone="warning"
-              />
-            ))}
-            {[...insights, ...automationInsights]
-              .slice(0, 3)
-              .map((item, index) => (
-                <AlertRow
-                  key={`${item.type || "item"}-${index}`}
-                  title={item.label || "Leitura do Nano"}
-                  message={item.message}
-                  tone="neutral"
-                />
-              ))}
+      <motion.div
+        initial={{ opacity: 0, y: 26 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
+        className="overflow-hidden rounded-[32px] border border-red-500/12 bg-[radial-gradient(circle_at_left,rgba(239,68,68,0.24),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.94),rgba(12,12,12,0.9))] p-6 shadow-[0_26px_80px_rgba(0,0,0,0.34)]"
+      >
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-5">
+            <div className="relative flex h-24 w-24 items-center justify-center">
+              <div className="absolute inset-0 rounded-full border border-red-500/20" />
+              <div className="absolute inset-2 rounded-full border border-red-400/30" />
+              <div className="absolute inset-4 rounded-full border border-red-300/20" />
+              <div className="absolute inset-0 animate-pulse rounded-full bg-red-500/10 blur-xl" />
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(248,113,113,0.95),rgba(127,29,29,0.95))] shadow-[0_0_32px_rgba(239,68,68,0.38)]">
+                <NanoMark className="h-7 w-7" />
+              </div>
+            </div>
+            <div className="max-w-2xl">
+              <p className="text-2xl font-semibold text-white">
+                Posso analisar algo especifico para voce?
+              </p>
+              <p className="mt-2 text-sm leading-7 text-slate-400">
+                O Nano continua no centro da operacao e puxa o proximo bloco conforme o contexto da sua pergunta.
+              </p>
+            </div>
           </div>
-        ) : (
-          <AlertRow
-            title="Tudo certo"
-            message="Nenhuma pendência crítica foi encontrada na visão atual."
-            tone="positive"
-          />
-        )}
-      </SurfacePanel>
+          <div className="flex flex-wrap gap-3">
+            {quickNanoActions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className="rounded-full border border-red-500/16 bg-white/[0.03] px-5 py-3 text-sm font-medium text-zinc-100 transition duration-300 hover:-translate-y-0.5 hover:border-red-400/28 hover:bg-red-500/[0.08]"
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      </motion.div>
     </SectionLayout>
   );
 
@@ -4948,14 +5157,20 @@ const Dashboard = () => {
       />
 
       <main
-        className={`lg:pl-[108px] ${activeSection === "assistant" ? "h-full overflow-hidden" : ""}`}
+        className={`relative lg:pl-[126px] ${activeSection === "assistant" ? "h-full overflow-hidden" : ""}`}
       >
+        {activeSection !== "assistant" && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(127,29,29,0.22),transparent_30%),radial-gradient(circle_at_25%_20%,rgba(239,68,68,0.12),transparent_26%),linear-gradient(180deg,#040404_0%,#090909_100%)]" />
+            <div className="absolute left-[14%] top-[7%] h-[220px] w-[520px] bg-[radial-gradient(circle,rgba(239,68,68,0.18),transparent_68%)] blur-3xl" />
+            <div className="absolute right-[12%] top-[14%] h-[340px] w-[340px] rounded-full border border-red-500/8 opacity-60" />
+          </div>
+        )}
         <div
-          className={`mx-auto max-w-[1720px] px-4 py-4 sm:px-6 lg:px-8 ${
+          className={`relative mx-auto max-w-[1720px] px-4 py-4 sm:px-6 lg:px-8 ${
             activeSection === "assistant"
               ? "h-full max-w-none overflow-hidden"
-              : ""
-          }`}
+              : ""}`}
         >
           {activeSection !== "assistant" && (
             <DashboardHeader
@@ -5014,7 +5229,7 @@ const Dashboard = () => {
 };
 
 const SectionLayout = ({ children, rail }) => (
-  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
     <div className="space-y-6">{children}</div>
     <div className="space-y-6">{rail}</div>
   </div>
@@ -5023,14 +5238,14 @@ const SectionLayout = ({ children, rail }) => (
 const PageHeader = ({ eyebrow, title, description, action }) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
+      <p className="text-xs font-medium uppercase tracking-[0.32em] text-red-300/80">
         {eyebrow}
       </p>
       <div>
-        <h1 className="text-4xl font-semibold leading-tight tracking-[-0.03em] text-white md:text-[2.9rem]">
+        <h1 className="text-4xl font-semibold leading-tight tracking-[-0.04em] text-white md:text-[3.2rem]">
           {title}
         </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">
+        <p className="mt-4 max-w-3xl text-base leading-8 text-slate-400">
           {description}
         </p>
       </div>
@@ -5040,7 +5255,7 @@ const PageHeader = ({ eyebrow, title, description, action }) => (
 );
 
 const SurfacePanel = ({ title, action, children }) => (
-  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-6`}>
+  <Card className={`${dashboardTheme.panel} ${dashboardTheme.glow} overflow-hidden border-white/8 bg-[linear-gradient(180deg,rgba(10,10,10,0.92),rgba(18,18,18,0.88))] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.3)]`}>
     {(title || action) && (
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
@@ -5062,7 +5277,7 @@ const TopIconButton = ({ icon: Icon, onClick, title }) => (
     type="button"
     onClick={onClick}
     title={title}
-    className={`flex h-12 w-12 items-center justify-center ${dashboardTheme.panelSecondary} text-slate-400 transition hover:-translate-y-0.5 hover:text-red-200`}
+    className={`flex h-12 w-12 items-center justify-center ${dashboardTheme.panelSecondary} border-white/8 text-slate-400 transition duration-300 hover:-translate-y-0.5 hover:border-red-400/18 hover:text-red-200`}
   >
     <Icon className="h-4.5 w-4.5" />
   </button>
@@ -5103,7 +5318,7 @@ const StatCard = ({ title, value, direction, trendData = [] }) => {
   const maxSpark = Math.max(...sparkline, 1);
   return (
     <Card
-      className={`${dashboardTheme.panel} ${dashboardTheme.glow} p-5 transition duration-300 hover:-translate-y-1`}
+      className={`${dashboardTheme.panel} ${dashboardTheme.glow} overflow-hidden border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.12),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.94),rgba(18,18,18,0.88))] p-5 transition duration-300 hover:-translate-y-1 hover:border-red-400/16`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -5311,19 +5526,29 @@ const CashflowChart = ({ data }) => (
   </div>
 );
 
-const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
+const CalendarPanel = ({
+  days,
+  selectedDate,
+  onDaySelect,
+  formatter,
+  compact = false,
+}) => (
   <div>
-    <div className="mb-4 grid grid-cols-7 gap-3 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+    <div
+      className={`mb-4 grid grid-cols-7 text-center text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500 ${
+        compact ? "gap-2" : "gap-3"
+      }`}
+    >
       {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((day) => (
         <span key={day}>{day}</span>
       ))}
     </div>
-    <div className="grid grid-cols-7 gap-3">
+    <div className={`grid grid-cols-7 ${compact ? "gap-2" : "gap-3"}`}>
       {days.map((day, index) => (
         <div
           key={index}
           onClick={() => onDaySelect(day.date)}
-          className={`min-h-[110px] cursor-pointer rounded-[20px] border p-3 text-sm transition ${
+          className={`${compact ? "min-h-[88px] p-2.5" : "min-h-[110px] p-3"} cursor-pointer rounded-[20px] border text-sm transition ${
             day.isCurrentMonth
               ? "border-slate-700/30 bg-slate-950/55 text-zinc-200 backdrop-blur-sm"
               : "border-slate-800/60 bg-slate-950/25 text-slate-600"
@@ -5343,21 +5568,23 @@ const CalendarPanel = ({ days, selectedDate, onDaySelect, formatter }) => (
               </span>
             )}
           </div>
-          <div className="mt-3 space-y-1.5 text-[10px] leading-none">
+          <div className={`${compact ? "mt-2 space-y-1" : "mt-3 space-y-1.5"} text-[10px] leading-none`}>
             <div className="flex items-center justify-between text-emerald-300">
-              <span>Entradas</span>
-              <span>{formatter.format(day.income || 0)}</span>
+              <span>{compact ? "In" : "Entradas"}</span>
+              <span>{compact ? formatter.format(day.income || 0).replace("R$", "") : formatter.format(day.income || 0)}</span>
             </div>
             <div className="flex items-center justify-between text-rose-300">
-              <span>Saidas</span>
-              <span>{formatter.format(day.expense || 0)}</span>
+              <span>{compact ? "Out" : "Saidas"}</span>
+              <span>{compact ? formatter.format(day.expense || 0).replace("R$", "") : formatter.format(day.expense || 0)}</span>
             </div>
-            <div className="flex items-center justify-between text-slate-400">
+            {!compact && (
+              <div className="flex items-center justify-between text-slate-400">
               <span>Liq.</span>
               <span>{formatter.format(day.net || 0)}</span>
-            </div>
+              </div>
+            )}
           </div>
-          <div className="mt-3 flex items-center gap-1.5 text-[10px]">
+          <div className={`${compact ? "mt-2" : "mt-3"} flex items-center gap-1.5 text-[10px]`}>
             {day.hasReminder && (
               <span className="rounded-full bg-amber-500/25 px-1 text-amber-300">
                 L
@@ -5561,7 +5788,7 @@ const OnboardingRail = ({ steps, percent, completedSteps }) => (
                   : "border-slate-700/30 bg-slate-950/60 text-slate-600"
               }`}
             >
-              {step.done ? "✓" : ""}
+              {step.done ? "v" : ""}
             </span>
             <div>
               <p className="font-medium text-white">{step.label}</p>
@@ -5652,3 +5879,13 @@ const ToggleRow = ({ label, helper, checked, onChange }) => (
 );
 
 export default Dashboard;
+
+
+
+
+
+
+
+
+
+

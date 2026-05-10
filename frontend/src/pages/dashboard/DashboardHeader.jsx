@@ -65,13 +65,13 @@ export default function DashboardHeader({
         </div>
       ) : null}
 
-      <div className={`${dashboardThemeValue.panel} ${dashboardThemeValue.glow} px-5 py-4`}>
+      <div className={`${dashboardThemeValue.panel} ${dashboardThemeValue.glow} overflow-hidden border-white/8 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.16),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.94),rgba(18,18,18,0.88))] px-5 py-5 shadow-[0_24px_70px_rgba(0,0,0,0.28)]`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.28em] text-red-200/65">
+            <p className="text-xs font-medium uppercase tracking-[0.32em] text-red-300/78">
               {activeSectionMeta.label}
             </p>
-            <h2 className="mt-2 text-[1.9rem] font-semibold tracking-[-0.03em] text-white">
+            <h2 className="mt-3 text-[2.2rem] font-semibold tracking-[-0.04em] text-white">
               {activeSectionMeta.description}
             </h2>
           </div>
@@ -100,11 +100,11 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
           {topNanoInsights.map((item, index) => (
             <div
               key={`header-insight-${index}`}
-              className={`${dashboardThemeValue.panelSecondary} px-4 py-3`}
+              className={`${dashboardThemeValue.panelSecondary} border-white/8 bg-white/[0.03] px-4 py-3`}
             >
               <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-red-200/70">
                 <SparklesIcon className="h-3.5 w-3.5" />
