@@ -170,7 +170,8 @@ const NanoChatPanel = ({
       latestAssistant?.metadata?.actions?.length ||
       latestAssistant?.metadata?.tool_results,
   );
-  const showExecutionPanel = shellBusy || isSpeaking || responsePulseActive || hasExecutionData;
+  const showExecutionPanel =
+    shellBusy || isSpeaking || (responsePulseActive && hasExecutionData);
   const latestAssistantText =
     latestAssistant?.content ||
     (shellBusy

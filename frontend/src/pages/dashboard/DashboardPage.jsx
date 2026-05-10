@@ -5066,6 +5066,7 @@ const Dashboard = () => {
   const billingDescription = subscriptionRecord
     ? "Seu workspace ja iniciou um fluxo de assinatura, mas o acesso total ainda depende da confirmacao real do pagamento via webhook."
     : "Seu workspace ja foi criado. O proximo passo e ativar a assinatura para liberar o plano no backend e manter o acesso regular.";
+  const shouldShowBlockingLoader = loading && activeSection !== "assistant";
 
   if (!currentWorkspace) {
     return (
@@ -5197,7 +5198,7 @@ const Dashboard = () => {
             />
           )}
 
-          {loading ? (
+          {shouldShowBlockingLoader ? (
             <div
               className={`${dashboardTheme.panel} px-6 py-16 text-center text-zinc-400`}
             >
