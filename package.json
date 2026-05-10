@@ -1,5 +1,8 @@
 {
-  "dependencies": {
-    "framer-motion": "^12.38.0"
+  "name": "alfred-root",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "npm --prefix frontend install --legacy-peer-deps && npm --prefix frontend run build && node -e \"const fs=require('fs');fs.rmSync('build',{recursive:true,force:true});fs.cpSync('frontend/build','build',{recursive:true});\""
   }
 }
