@@ -5,13 +5,13 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { NANO_COLORS } from '../lib/nanoAnimations';
 
 const NanoBackgroundAnimation = ({ 
   density = 0.5, 
   speed = 0.3, 
   blur = false,
-  interactive = true 
+  interactive = true,
+  className = '',
 }) => {
   const canvasRef = useRef(null);
   const frameRef = useRef(null);
@@ -201,11 +201,12 @@ const NanoBackgroundAnimation = ({
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 w-full h-full -z-10"
+      className={className || "fixed inset-0 h-full w-full -z-10"}
       style={{
         background: 'linear-gradient(180deg, rgba(9, 2, 3, 0.9), rgba(20, 3, 4, 0.95))',
         filter: blur ? 'blur(0.5px)' : 'none',
         mixBlendMode: 'screen',
+        pointerEvents: 'none',
       }}
     />
   );
