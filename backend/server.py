@@ -63,6 +63,10 @@ def _env_flag(name: str, default: str) -> bool:
     return os.environ.get(name, default).strip().lower() == "true"
 
 
+def _normalize_origin(value: str) -> str:
+    return (value or "").strip().rstrip("/")
+
+
 async def _seed_admin_if_enabled() -> None:
     if not _env_flag("SEED_ADMIN_ENABLED", "false"):
         logger.info("SEED_ADMIN_ENABLED=false, skipping default admin seed")
@@ -180,21 +184,25 @@ app.include_router(nano_ops_routes.router)
 
 
 cors_allow_all = _env_flag("CORS_ALLOW_ALL", "false")
-cors_origins = [
-    origin.strip()
+cors_origins = {
+    _normalize_origin(origin)
     for origin in os.environ.get("CORS_ORIGINS", "").split(",")
-    if origin.strip()
-]
+    if _normalize_origin(origin)
+}
+frontend_url = _normalize_origin(os.environ.get("FRONTEND_URL", ""))
+if frontend_url:
+    cors_origins.add(frontend_url)
 if not cors_origins:
-    cors_origins = [
+    cors_origins = {
         "http://localhost:3000",
         "https://seudominio.com.br",
-    ]
+    }
+cors_origins = sorted(cors_origins)
 
 cors_origin_regex = (
     os.environ.get(
         "CORS_ORIGIN_REGEX",
-        r"^https://frontend-[a-z0-9-]+(?:-hstudio-clouds-projects)?\.vercel\.app$",
+        r"^https://[a-z0-9-]+\.vercel\.app$",
     ).strip()
     or None
 )
@@ -204,6 +212,7 @@ compiled_cors_origin_regex = (
 
 
 def _is_origin_allowed(origin: str) -> bool:
+    origin = _normalize_origin(origin)
     if not origin:
         return False
     if cors_allow_all:
@@ -216,6 +225,7 @@ def _is_origin_allowed(origin: str) -> bool:
 
 
 def _attach_cors_headers(response: Response, origin: str) -> Response:
+    origin = _normalize_origin(origin)
     if not origin or not _is_origin_allowed(origin):
         return response
 
@@ -231,10 +241,14 @@ def _attach_cors_headers(response: Response, origin: str) -> Response:
 
 @app.middleware("http")
 async def ensure_cors_headers(request: Request, call_next):
-    origin = request.headers.get("origin", "")
+    origin = _normalize_origin(request.headers.get("origin", ""))
+    requested_headers = request.headers.get("access-control-request-headers", "")
 
     if request.method == "OPTIONS":
-        return _attach_cors_headers(Response(status_code=200), origin)
+        response = _attach_cors_headers(Response(status_code=200), origin)
+        if requested_headers:
+            response.headers["Access-Control-Allow-Headers"] = requested_headers
+        return response
 
     try:
         response = await call_next(request)

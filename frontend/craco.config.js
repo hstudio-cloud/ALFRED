@@ -2,6 +2,11 @@
 const path = require("path");
 require("dotenv").config();
 
+const pluggySourceMapPackages = [
+  /[\\/]node_modules[\\/]pluggy-connect-sdk[\\/]/,
+  /[\\/]node_modules[\\/]react-pluggy-connect[\\/]/,
+];
+
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
 const isDevServer = process.env.NODE_ENV !== "production";
@@ -37,6 +42,38 @@ let webpackConfig = {
       '@': path.resolve(__dirname, 'src'),
     },
     configure: (webpackConfig) => {
+      webpackConfig.ignoreWarnings = [
+        ...(webpackConfig.ignoreWarnings || []),
+        (warning) => {
+          const message =
+            warning?.message || warning?.details || String(warning || "");
+
+          return (
+            /Failed to parse source map/i.test(message) &&
+            pluggySourceMapPackages.some((pattern) => pattern.test(message))
+          );
+        },
+      ];
+
+      const oneOfRule = webpackConfig.module?.rules?.find((rule) =>
+        Array.isArray(rule?.oneOf),
+      );
+      const sourceMapRule = oneOfRule?.oneOf?.find(
+        (rule) =>
+          rule?.enforce === "pre" &&
+          rule?.use &&
+          JSON.stringify(rule.use).includes("source-map-loader"),
+      );
+
+      if (sourceMapRule) {
+        const existingExclude = Array.isArray(sourceMapRule.exclude)
+          ? sourceMapRule.exclude
+          : sourceMapRule.exclude
+            ? [sourceMapRule.exclude]
+            : [];
+
+        sourceMapRule.exclude = [...existingExclude, ...pluggySourceMapPackages];
+      }
 
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
