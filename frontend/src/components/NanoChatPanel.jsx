@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 
 import { nanoQuickPromptMap, nanoQuickPrompts } from "../lib/nanoTheme";
+import { getResponseByType, getRandomResponse, confirmationResponses } from "../lib/nanoResponses";
+import { ANIMATION_VARIANTS } from "../lib/nanoAnimations";
 import NanoCoreAnimation from "./NanoCoreAnimation";
 import NanoExecutionPanel from "./NanoExecutionPanel";
 import NanoMark from "./NanoMark";
@@ -37,12 +39,12 @@ const resolveLiveStatus = ({
   partialTranscript,
   finalTranscript,
 }) => {
-  if (isProcessing) return "Entendido. Organizando seu pedido agora...";
-  if (isSpeaking) return "Nano esta respondendo por voz.";
+  if (isProcessing) return getRandomResponse(confirmationResponses);
+  if (isSpeaking) return "Respondendo via áudio...";
   if (partialTranscript || finalTranscript) {
     return partialTranscript || finalTranscript;
   }
-  if (isListening) return "Nano esta ouvindo...";
+  if (isListening) return "Capturando áudio...";
   return null;
 };
 
@@ -384,9 +386,14 @@ const NanoChatPanel = ({
                                 : "bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] text-zinc-100"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap text-sm leading-7">
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.4, delay: 0.1 }}
+                              className="whitespace-pre-wrap text-sm leading-7"
+                            >
                               {item.content}
-                            </p>
+                            </motion.p>
                             <div className="mt-3 flex items-center justify-between gap-4">
                               <p
                                 className={`text-[11px] uppercase tracking-[0.18em] ${
@@ -408,11 +415,20 @@ const NanoChatPanel = ({
                   })}
 
                   {liveStatus && chatHistory.length > 0 ? (
-                    <div className="flex justify-start">
-                      <div className="max-w-[540px] rounded-full bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 shadow-[0_14px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+                    <motion.div 
+                      className="flex justify-start"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <motion.div 
+                        className="max-w-[540px] rounded-full bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 shadow-[0_14px_32px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+                        animate={{ opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
                         {liveStatus}
-                      </div>
-                    </div>
+                      </motion.div>
+                    </motion.div>
                   ) : null}
 
                   {chatError ? (

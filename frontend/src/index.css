@@ -408,3 +408,112 @@ code {
     color: #0f172a !important;
   }
 }
+
+/* ============================================
+   ANIMAÇÕES CINEMATOGRÁFICAS DO NANO
+   ============================================ */
+
+@keyframes nano-glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.3),
+                inset 0 0 20px rgba(239, 68, 68, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(239, 68, 68, 0.8),
+                inset 0 0 30px rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes nano-breathing {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes nano-network-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes nano-wave {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes nano-shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes nano-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes nano-glow-ring {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.2),
+                0 0 30px rgba(239, 68, 68, 0),
+                0 0 50px rgba(239, 68, 68, 0);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5),
+                0 0 30px rgba(239, 68, 68, 0.3),
+                0 0 50px rgba(239, 68, 68, 0.1);
+  }
+}
+
+@keyframes nano-text-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Classes de animação utilitárias */
+.nano-glow-pulse {
+  animation: nano-glow-pulse 2s ease-in-out infinite;
+}
+
+.nano-breathing {
+  animation: nano-breathing 3s ease-in-out infinite;
+}
+
+.nano-network-pulse {
+  animation: nano-network-pulse 2s ease-in-out infinite;
+}
+
+.nano-wave {
+  animation: nano-wave 1.5s ease-in-out infinite;
+}
+
+.nano-float {
+  animation: nano-float 3s ease-in-out infinite;
+}
+
+.nano-glow-ring {
+  animation: nano-glow-ring 2s ease-in-out infinite;
+}
