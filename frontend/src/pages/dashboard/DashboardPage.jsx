@@ -407,7 +407,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("assistant");
   const [financialView, setFinancialView] = useState("general");
   const [themeMode, setThemeMode] = useState(() => {
     if (typeof window === "undefined") return "dark";
@@ -570,7 +570,11 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!visibleNavigationItems.some((item) => item.id === activeSection)) {
-      setActiveSection(visibleNavigationItems[0]?.id || "overview");
+      setActiveSection(
+        visibleNavigationItems.find((item) => item.id === "assistant")?.id ||
+          visibleNavigationItems[0]?.id ||
+          "assistant",
+      );
     }
   }, [activeSection, visibleNavigationItems]);
 
