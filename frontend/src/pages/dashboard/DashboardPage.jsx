@@ -17,6 +17,7 @@ import useOpenFinanceData from "../../hooks/dashboard/useOpenFinanceData";
 import usePayrollData from "../../hooks/dashboard/usePayrollData";
 import Sidebar from "../../components/Sidebar";
 import PluggyConnectDialog from "../../components/PluggyConnectDialog";
+import NanoMark from "../../components/NanoMark";
 import {
   BanksSection,
   CardsSection,
