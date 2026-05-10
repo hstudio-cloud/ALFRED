@@ -314,7 +314,11 @@ const NanoChatPanel = ({
           ref={scrollRef}
           className="nano-clean-scroll relative min-h-0 flex-1 overflow-y-auto"
         >
-          <div className="grid min-h-full gap-6 py-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div
+            className={`grid min-h-full gap-6 py-6 ${
+              showExecutionPanel ? "xl:grid-cols-[minmax(0,1fr)_320px]" : ""
+            }`}
+          >
             <div className="flex min-h-full flex-col gap-6">
               <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
                 <div className="relative flex min-h-[300px] items-center justify-center overflow-hidden rounded-[32px] border border-white/6 bg-[linear-gradient(180deg,rgba(17,10,12,0.38),rgba(9,8,10,0.08))] px-4 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
@@ -491,9 +495,9 @@ const NanoChatPanel = ({
               ) : null}
             </div>
 
-            <aside className="hidden xl:block">
-              <AnimatePresence>
-                {showExecutionPanel ? (
+            {showExecutionPanel ? (
+              <aside className="hidden xl:block">
+                <AnimatePresence>
                   <motion.div
                     initial={{ opacity: 0, x: 16 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -507,19 +511,9 @@ const NanoChatPanel = ({
                       className="sticky top-0 max-h-[calc(100vh-220px)]"
                     />
                   </motion.div>
-                ) : (
-                  <div className="rounded-[28px] border border-white/6 bg-white/[0.02] px-5 py-5 text-sm text-zinc-400 backdrop-blur-xl">
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-600">
-                      Execucao
-                    </p>
-                    <p className="mt-3 leading-7">
-                      Quando o Nano estiver pensando ou executando uma tarefa, a
-                      trilha visual aparece aqui sem poluir a conversa principal.
-                    </p>
-                  </div>
-                )}
-              </AnimatePresence>
-            </aside>
+                </AnimatePresence>
+              </aside>
+            ) : null}
           </div>
         </div>
 
