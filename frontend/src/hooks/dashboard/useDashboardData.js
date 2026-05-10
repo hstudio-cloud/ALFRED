@@ -234,9 +234,7 @@ export default function useDashboardData({
         variant: "destructive",
       });
     } finally {
-      if (shouldBlockUi) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }, [
     activeSectionRef,
