@@ -186,6 +186,10 @@ const NanoChatPanel = ({
   useEffect(() => {
     const lastAssistantMessage = latestAssistant;
     if (!lastAssistantMessage?.id) return;
+    if (!lastAssistantMessageIdRef.current) {
+      lastAssistantMessageIdRef.current = lastAssistantMessage.id;
+      return;
+    }
     if (lastAssistantMessage.id === lastAssistantMessageIdRef.current) return;
 
     lastAssistantMessageIdRef.current = lastAssistantMessage.id;
@@ -235,7 +239,7 @@ const NanoChatPanel = ({
   };
 
   return (
-    <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[34px] border border-white/6 bg-[linear-gradient(180deg,rgba(6,6,7,0.66),rgba(4,4,5,0.82))] shadow-[0_40px_140px_rgba(0,0,0,0.42)]">
+    <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[30px] border border-white/5 bg-[linear-gradient(180deg,rgba(6,6,7,0.66),rgba(4,4,5,0.82))] shadow-[0_32px_110px_rgba(0,0,0,0.34)]">
       <style>{`
         @keyframes nano-clean-drift {
           0% { transform: translate3d(0, 0, 0); }
@@ -269,18 +273,18 @@ const NanoChatPanel = ({
       </div>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col px-5 pb-5 pt-6 md:px-8 md:pb-7 md:pt-8">
-        <div className="flex flex-col gap-4 border-b border-white/6 pb-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 border-b border-white/6 pb-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-[11px] uppercase tracking-[0.34em] text-red-300/84">
               Assistente ativo
             </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white md:text-[56px]">
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-[42px]">
               {greeting}, {userName || "Heitor"}.
             </h1>
-            <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-300">
+            <p className="mt-3 max-w-2xl text-base leading-7 text-zinc-300">
               Estou aqui para cuidar da sua vida financeira. Pode falar comigo.
             </p>
-            <div className="mt-5 h-px w-20 bg-[linear-gradient(90deg,#ff2a2a,transparent)]" />
+            <div className="mt-4 h-px w-16 bg-[linear-gradient(90deg,#ff2a2a,transparent)]" />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -320,8 +324,8 @@ const NanoChatPanel = ({
             }`}
           >
             <div className="flex min-h-full flex-col gap-6">
-              <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
-                <div className="relative flex min-h-[300px] items-center justify-center overflow-hidden rounded-[32px] border border-white/6 bg-[linear-gradient(180deg,rgba(17,10,12,0.38),rgba(9,8,10,0.08))] px-4 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
+                <div className="relative flex min-h-[250px] items-center justify-center overflow-hidden rounded-[28px] border border-white/5 bg-[linear-gradient(180deg,rgba(17,10,12,0.34),rgba(9,8,10,0.08))] px-4 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div className="pointer-events-none absolute inset-x-[-6%] top-1/2 h-[220px] -translate-y-1/2 bg-[radial-gradient(circle,rgba(255,42,42,0.18),transparent_58%)] blur-3xl" />
                   <div className="relative flex flex-col items-center gap-5">
                     <NanoCoreAnimation
@@ -357,9 +361,9 @@ const NanoChatPanel = ({
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.28 }}
-                      className="ml-auto max-w-[420px] rounded-[24px] border border-red-500/14 bg-[linear-gradient(180deg,rgba(97,10,16,0.34),rgba(60,8,12,0.16))] px-5 py-4 text-red-50 shadow-[0_18px_44px_rgba(85,10,16,0.18)] backdrop-blur-xl"
+                      className="ml-auto max-w-[420px] rounded-[22px] border border-red-500/12 bg-[linear-gradient(180deg,rgba(97,10,16,0.3),rgba(60,8,12,0.14))] px-4 py-3.5 text-red-50 shadow-[0_14px_36px_rgba(85,10,16,0.14)] backdrop-blur-xl"
                     >
-                      <p className="text-lg leading-8">{latestUser.content}</p>
+                      <p className="text-base leading-7">{latestUser.content}</p>
                       <p className="mt-3 text-[11px] uppercase tracking-[0.22em] text-red-200/72">
                         {latestUser.created_at
                           ? formatTime(latestUser.created_at)
@@ -373,7 +377,7 @@ const NanoChatPanel = ({
                     initial={{ opacity: 0, y: 16, scale: 0.99 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-                    className={`rounded-[32px] border px-6 py-6 shadow-[0_28px_70px_rgba(0,0,0,0.28)] backdrop-blur-2xl ${
+                    className={`rounded-[26px] border px-5 py-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl ${
                       responsePulseActive
                         ? "border-red-400/18 bg-[radial-gradient(circle_at_top_left,rgba(255,42,42,0.12),transparent_28%),linear-gradient(180deg,rgba(18,14,16,0.9),rgba(10,9,10,0.84))]"
                         : "border-white/6 bg-[linear-gradient(180deg,rgba(18,14,16,0.86),rgba(10,9,10,0.82))]"
@@ -401,7 +405,7 @@ const NanoChatPanel = ({
                           )}
                         </div>
 
-                        <p className="mt-4 whitespace-pre-wrap text-[28px] leading-[1.55] text-zinc-100 md:text-[31px]">
+                        <p className="mt-4 max-w-3xl whitespace-pre-wrap text-base leading-8 text-zinc-100 md:text-lg">
                           {latestAssistantText}
                         </p>
 
@@ -435,7 +439,7 @@ const NanoChatPanel = ({
               ) : null}
 
               {olderMessages.length ? (
-                <div className="rounded-[28px] border border-white/6 bg-black/14 px-5 py-4 text-sm text-zinc-400 backdrop-blur-xl">
+                <div className="rounded-[24px] border border-white/5 bg-black/12 px-5 py-4 text-sm text-zinc-400 backdrop-blur-xl">
                   <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-600">
                     Historico recente
                   </p>
@@ -518,7 +522,7 @@ const NanoChatPanel = ({
         </div>
 
         <div className="border-t border-white/6 pt-5">
-          <div className="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(12,12,13,0.78),rgba(8,8,9,0.72))] px-4 py-4 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
+          <div className="rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(12,12,13,0.76),rgba(8,8,9,0.72))] px-4 py-4 shadow-[0_20px_56px_rgba(0,0,0,0.26)] backdrop-blur-2xl">
             {isWakeArmed && liveTranscript ? (
               <div className="mb-3 rounded-[20px] bg-white/[0.035] px-4 py-3 text-sm text-zinc-300">
                 <span className="mr-2 text-[11px] uppercase tracking-[0.2em] text-zinc-500">

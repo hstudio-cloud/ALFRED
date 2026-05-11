@@ -33,20 +33,17 @@ const SidebarItem = ({ item, active, expanded, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`group/item relative flex h-12 w-full items-center gap-3 overflow-hidden rounded-[20px] px-3 text-left transition-all duration-300 ${
+      className={`group/item flex h-11 w-full items-center gap-3 overflow-hidden rounded-2xl px-3 text-left transition-all duration-200 ${
         active
-          ? "border border-red-400/16 bg-[linear-gradient(135deg,rgba(127,29,29,0.42),rgba(15,23,42,0.9))] text-red-50 shadow-[0_14px_36px_rgba(127,29,29,0.22),inset_0_1px_0_rgba(255,255,255,0.04)]"
-          : "text-slate-400 hover:bg-white/[0.05] hover:text-zinc-100"
+          ? "border border-red-400/16 bg-[linear-gradient(135deg,rgba(127,29,29,0.44),rgba(15,23,42,0.86))] text-red-50 shadow-[0_12px_28px_rgba(127,29,29,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]"
+          : "text-slate-400 hover:bg-white/[0.045] hover:text-zinc-100"
       }`}
     >
-      {active && (
-        <span className="absolute right-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.9)]" />
-      )}
       <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-300 ${
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
           active
-            ? "bg-red-500/12 text-red-100 shadow-[0_0_18px_rgba(239,68,68,0.16)]"
-            : "bg-white/[0.03] text-slate-500 group-hover/item:bg-red-500/[0.08] group-hover/item:text-zinc-200"
+            ? "bg-red-500/12 text-red-100"
+            : "bg-white/[0.03] text-slate-500 group-hover/item:text-zinc-200"
         }`}
       >
         <Icon className="h-4.5 w-4.5" />
@@ -138,8 +135,8 @@ const DesktopSidebar = ({
 
   return (
     <TooltipProvider delayDuration={80}>
-      <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[88px] transition-[width] duration-300 hover:w-[250px] lg:flex">
-        <div className={`${dashboardTheme.panel} flex h-full w-full flex-col gap-3 rounded-[32px] border-white/8 bg-[linear-gradient(180deg,rgba(6,6,6,0.98),rgba(14,14,14,0.94))] px-0 py-3 shadow-[0_30px_90px_rgba(0,0,0,0.34)]`}>
+      <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
+        <div className={`${dashboardTheme.panel} flex h-full w-full flex-col gap-3 rounded-[28px] px-0 py-2`}>
           <div className="flex items-center gap-3 px-3 py-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center">
               <NanoMark className="h-10 w-10" />
@@ -151,7 +148,7 @@ const DesktopSidebar = ({
           </div>
 
           <div className="px-1">
-            <div className={`${dashboardTheme.panelSecondary} border-white/8 bg-white/[0.03] p-2`}>
+            <div className={`${dashboardTheme.panelSecondary} p-2`}>
               <div className="flex items-center justify-center group-hover/sidebar:justify-between px-2">
                 <Building2 className="h-4 w-4 shrink-0 text-slate-500" />
                 <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -206,7 +203,7 @@ const DesktopSidebar = ({
               ))}
             </div>
 
-            <div className={`${dashboardTheme.panelSecondary} mt-4 border-white/8 bg-white/[0.03] p-2`}>
+            <div className={`${dashboardTheme.panelSecondary} mt-4 p-2`}>
               <div className="flex items-center justify-center gap-3 group-hover/sidebar:justify-start">
                 <Avatar className="h-10 w-10 shrink-0 border border-red-400/18 bg-gradient-to-br from-red-500 to-rose-700">
                   <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
@@ -232,17 +229,6 @@ const DesktopSidebar = ({
                 </span>
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => onSelectItem("assistant")}
-              className="mt-4 flex h-11 w-full items-center justify-center gap-3 rounded-full border border-red-400/18 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(15,23,42,0.82))] px-3 text-sm font-medium text-red-50 shadow-[0_14px_32px_rgba(127,29,29,0.22)] transition duration-300 hover:border-red-300/30 group-hover/sidebar:justify-start"
-            >
-              <NanoMark className="h-4.5 w-4.5" />
-              <span className="truncate opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
-                Nano IA
-              </span>
-            </button>
           </div>
         </div>
       </aside>

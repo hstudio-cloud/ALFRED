@@ -17,7 +17,6 @@ import useOpenFinanceData from "../../hooks/dashboard/useOpenFinanceData";
 import usePayrollData from "../../hooks/dashboard/usePayrollData";
 import Sidebar from "../../components/Sidebar";
 import PluggyConnectDialog from "../../components/PluggyConnectDialog";
-import NanoMark from "../../components/NanoMark";
 import {
   BanksSection,
   CardsSection,
@@ -77,8 +76,6 @@ import {
   Building2,
   CalendarDays,
   Clock3,
-  ChevronLeft,
-  ChevronRight,
   CreditCard,
   Download,
   FileBarChart2,
@@ -121,98 +118,98 @@ const navigationItems = [
     label: "Nano IA",
     icon: BrainCircuit,
     description: "Chat financeiro e assistente por voz",
-    group: "Negócio",
+    group: "Negocio",
   },
   {
     id: "overview",
     label: "Dashboard",
     icon: LayoutDashboard,
-    description: "Visão geral do financeiro",
-    group: "Negócio",
+    description: "Visao geral do financeiro",
+    group: "Negocio",
   },
   {
     id: "transactions",
-    label: "Movimentações",
+    label: "Movimentacoes",
     icon: ArrowLeftRight,
-    description: "Entradas, saídas e filtros",
-    group: "Negócio",
+    description: "Entradas, saidas e filtros",
+    group: "Negocio",
   },
   {
     id: "banks",
     label: "Bancos",
     icon: Landmark,
-    description: "Contas bancárias e saldo",
-    group: "Negócio",
+    description: "Contas bancarias e saldo",
+    group: "Negocio",
   },
   {
     id: "cards",
-    label: "Cartões",
+    label: "Cartoes",
     icon: CreditCard,
     description: "Faturas, limites e uso",
-    group: "Negócio",
+    group: "Negocio",
   },
   {
     id: "contacts",
     label: "Contatos",
     icon: Users2,
     description: "Clientes e pagadores",
-    group: "Negócio",
+    group: "Negocio",
   },
   {
     id: "employees",
-    label: "Funcionários",
+    label: "Funcionarios",
     icon: CalendarDays,
-    description: "Ponto, presença, faltas e folha",
-    group: "Negócio",
+    description: "Ponto, presenca, faltas e folha",
+    group: "Negocio",
   },
   {
     id: "reports",
-    label: "Relatórios",
+    label: "Relatorios",
     icon: FileBarChart2,
-    description: "Análises e demonstrativos",
-    group: "Negócio",
+    description: "Analises e demonstrativos",
+    group: "Negocio",
   },
   {
     id: "activities",
     label: "Atividades",
     icon: Target,
     description: "Rotinas pessoais e da empresa com avisos do Nano",
-    group: "NegÃ³cio",
+    group: "Negocio",
   },
   {
     id: "automations",
-    label: "Automações",
+    label: "Automacoes",
     icon: BrainCircuit,
-    description: "Rotinas, histórico e tarefas do Nano",
-    group: "Negócio",
+    description: "Rotinas, historico e tarefas do Nano",
+    group: "Negocio",
   },
   {
     id: "nano_whatsapp",
     label: "WhatsApp do Nano",
     icon: ShieldCheck,
-    description: "Número conectado e confirmações pendentes",
-    group: "Negócio",
+    description: "Numero conectado e confirmacoes pendentes",
+    group: "Negocio",
   },
   {
     id: "company",
     label: "Empresa",
     icon: Building2,
     description: "Dados do workspace",
-    group: "Configurações",
+    group: "Configuracoes",
   },
   {
     id: "profile",
     label: "Perfil",
     icon: UserRound,
-    description: "Informações pessoais",
-    group: "Configurações",
+    description: "Informacoes pessoais",
+    group: "Configuracoes",
   },
   {
     id: "settings",
-    label: "Configurações",
+    label: "Configuracoes",
     icon: Settings2,
     description: "Categorias, alertas e rotina",
-    group: "Configurações",
+    group: "Configuracoes",
   },
 ];
 
@@ -445,6 +442,7 @@ const Dashboard = () => {
   const [transactionTypeFilter, setTransactionTypeFilter] = useState("all");
   const [transactionMethodFilter, setTransactionMethodFilter] = useState("all");
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+  const [isCalendarExpanded, setIsCalendarExpanded] = useState(false);
   const [statementFile, setStatementFile] = useState(null);
   const [statementImportResult, setStatementImportResult] = useState(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
@@ -2239,7 +2237,15 @@ const Dashboard = () => {
 
           <SurfacePanel
             title="Agenda de hoje"
-            action={<GhostChip>{activeCalendarDay?.isToday ? "Hoje" : "Agenda"}</GhostChip>}
+            action={
+              <button
+                type="button"
+                onClick={() => setIsCalendarExpanded((current) => !current)}
+                className="inline-flex h-11 items-center rounded-full border border-white/10 bg-white/[0.03] px-4 text-sm font-medium text-zinc-300 transition hover:border-red-400/18 hover:bg-red-500/[0.06] hover:text-white"
+              >
+                {isCalendarExpanded ? "Fechar calendario" : "Abrir calendario completo"}
+              </button>
+            }
           >
             <div className="space-y-4">
               <p className="text-sm text-slate-400">
@@ -2296,6 +2302,28 @@ const Dashboard = () => {
                   </p>
                 )}
               </div>
+
+              {isCalendarExpanded ? (
+                <div className="rounded-[24px] border border-white/8 bg-white/[0.02] p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-white">
+                      Calendario financeiro completo
+                    </p>
+                    <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      {new Date().toLocaleDateString("pt-BR", {
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <CalendarPanel
+                    days={calendarDays}
+                    selectedDate={activeCalendarDay?.date || null}
+                    onDaySelect={setSelectedCalendarDate}
+                    formatter={currencyFormatter}
+                  />
+                </div>
+              ) : null}
             </div>
           </SurfacePanel>
 
@@ -2343,6 +2371,7 @@ const Dashboard = () => {
           </div>
         }
       />
+
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2381,42 +2410,13 @@ const Dashboard = () => {
       <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
         <SurfacePanel
           title="Receitas x Despesas"
-          action={<GhostChip>Últimos 6 meses</GhostChip>}
+          action={<GhostChip>Ultimos 6 meses</GhostChip>}
         >
           <TrendChart data={reportTrendData} />
         </SurfacePanel>
 
-        <SurfacePanel
-          title="Calendário Financeiro"
-          action={
-            <div className="flex items-center gap-2 text-sm text-[#6e6259]">
-              <button
-                type="button"
-                className="rounded-xl border border-[#eadfd6] p-2 hover:bg-[#fbf4ef]"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="min-w-[108px] text-center font-medium">
-                {new Date().toLocaleDateString("pt-BR", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </span>
-              <button
-                type="button"
-                className="rounded-xl border border-[#eadfd6] p-2 hover:bg-[#fbf4ef]"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          }
-        >
-          <CalendarPanel
-            days={calendarDays}
-            selectedDate={activeCalendarDay?.date || null}
-            onDaySelect={setSelectedCalendarDate}
-            formatter={currencyFormatter}
-          />
+        <SurfacePanel title="Fluxo de caixa projetado">
+          <CashflowChart data={cashflowChartData} />
         </SurfacePanel>
       </div>
 
@@ -2424,12 +2424,6 @@ const Dashboard = () => {
         <SurfacePanel title="Despesas por categoria">
           <CategoryChart data={categoryChartData} />
         </SurfacePanel>
-        <SurfacePanel title="Fluxo de caixa projetado">
-          <CashflowChart data={cashflowChartData} />
-        </SurfacePanel>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.98fr]">
         <SurfacePanel
           title={`Resumo do dia ${activeCalendarDay ? new Date(activeCalendarDay.date).toLocaleDateString("pt-BR") : ""}`}
           action={
@@ -2446,7 +2440,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <SurfacePanel title="Saldo Consolidado">
+        <SurfacePanel title="Saldo consolidado">
           <SummaryRow
             label="Total"
             value={currencyFormatter.format(totalBalance)}
@@ -2463,29 +2457,24 @@ const Dashboard = () => {
           </div>
         </SurfacePanel>
 
-        <SurfacePanel title="Cartões de Crédito">
+        <SurfacePanel title="Cartoes de credito">
           {cardTransactions.length ? (
             <div className="space-y-3">
               <SummaryRow
-                label="Movimentações no cartão"
+                label="Movimentacoes no cartao"
                 value={String(cardTransactions.length)}
               />
               <SummaryRow
-                label="Volume no período"
+                label="Volume no periodo"
                 value={currencyFormatter.format(
-                  cardTransactions.reduce(
-                    (total, item) => total + item.amount,
-                    0,
-                  ),
+                  cardTransactions.reduce((total, item) => total + item.amount, 0),
                 )}
               />
               <SummaryRow
                 label="Maior fatura projetada"
                 value={currencyFormatter.format(
                   Math.max(
-                    ...cardTransactions.map(
-                      (transaction) => transaction.amount,
-                    ),
+                    ...cardTransactions.map((transaction) => transaction.amount),
                     0,
                   ),
                 )}
@@ -2494,20 +2483,20 @@ const Dashboard = () => {
           ) : (
             <CenteredEmptyState
               icon={CreditCard}
-              title="Nenhum cartão cadastrado"
-              description="Comece adicionando movimentações no cartão para acompanhar faturas e limites."
+              title="Nenhum cartao cadastrado"
+              description="Comece adicionando movimentacoes no cartao para acompanhar faturas e limites."
             />
           )}
         </SurfacePanel>
 
-        <SurfacePanel title="Top 5 Despesas">
+        <SurfacePanel title="Top 5 despesas">
           {topExpenses.length ? (
             <div className="space-y-3">
               {topExpenses.slice(0, 5).map((item) => (
                 <InfoRow
                   key={item.category}
                   title={item.category}
-                  subtitle="Participação nas saídas"
+                  subtitle="Participacao nas saidas"
                   value={currencyFormatter.format(item.amount)}
                 />
               ))}
@@ -2516,7 +2505,7 @@ const Dashboard = () => {
             <CenteredEmptyState
               icon={TrendingDown}
               title="Nenhuma despesa para exibir"
-              description="Assim que novas saídas entrarem, o Nano mostra as categorias mais pesadas."
+              description="Assim que novas saidas entrarem, o Nano mostra as categorias mais pesadas."
             />
           )}
         </SurfacePanel>
@@ -2526,34 +2515,23 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 26 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
-        className="overflow-hidden rounded-[32px] border border-red-500/12 bg-[radial-gradient(circle_at_left,rgba(239,68,68,0.24),transparent_28%),linear-gradient(180deg,rgba(10,10,10,0.94),rgba(12,12,12,0.9))] p-6 shadow-[0_26px_80px_rgba(0,0,0,0.34)]"
+        className="overflow-hidden rounded-[30px] border border-white/8 bg-[radial-gradient(circle_at_left,rgba(239,68,68,0.12),transparent_24%),linear-gradient(180deg,rgba(10,10,10,0.92),rgba(12,12,12,0.9))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.28)]"
       >
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-5">
-            <div className="relative flex h-24 w-24 items-center justify-center">
-              <div className="absolute inset-0 rounded-full border border-red-500/20" />
-              <div className="absolute inset-2 rounded-full border border-red-400/30" />
-              <div className="absolute inset-4 rounded-full border border-red-300/20" />
-              <div className="absolute inset-0 animate-pulse rounded-full bg-red-500/10 blur-xl" />
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(248,113,113,0.95),rgba(127,29,29,0.95))] shadow-[0_0_32px_rgba(239,68,68,0.38)]">
-                <NanoMark className="h-7 w-7" />
-              </div>
-            </div>
-            <div className="max-w-2xl">
-              <p className="text-2xl font-semibold text-white">
-                Posso analisar algo especifico para voce?
-              </p>
-              <p className="mt-2 text-sm leading-7 text-slate-400">
-                O Nano continua no centro da operacao e puxa o proximo bloco conforme o contexto da sua pergunta.
-              </p>
-            </div>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-lg font-semibold text-white">
+              Posso analisar algo especifico para voce?
+            </p>
+            <p className="mt-2 text-sm leading-7 text-slate-400">
+              O Nano continua presente no dashboard, mas sem disputar espaco com seus dados principais.
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
             {quickNanoActions.map((item) => (
               <button
                 key={item}
                 type="button"
-                className="rounded-full border border-red-500/16 bg-white/[0.03] px-5 py-3 text-sm font-medium text-zinc-100 transition duration-300 hover:-translate-y-0.5 hover:border-red-400/28 hover:bg-red-500/[0.08]"
+                className="rounded-full border border-red-500/14 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-zinc-100 transition duration-300 hover:border-red-400/24 hover:bg-red-500/[0.08]"
               >
                 {item}
               </button>
