@@ -10,12 +10,6 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
-import {
   Building2,
   CheckSquare,
   ChevronDown,
@@ -33,17 +27,22 @@ const SidebarItem = ({ item, active, expanded, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`group/item flex h-11 w-full items-center gap-3 overflow-hidden rounded-2xl px-3 text-left transition-all duration-200 ${
+      className={`group/item relative flex h-11 w-full items-center gap-3 overflow-visible rounded-2xl px-3 text-left transition-all duration-250 ${
         active
-          ? "border border-red-400/16 bg-[linear-gradient(135deg,rgba(127,29,29,0.44),rgba(15,23,42,0.86))] text-red-50 shadow-[0_12px_28px_rgba(127,29,29,0.2),inset_0_1px_0_rgba(255,255,255,0.04)]"
-          : "text-slate-400 hover:bg-white/[0.045] hover:text-zinc-100"
+          ? "text-red-50"
+          : "text-slate-500 hover:text-zinc-100"
       }`}
     >
       <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors ${
+        className={`absolute left-0 top-1/2 hidden h-7 w-[2px] -translate-y-1/2 rounded-full transition-all duration-250 group-hover/sidebar:block ${
+          active ? "bg-red-400 shadow-[0_0_18px_rgba(248,113,113,0.85)]" : "bg-transparent"
+        }`}
+      />
+      <span
+        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border transition-all duration-250 ${
           active
-            ? "bg-red-500/12 text-red-100"
-            : "bg-white/[0.03] text-slate-500 group-hover/item:text-zinc-200"
+            ? "border-red-400/22 bg-[radial-gradient(circle_at_30%_30%,rgba(239,68,68,0.24),rgba(127,29,29,0.16))] text-red-100 shadow-[0_10px_28px_rgba(127,29,29,0.24)]"
+            : "border-white/6 bg-white/[0.02] text-slate-500 group-hover/item:border-white/10 group-hover/item:bg-white/[0.04] group-hover/item:text-zinc-200"
         }`}
       >
         <Icon className="h-4.5 w-4.5" />
@@ -52,7 +51,7 @@ const SidebarItem = ({ item, active, expanded, onClick }) => {
         className={`truncate text-sm font-medium transition-all duration-200 ${
           expanded
             ? "max-w-[150px] opacity-100"
-            : "max-w-0 opacity-0 group-hover/sidebar:max-w-[150px] group-hover/sidebar:opacity-100"
+            : "pointer-events-none absolute left-[56px] top-1/2 z-20 -translate-y-1/2 rounded-full border border-red-400/14 bg-[linear-gradient(135deg,rgba(196,19,36,0.96),rgba(160,18,32,0.88))] px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-[0_14px_28px_rgba(127,29,29,0.26)] transition-all duration-200 group-hover/item:translate-x-1 group-hover/item:opacity-100"
         }`}
       >
         {item.label}
@@ -60,19 +59,7 @@ const SidebarItem = ({ item, active, expanded, onClick }) => {
     </button>
   );
 
-  if (expanded) return content;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{content}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        className={`${dashboardTheme.panelSecondary} rounded-xl px-3 py-1.5 text-xs text-zinc-100`}
-      >
-        {item.label}
-      </TooltipContent>
-    </Tooltip>
-  );
+  return content;
 };
 
 const SidebarSection = ({
@@ -134,11 +121,12 @@ const DesktopSidebar = ({
   const userInitial = (user?.name || user?.email || "N").charAt(0).toUpperCase();
 
   return (
-    <TooltipProvider delayDuration={80}>
-      <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[74px] transition-[width] duration-300 hover:w-[236px] lg:flex">
-        <div className={`${dashboardTheme.panel} flex h-full w-full flex-col gap-3 rounded-[28px] px-0 py-2`}>
+    <aside className="group/sidebar fixed inset-y-4 left-4 z-40 hidden w-[88px] transition-[width] duration-300 hover:w-[224px] lg:flex">
+        <div className="relative flex h-full w-full flex-col gap-3 px-0 py-2">
+          <div className="pointer-events-none absolute left-[43px] top-[112px] bottom-[124px] w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02),rgba(255,255,255,0.08))]" />
+
           <div className="flex items-center gap-3 px-3 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(10,10,12,0.84),rgba(8,8,10,0.7))] shadow-[0_18px_42px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <NanoMark className="h-10 w-10" />
             </div>
             <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -147,8 +135,8 @@ const DesktopSidebar = ({
             </div>
           </div>
 
-          <div className="px-1">
-            <div className={`${dashboardTheme.panelSecondary} p-2`}>
+          <div className="px-2">
+            <div className="rounded-[24px] border border-white/6 bg-[linear-gradient(180deg,rgba(10,10,12,0.8),rgba(10,10,12,0.62))] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl">
               <div className="flex items-center justify-center group-hover/sidebar:justify-between px-2">
                 <Building2 className="h-4 w-4 shrink-0 text-slate-500" />
                 <div className="min-w-0 opacity-0 transition-all duration-200 group-hover/sidebar:opacity-100">
@@ -203,7 +191,7 @@ const DesktopSidebar = ({
               ))}
             </div>
 
-            <div className={`${dashboardTheme.panelSecondary} mt-4 p-2`}>
+            <div className="mt-4 rounded-[24px] border border-white/6 bg-[linear-gradient(180deg,rgba(10,10,12,0.8),rgba(10,10,12,0.62))] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl">
               <div className="flex items-center justify-center gap-3 group-hover/sidebar:justify-start">
                 <Avatar className="h-10 w-10 shrink-0 border border-red-400/18 bg-gradient-to-br from-red-500 to-rose-700">
                   <AvatarFallback className="bg-transparent text-sm font-semibold text-white">
@@ -232,7 +220,6 @@ const DesktopSidebar = ({
           </div>
         </div>
       </aside>
-    </TooltipProvider>
   );
 };
 

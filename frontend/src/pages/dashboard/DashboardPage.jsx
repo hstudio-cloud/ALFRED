@@ -5183,7 +5183,7 @@ const Dashboard = () => {
               Carregando o novo cockpit financeiro do Nano...
             </div>
           ) : activeSection === "assistant" ? (
-            <div className="h-[calc(100vh-2rem)] overflow-hidden rounded-[28px]">
+            <div className="h-[calc(100vh-2rem)] overflow-hidden">
               {sectionContent[activeSection]}
             </div>
           ) : (

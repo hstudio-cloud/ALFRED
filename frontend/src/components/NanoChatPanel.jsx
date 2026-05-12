@@ -263,7 +263,7 @@ const NanoChatPanel = ({
         }
       `}</style>
 
-      <div className="nano-scene relative flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/6 shadow-[0_28px_90px_rgba(0,0,0,0.35)]">
+      <div className="nano-scene relative flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 px-8 pb-3 pt-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -311,13 +311,13 @@ const NanoChatPanel = ({
           className="nano-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-8 pb-40 pt-5"
         >
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-            <div className="nano-floating-pill inline-flex w-fit max-w-[420px] rounded-[20px] border border-red-500/14 bg-red-500/[0.07] px-4 py-3 text-sm text-zinc-100 shadow-[0_12px_28px_rgba(127,29,29,0.14)] backdrop-blur-sm">
+            <div className="nano-floating-pill inline-flex w-fit max-w-[420px] rounded-[20px] border border-red-500/10 bg-red-500/[0.05] px-4 py-3 text-sm text-zinc-100 shadow-[0_10px_24px_rgba(127,29,29,0.1)] backdrop-blur-sm">
               {voiceStatus || liveStatus || "Pronto para ouvir e organizar seu financeiro."}
             </div>
 
             {chatHistory.length === 0 && !liveStatus && (
               <div className="space-y-5 pt-2">
-                <div className="max-w-[560px] rounded-[26px_26px_26px_14px] bg-white/[0.04] px-5 py-4 text-sm leading-7 text-zinc-300 shadow-[0_14px_34px_rgba(2,6,23,0.18)]">
+                <div className="max-w-[560px] rounded-[26px_26px_26px_14px] bg-black/16 px-5 py-4 text-sm leading-7 text-zinc-300 shadow-[0_12px_28px_rgba(2,6,23,0.12)] backdrop-blur-[2px]">
                   Posso registrar uma despesa, criar uma conta, organizar um Pix
                   ou analisar seus gastos do mes.
                 </div>
@@ -327,7 +327,7 @@ const NanoChatPanel = ({
                       key={prompt}
                       type="button"
                       onClick={() => onQuickPrompt(nanoQuickPromptMap[prompt] || prompt)}
-                      className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
+                      className="rounded-full border border-white/6 bg-white/[0.02] px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.05] hover:text-white"
                     >
                       {prompt}
                     </button>
@@ -345,12 +345,12 @@ const NanoChatPanel = ({
                   className={`nano-message-enter flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[720px] px-5 py-4 shadow-[0_14px_34px_rgba(2,6,23,0.18)] ${
+                    className={`max-w-[720px] px-5 py-4 shadow-[0_12px_28px_rgba(2,6,23,0.12)] backdrop-blur-[2px] ${
                       isUser
-                        ? "rounded-[26px_26px_14px_26px] bg-red-600/10 text-red-50"
+                        ? "rounded-[26px_26px_14px_26px] bg-red-700/[0.18] text-red-50"
                         : responsePulseActive && item.id === latestAssistant?.id
-                          ? "rounded-[26px_26px_26px_14px] border border-red-400/14 bg-red-500/[0.06] text-zinc-100"
-                          : "rounded-[26px_26px_26px_14px] bg-white/[0.04] text-zinc-100"
+                          ? "rounded-[26px_26px_26px_14px] border border-red-400/10 bg-red-500/[0.05] text-zinc-100"
+                          : "rounded-[26px_26px_26px_14px] bg-black/18 text-zinc-100"
                     }`}
                   >
                     {!isUser ? (
@@ -376,7 +376,7 @@ const NanoChatPanel = ({
 
             {liveStatus && chatHistory.length > 0 && (
               <div className="flex justify-start">
-                <div className="nano-floating-pill max-w-[520px] rounded-[999px] border border-red-500/12 bg-white/[0.04] px-4 py-3 text-sm text-zinc-200 shadow-[0_12px_30px_rgba(2,6,23,0.16)]">
+                <div className="nano-floating-pill max-w-[520px] rounded-[999px] border border-red-500/10 bg-black/16 px-4 py-3 text-sm text-zinc-200 shadow-[0_10px_24px_rgba(2,6,23,0.1)] backdrop-blur-[2px]">
                   {liveStatus}
                 </div>
               </div>
@@ -394,7 +394,7 @@ const NanoChatPanel = ({
                   chatHistory={chatHistory}
                   nanoState={nanoState}
                   voiceStatus={voiceStatus}
-                  className="max-h-[340px] border-white/6 bg-black/22"
+                  className="max-h-[340px] border-white/0 bg-black/14"
                 />
               </motion.div>
             ) : null}
@@ -420,7 +420,7 @@ const NanoChatPanel = ({
               exit={{ opacity: 0 }}
               className="pointer-events-none absolute inset-0 flex items-center justify-center"
             >
-              <div className="w-full max-w-[220px] rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(7,10,18,0.46),rgba(7,10,18,0.28))] px-6 py-5 text-center shadow-[0_24px_80px_rgba(2,6,23,0.2)] backdrop-blur-md">
+              <div className="w-full max-w-[220px] rounded-[30px] border border-white/6 bg-[linear-gradient(180deg,rgba(7,10,18,0.32),rgba(7,10,18,0.18))] px-6 py-5 text-center shadow-[0_18px_50px_rgba(2,6,23,0.12)] backdrop-blur-md">
                 <div className="mx-auto max-w-[128px]">
                   <NanoCoreAnimation nanoState={nanoState} amplitude={currentLevel} />
                 </div>
@@ -433,7 +433,7 @@ const NanoChatPanel = ({
         </AnimatePresence>
 
         <div className="absolute bottom-6 left-1/2 z-20 w-[min(980px,calc(100%-6rem))] -translate-x-1/2">
-          <div className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-4 py-3 shadow-[0_20px_60px_rgba(2,6,23,0.28)] backdrop-blur-xl">
+          <div className="rounded-[28px] border border-white/0 bg-[linear-gradient(180deg,rgba(18,10,12,0.34),rgba(12,8,10,0.2))] px-4 py-3 shadow-[0_18px_44px_rgba(2,6,23,0.08)] backdrop-blur-md">
             {isWakeArmed && liveTranscript ? (
               <div className="mb-3 rounded-[20px] bg-white/[0.035] px-4 py-3 text-sm text-zinc-300">
                 <span className="mr-2 text-[11px] uppercase tracking-[0.2em] text-zinc-500">
@@ -458,8 +458,8 @@ const NanoChatPanel = ({
                     onClick={isWakeArmed ? onStopVoice : onStartVoice}
                     className={`flex h-10 w-10 items-center justify-center rounded-full border transition ${
                       isWakeArmed
-                        ? "border-red-400/24 bg-red-500/12 text-red-100"
-                        : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
+                      ? "border-red-400/18 bg-red-500/10 text-red-100"
+                        : "border-white/6 bg-white/[0.02] text-zinc-300 hover:bg-white/[0.05]"
                     }`}
                   >
                     {isWakeArmed ? (
@@ -474,7 +474,7 @@ const NanoChatPanel = ({
                   <button
                     type="button"
                     onClick={onInterrupt}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06]"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/6 bg-white/[0.02] text-zinc-200 hover:bg-white/[0.05]"
                   >
                     <Square className="h-4 w-4" />
                   </button>
@@ -484,7 +484,7 @@ const NanoChatPanel = ({
                   <button
                     type="button"
                     onClick={onCancelVoiceCommand}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.06]"
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/6 bg-white/[0.02] text-zinc-200 hover:bg-white/[0.05]"
                   >
                     <X className="h-4 w-4" />
                   </button>
